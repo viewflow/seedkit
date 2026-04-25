@@ -101,21 +101,25 @@ uv run manage.py runserver
 
 ## Scripts
 
-Add shortcuts to `pyproject.toml` so the project is self-documenting and works on any OS:
+Add [Poe the Poet](https://poethepoet.natn.io/) for cross-platform task shortcuts:
+
+```sh
+uv add --dev poethepoet
+```
 
 ```toml
-[tool.uv.scripts]
+[tool.poe.tasks]
 dev     = "python manage.py runserver"
 migrate = "python manage.py migrate"
 test    = "pytest"
 lint    = "ruff check ."
 ```
 
-Run any task with `uv run <script>`:
+Run any task with `uv run poe <name>`:
 
 ```sh
-uv run dev
-uv run migrate
-uv run test
-uv run lint
+uv run poe dev
+uv run poe migrate
+uv run poe test
+uv run poe lint
 ```
