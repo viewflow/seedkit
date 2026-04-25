@@ -13,25 +13,25 @@ uv --version
 
 ### Project foundation
 
-- `reference/uv.md` — uv installation and commands
-- `reference/new-project.md` — new project (Two Scoops layout, django-environ, uv)
-- `reference/docker.md` — Docker + local docker-compose
+- `references/uv.md` — uv installation and commands
+- `references/new-project.md` — new project (Two Scoops layout, django-environ, uv)
+- `references/docker.md` — Docker + local docker-compose
 
 ### Add-ons
 
-- `reference/redis.md` — Redis cache (django-redis)
-- `reference/storage-whitenoise.md` — static files (WhiteNoise) + media volume on VPS
-- `reference/storage-s3.md` — static and media on S3-compatible storage
-- `reference/tasks-celery.md` — background tasks with Celery + Redis
-- `reference/tasks-django.md` — background tasks with Django Tasks (DB or RQ backend)
+- `references/redis.md` — Redis cache (django-redis)
+- `references/storage-whitenoise.md` — static files (WhiteNoise) + media volume on VPS
+- `references/storage-s3.md` — static and media on S3-compatible storage
+- `references/tasks-celery.md` — background tasks with Celery + Redis
+- `references/tasks-django.md` — background tasks with Django Tasks (DB or RQ backend)
 
 ### Going to production
 
-- `reference/security.md` — Django security settings
-- `reference/ci.md` — GitHub Actions test workflow
-- `reference/deploy-vps.md` — VPS deploy with Docker + Caddy
-- `reference/deploy-managed.md` — Fly.io / Railway / Render
-- `reference/deploy-github-ssh.md` — GitHub Actions deploy via SSH
+- `references/security.md` — Django security settings
+- `references/ci.md` — GitHub Actions test workflow
+- `references/deploy-vps.md` — VPS deploy with Docker + Caddy
+- `references/deploy-managed.md` — Fly.io / Railway / Render
+- `references/deploy-github-ssh.md` — GitHub Actions deploy via SSH
 
 ## Instructions
 
