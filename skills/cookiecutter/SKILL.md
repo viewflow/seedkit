@@ -29,6 +29,8 @@ uv --version
 ### Going to production
 
 - `references/security.md` — Django security settings
+- `references/error-reporting.md` — exception tracking (Bugsink / Sentry SaaS / GlitchTip via sentry-sdk)
+- `references/gdpr.md` — PII scrubbing, data residency, retention, user data export/delete
 - `references/ci.md` — GitHub Actions test workflow
 - `references/deploy-vps.md` — VPS deploy with Docker + Caddy
 - `references/deploy-managed.md` — Fly.io / Railway / Render
