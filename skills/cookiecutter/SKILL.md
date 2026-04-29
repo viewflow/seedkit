@@ -24,6 +24,7 @@ uv --version
 - `references/storage-s3.md` — static and media on S3-compatible storage
 - `references/tasks-celery.md` — background tasks with Celery + Redis
 - `references/tasks-django.md` — background tasks with Django Tasks (DB or RQ backend)
+- `references/email.md` — transactional email (console in dev, SMTP in prod, optional Mailpit)
 
 ### Going to production
 
