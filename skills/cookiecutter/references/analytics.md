@@ -65,6 +65,53 @@ In `templates/base.html`, before `</body>`:
 {% include "_analytics.html" %}
 ```
 
+### SPA frontends (React / Vue / etc.)
+
+Two patterns depending on how the SPA is served. Analytics IDs are not secrets — both are safe.
+
+**A. Django serves the SPA shell** (Django renders `index.html`, JS mounts into a root element)
+
+Use the context processor; inject IDs as a window global before the bundle loads:
+
+```django
+{% if ANALYTICS_ID and not debug %}
+<script>
+  window.__ANALYTICS__ = {
+    id:   "{{ ANALYTICS_ID }}",
+    host: "{{ ANALYTICS_HOST }}",
+  };
+</script>
+{% endif %}
+```
+
+**B. Decoupled SPA** (Vite / Next served separately, Django is API-only)
+
+Either build-time env vars (`VITE_ANALYTICS_ID`, `NEXT_PUBLIC_ANALYTICS_ID`) or a runtime config endpoint:
+
+```python
+# Django: api/config view
+def config(request):
+    return JsonResponse({
+        "analytics_id":   settings.ANALYTICS_ID,
+        "analytics_host": settings.ANALYTICS_HOST,
+    })
+```
+
+The SPA fetches `/api/config` once on boot, then injects the vendor `<script>` tag and calls the backend's tracking API.
+
+**Route-change pageviews**
+
+SPAs don't trigger full page loads, so the vendor script's auto-pageview only fires once. Re-fire manually on route change:
+
+| Backend | Pageview call |
+|---|---|
+| GoatCounter | `window.goatcounter.count({ path: location.pathname })` |
+| Umami | `window.umami.track()` |
+| Shynet | (auto via heartbeat) |
+| GA4 | `gtag('event', 'page_view', { page_path: location.pathname })` |
+
+Wire it to the router — e.g. a `useEffect(..., [location.pathname])` in React, or a router subscriber in Vue.
+
 ---
 
 ## Backend A — GoatCounter (recommended)
