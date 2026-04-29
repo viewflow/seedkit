@@ -12,7 +12,12 @@ vars().update(EMAIL_CONFIG)
 
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="webmaster@localhost")
 SERVER_EMAIL = env("SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
+
+ADMINS = [("Admin", email) for email in env.list("DJANGO_ADMINS", default=[])]
+MANAGERS = ADMINS
 ```
+
+`ADMINS` receive 500-error emails (when `DEBUG=False`) and any `mail_admins()` call. Leave empty in dev — with the console backend the messages print to stdout anyway.
 
 `EMAIL_URL` schemes (django-environ):
 
@@ -47,6 +52,8 @@ EMAIL_URL=smtp+tls://<smtp-user>:<smtp-password>@smtp.mailgun.org:587
 EMAIL_URL=smtp+tls://<smtp-user>:<smtp-password>@email-smtp.<region>.amazonaws.com:587
 
 DEFAULT_FROM_EMAIL=no-reply@example.com
+SERVER_EMAIL=django@example.com
+DJANGO_ADMINS=ops@example.com,alerts@example.com
 ```
 
 URL-encode any special characters in the password (`%40` for `@`, `%23` for `#`, etc.).
