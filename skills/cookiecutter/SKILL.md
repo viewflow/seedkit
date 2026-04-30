@@ -20,6 +20,7 @@ uv --version
 
 ### Add-ons
 
+- `references/debug.md` — dev debug dashboard: django-orbit (observability, MCP) or django-silk (profiling + `@silk_profile`); ask the user which one
 - `references/redis.md` — Redis cache (django-redis)
 - `references/storage-whitenoise.md` — static files (WhiteNoise) + media volume on VPS
 - `references/storage-s3.md` — static and media on S3-compatible storage
