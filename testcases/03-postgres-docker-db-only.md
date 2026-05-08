@@ -15,6 +15,7 @@ Database: PostgreSQL.
 Local dev mode: uv on host. Postgres location: run only Postgres in Docker, Django runs on the host (publish 5432 to localhost).
 Lint with Ruff: no.
 Custom user model: no.
+Auth add-on: `django-mail-auth` (passwordless magic-link).
 Add-ons:
   - redis (for Celery)
   - tasks: Celery, with periodic tasks (Celery Beat)
@@ -31,6 +32,7 @@ Ship a `docker-compose.yml` with `db` and `redis` services only. Run the foundat
 - `uv run celery -A config worker -l info` starts; example task can be enqueued from a `manage.py shell` and runs.
 - `uv run celery -A config beat -l info` starts without errors and lists the example schedule.
 - `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True` is set.
+- `django-mail-auth` installed; `mailauth` in `INSTALLED_APPS`; `MailAuthBackend` listed in `AUTHENTICATION_BACKENDS`; `accounts/` URL include with `mailauth` namespace; `/accounts/login/` renders an email-only form.
 
 ## Run
 

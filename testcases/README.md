@@ -65,6 +65,7 @@ Coverage rules. Use these to regenerate the suite when the skill changes.
    - Lint (Ruff): `yes` / `no`
 
    **Add-ons** (each at least once across the suite, but not in the minimal case)
+   - Auth: `django-allauth` / `django-mail-auth` / `none`
    - Debug: `django-orbit` / `django-silk` / `none`
    - Redis: `yes` / `no`
    - Storage: `whitenoise` / `s3` / `none`

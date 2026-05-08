@@ -15,6 +15,7 @@ Database: PostgreSQL.
 Local dev mode: uv on host. Postgres location: on the host (use `createdb` for the project DB).
 Lint with Ruff: yes.
 Custom user model: yes (custom `users.User` extending `AbstractUser`).
+Auth add-on: `django-allauth` (email login, mandatory email verification, no social providers).
 Add-ons:
   - storage: WhiteNoise for static files (no media volume yet)
   - email: SMTP (console backend in local, SMTP in production)
@@ -32,6 +33,7 @@ Assume Postgres is already running locally on port 5432 with user `postgres` / p
 - WhiteNoise middleware listed in production settings only.
 - Email backend `django.core.mail.backends.console.EmailBackend` in local; SMTP wired via env in production.
 - `users/` app with `AbstractUser` subclass and admin registration; `AUTH_USER_MODEL = "users.User"` set **before** the initial migration; `users_user` table exists (no `auth_user`).
+- `django-allauth` installed; `allauth`, `allauth.account`, `django.contrib.sites` in `INSTALLED_APPS`; `AccountMiddleware` in `MIDDLEWARE`; `accounts/` URL include; `ACCOUNT_EMAIL_VERIFICATION = "mandatory"`; `/accounts/login/` and `/accounts/signup/` render.
 
 ## Run
 

@@ -15,6 +15,7 @@ Database: PostgreSQL.
 Local dev mode: docker-compose (full stack: web + db + redis).
 Lint with Ruff: yes.
 Custom user model: yes (custom `users.User` extending `AbstractUser`).
+Auth add-on: `django-allauth` (email login + mandatory verification).
 Add-ons:
   - redis
   - tasks: Celery (no Beat)
@@ -41,6 +42,7 @@ Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.
 - `.github/workflows/test.yml` runs migrations + pytest against Postgres.
 - Security settings apply only in `production.py`.
 - `users/` app with `AbstractUser` subclass and admin registration; `AUTH_USER_MODEL = "users.User"` set **before** the initial migration; `users_user` table exists.
+- `django-allauth` installed; `allauth`, `allauth.account`, `django.contrib.sites` in `INSTALLED_APPS`; `AccountMiddleware` in `MIDDLEWARE`; `accounts/` URL include; `ACCOUNT_EMAIL_VERIFICATION = "mandatory"`; `/accounts/login/` and `/accounts/signup/` render.
 
 ## Run
 

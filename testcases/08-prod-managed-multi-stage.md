@@ -15,6 +15,7 @@ Database: PostgreSQL.
 Local dev mode: docker-compose (web + db + redis + minio).
 Lint with Ruff: yes.
 Custom user model: no.
+Auth add-on: `django-mail-auth` (passwordless magic-link).
 Add-ons:
   - redis
   - tasks: Celery
@@ -41,6 +42,7 @@ Run the foundation + boot check locally. Generate `Dockerfile`, `fly.toml`, `.gi
 - GDPR scaffolding present: `before_send` PII scrubber, `data_export` / `data_delete` views or management commands.
 - GA4 snippet in base template, measurement ID from env.
 - Security settings + CI workflow present.
+- `django-mail-auth` installed; `mailauth` in `INSTALLED_APPS`; `MailAuthBackend` in `AUTHENTICATION_BACKENDS`; `accounts/` URL include with `mailauth` namespace; `/accounts/login/` renders an email-only form.
 
 ## Run
 

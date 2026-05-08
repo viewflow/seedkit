@@ -22,6 +22,7 @@ uv --version
 
 ### Add-ons
 
+- `references/auth.md` — authentication: `django-allauth` (passwords, email verification, social login) or `django-mail-auth` (passwordless magic-link); ask the user which one (or none → stay on `django.contrib.auth` defaults)
 - `references/debug.md` — dev debug dashboard: django-orbit (observability, MCP) or django-silk (profiling + `@silk_profile`); ask the user which one
 - `references/redis.md` — Redis cache (django-redis)
 - `references/storage-whitenoise.md` — static files (WhiteNoise) + media volume on VPS

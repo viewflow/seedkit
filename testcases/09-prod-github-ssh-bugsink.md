@@ -15,6 +15,7 @@ Database: PostgreSQL.
 Local dev mode: docker-compose (web + db + redis).
 Lint with Ruff: yes.
 Custom user model: no.
+Auth add-on: none.
 Add-ons:
   - redis
   - tasks: Django Tasks with the Redis Queue backend (`django-tasks-rq`)

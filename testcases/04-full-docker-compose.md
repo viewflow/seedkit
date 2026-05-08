@@ -15,6 +15,7 @@ Database: PostgreSQL.
 Local dev mode: docker-compose (full stack: web + db + redis).
 Lint with Ruff: yes.
 Custom user model: no.
+Auth add-on: none.
 Add-ons:
   - redis
   - storage: S3-compatible (use MinIO in local Compose; configure via env)
