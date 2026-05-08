@@ -114,8 +114,6 @@ Commit `.env.example` with every env var settings reads:
 DJANGO_SECRET_KEY=replace-me
 DJANGO_DEBUG=True
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
-# DATABASE_URL — leave unset for dev SQLite anchored to BASE_DIR; set with 4 slashes for an absolute path:
-# DATABASE_URL=sqlite:////absolute/path/to/db.sqlite3
 ```
 
 Then `cp .env.example .env` and set a real dev key:
