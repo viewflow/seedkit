@@ -129,8 +129,10 @@ TASKS = {
 
 # django-rq reads RQ_QUEUES separately from TASKS. Use the URL form so
 # host/port come from REDIS_URL (works in both Compose and host modes).
+# Use a dedicated logical DB (/3) so it doesn't share with cache (/0)
+# or Celery broker / results (/1, /2).
 RQ_QUEUES = {
-    "default": {"URL": REDIS_URL},
+    "default": {"URL": f"{REDIS_URL}/3"},
 }
 ```
 

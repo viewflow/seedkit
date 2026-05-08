@@ -40,10 +40,11 @@ __all__ = ("celery_app",)
 Add to your settings module (`config/settings.py` for single-file, `config/settings/base.py` for split). If `redis.md` was already applied, reuse `REDIS_URL`; otherwise define it here:
 
 ```python
-REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0")
+REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379")
 
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
+# Distinct logical DBs so cache.clear() doesn't wipe broker / result state.
+CELERY_BROKER_URL = f"{REDIS_URL}/1"
+CELERY_RESULT_BACKEND = f"{REDIS_URL}/2"
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # silence Celery 5+ deprecation
 ```
 

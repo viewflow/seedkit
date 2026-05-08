@@ -16,4 +16,9 @@ CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
+
+# Required behind a TLS-terminating proxy (Caddy / nginx / load balancer)
+# whenever Django sees the request as HTTP. Without it, admin / allauth
+# POSTs return 403 with "Origin checking failed".
+CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 ```

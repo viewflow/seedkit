@@ -78,6 +78,8 @@ urlpatterns = [
 uv run manage.py migrate
 ```
 
+`django.contrib.sites` ships a default `Site` row at `pk=1` with `domain="example.com"` — allauth uses it for absolute URLs in verification / password-reset emails. Update it once per environment, either via Django admin (`/admin/sites/site/1/`) or a one-off data migration that reads `DJANGO_SITE_DOMAIN` / `DJANGO_SITE_NAME` from env. Forgetting this means email links point at `example.com`.
+
 Allauth ships its own templates; override only when the user wants custom branding.
 
 If a custom user model from `references/custom-user.md` is in use, drop the `username` field and use the email-as-`USERNAME_FIELD` variant — otherwise email-only signup will fail because `AbstractUser` requires a username. With `username = None` on the user model, also add to settings:

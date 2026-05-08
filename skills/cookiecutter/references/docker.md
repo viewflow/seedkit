@@ -76,6 +76,8 @@ Open <http://localhost:8000/admin/> and confirm login.
 
 ## Production
 
+**Match the Python tag to `requires-python` in `pyproject.toml`** before building. The Dockerfile snippets below use `python3.12` — bump to `python3.13` / `python3.14` if `uv init` resolved a newer interpreter on the host (`uv sync --frozen` will refuse to install on a mismatch).
+
 **Ask the user:** does image size matter? Smaller image (multi-stage, ~150 MB lighter) trades build complexity for a leaner runtime. Default to single-stage unless they say yes.
 
 Both variants share these uv best-practice flags (per <https://docs.astral.sh/uv/guides/integration/docker/>):
@@ -109,8 +111,11 @@ COPY --chown=django:django . .
 RUN uv sync --frozen --no-dev
 
 # DJANGO_DEBUG=True unlocks dev defaults so collectstatic can import settings
-# without real SECRET_KEY / DATABASE_URL. Not used at runtime.
-RUN DJANGO_DEBUG=True python manage.py collectstatic --noinput
+# without real SECRET_KEY / DATABASE_URL. SETTINGS_MODULE must point at
+# production for STORAGES (manifest static storage) to apply — manage.py
+# would otherwise default to config.settings.local and skip the manifest.
+RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
+    python manage.py collectstatic --noinput
 
 USER django
 
@@ -135,7 +140,8 @@ RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
 RUN uv sync --frozen --no-dev
 
-RUN DJANGO_DEBUG=True /app/.venv/bin/python manage.py collectstatic --noinput
+RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
+    /app/.venv/bin/python manage.py collectstatic --noinput
 
 # --- runtime ---
 FROM python:3.12-slim-bookworm AS runtime

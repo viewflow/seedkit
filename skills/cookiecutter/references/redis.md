@@ -13,12 +13,15 @@ uv add django-redis
 Add after the `DATABASES` setting:
 
 ```python
-REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379/0")
+REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379")
 
+# Use logical DBs to keep cache, broker, and result backend isolated:
+# /0 cache, /1 Celery broker, /2 Celery results, /3 django-tasks-rq.
+# A `cache.clear()` only affects DB 0; brokers / queues stay intact.
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
+        "LOCATION": f"{REDIS_URL}/0",
         "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
     }
 }
@@ -49,7 +52,7 @@ services:
 Add to `.env`:
 
 ```sh
-REDIS_URL=redis://redis:6379/0
+REDIS_URL=redis://redis:6379   # cache uses /0, Celery broker /1, results /2, RQ /3
 ```
 
 ## VPS — docker-compose.prod.yml
@@ -78,7 +81,7 @@ services:
 Add to `.env.prod`:
 
 ```sh
-REDIS_URL=redis://redis:6379/0
+REDIS_URL=redis://redis:6379   # cache uses /0, Celery broker /1, results /2, RQ /3
 ```
 
 ## Managed platforms
