@@ -72,6 +72,16 @@ cleanup_workspace() {
     find "$WORKSPACE" -mindepth 1 -maxdepth 1 ! -name 'logs' -exec rm -rf {} +
 }
 
+link_skill() {
+    # Expose the cookiecutter skill to claude -p as a project-scoped skill.
+    # Without this the sub-claude can't find it and falls back to ad-hoc behavior.
+    mkdir -p "$WORKSPACE/.claude/skills"
+    ln -snf "$REPO/skills/cookiecutter" "$WORKSPACE/.claude/skills/cookiecutter"
+}
+
+cleanup_workspace
+link_skill
+
 for tc in "${FILES[@]}"; do
     name=$(basename "$tc" .md)
     log="$LOGS/$name-$STAMP.log"
@@ -80,7 +90,6 @@ for tc in "${FILES[@]}"; do
     echo "    log:    $log"
     echo "    prompt: $tc"
 
-    cleanup_workspace
     cd "$WORKSPACE"
 
     start=$(date +%s)
