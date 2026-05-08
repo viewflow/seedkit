@@ -7,11 +7,10 @@ A `pk=BigAutoField` empty subclass is enough — extending it later (extra field
 ## Create the app
 
 ```sh
-mkdir users
-uv run django-admin startapp users users
+uv run django-admin startapp users
 ```
 
-(`startapp <name> <path>` lets you place the app at the repo root. If you prefer `apps/users/` or similar, adjust the path and the dotted reference accordingly.)
+(Creates `./users/`. If you prefer a nested layout like `apps/users/`, run `mkdir -p apps/users && uv run django-admin startapp users apps/users` and adjust the dotted reference.)
 
 ## users/models.py
 

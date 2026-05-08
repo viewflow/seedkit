@@ -2,12 +2,31 @@
 
 ## Create
 
+Pick the path that matches the user's chosen dev mode. The branches differ in **where the `.venv` lives**: on the host (uv-host) vs only inside the container (docker-compose). Mixing them causes uv to print `Ignoring existing virtual environment linked to non-existent Python interpreter` on every container start because the host's macOS / Windows venv symlinks are invalid in Linux.
+
+### If dev mode is "uv on host"
+
 ```sh
 uv init --bare {project_slug}     # --bare skips main.py / README.md / .python-version
 cd {project_slug}
 uv add 'django>=6.0,<7.0' django-environ
 uv run django-admin startproject config .
 ```
+
+### If dev mode is "docker-compose"
+
+Don't run `uv add` / `uv run` on the host — that creates a `.venv` linked to the host Python, which then collides with the container's Linux venv. Do everything through the container:
+
+```sh
+uv init --bare {project_slug}
+cd {project_slug}
+# Generate Dockerfile + docker-compose.yml first (see references/docker.md).
+# Then run installs and startproject inside the container — host stays venv-free:
+docker compose run --rm web uv add 'django>=6.0,<7.0' django-environ
+docker compose run --rm web uv run django-admin startproject config .
+```
+
+From here on, **every** Python command goes through `docker compose run --rm web …` or `docker compose exec web …`. Add `.venv` to `.dockerignore` so even an accidental host venv (created by an IDE or ad-hoc `uv` call) never enters the build context.
 
 In `config/settings.py`, replace only `SECRET_KEY` / `DEBUG` / `ALLOWED_HOSTS` / `DATABASES`. Leave everything else `startproject` wrote.
 
@@ -124,10 +143,20 @@ Write a `.gitignore` for a Django + uv project. Must include `.venv/`, `.env`, `
 
 ## Boot check
 
+For **uv on host**:
+
 ```sh
 uv run manage.py migrate
 uv run manage.py createsuperuser
 uv run manage.py runserver
+```
+
+For **docker-compose** (container-only Python):
+
+```sh
+docker compose up -d
+docker compose exec web uv run manage.py migrate
+docker compose exec web uv run manage.py createsuperuser
 ```
 
 Confirm `/admin/` login works before continuing.

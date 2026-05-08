@@ -70,7 +70,7 @@ Open <http://localhost:8000/admin/> and confirm login.
 
 - **`Permission denied` on `/home/<user>/.cache/uv`** — happens if `web` is built from the production Dockerfile (which sets `USER django`). The dev compose above uses the raw uv image; don't switch to `build: .` for dev.
 - **`uv sync` hardlink warnings** — `UV_LINK_MODE: copy` silences them across mount boundaries.
-- **Stale `.venv` from the host** — the named `venv` volume keeps the Linux venv separate. On ABI mismatch: `docker compose down -v`.
+- **Stale `.venv` from the host** — the named `venv` volume keeps the Linux venv separate. If you see `Ignoring existing virtual environment linked to non-existent Python interpreter`, the host venv leaked in (named volume missing from compose, or stale from an earlier run on a different OS). The warning is harmless — uv discards the broken venv and rebuilds a fresh Linux one — but if it persists, run `docker compose down -v` and rebuild so the named volume starts clean.
 
 ---
 
