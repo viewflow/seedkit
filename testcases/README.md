@@ -36,7 +36,9 @@ mandatory in production; SQLite default anchored to `BASE_DIR` via 4-slash
 absolute URL; `.env.example` is a dev template — `DJANGO_DEBUG=True` is
 correct there, prod env vars come from the deploy platform's secrets, not
 this file; `DATABASE_URL` is intentionally absent from `.env.example`
-because dev uses the in-code default) so the reviewer doesn't keep flagging them as
+because dev uses the in-code default; an empty `REVIEW.md` at the project
+root is the file the reviewer itself is writing to via `tee` — ignore it,
+it's not a skill artifact) so the reviewer doesn't keep flagging them as
 bugs. Word the prompt as "audit the existing code", not "review the
 Django project" — the latter pattern-matches the skill description and
 starts a build. Pipe the output to `REVIEW.md` inside the project

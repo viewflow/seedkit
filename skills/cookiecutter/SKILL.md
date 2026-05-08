@@ -98,3 +98,5 @@ Use reference snippets as written.
 - Don't create an app dir named after the project unless asked.
 - Don't restate values in `local.py` / `production.py` that `base.py` already sets.
 - Don't reimplement what `django-environ` does (no manual `.split(",")`, no leftover `import os`).
+- After `uv init`, set `requires-python = ">=3.12"` in `pyproject.toml` (Django 6 supports 3.12+; the auto-detected pin from the host interpreter is too tight).
+- When adding an add-on, append every env var its reference reads to `.env.example` so the file stays the canonical list.

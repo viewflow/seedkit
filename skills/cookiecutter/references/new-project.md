@@ -128,7 +128,7 @@ If a value contains `$` and the project uses `docker-compose` with `env_file:`, 
 
 ## .gitignore
 
-Must include `.venv/`, `.env`, `*.sqlite3`, `staticfiles/`, `media/`. Add other standard Python / Django / editor / tooling entries before the first commit.
+Must include `.venv/`, `.env`, `*.sqlite3`, `staticfiles/`, `media/`, `.ruff_cache/`. Add other standard Python / Django / editor / tooling entries before the first commit.
 
 ## Boot check
 

@@ -36,6 +36,15 @@ EMAIL_URL=consolemail://
 DEFAULT_FROM_EMAIL=webmaster@localhost
 ```
 
+Also append to `.env.example` so the var is discoverable:
+
+```sh
+EMAIL_URL=consolemail://
+# DEFAULT_FROM_EMAIL=webmaster@localhost
+# SERVER_EMAIL=root@example.com
+# DJANGO_ADMINS=admin@example.com,ops@example.com
+```
+
 ## .env.prod (VPS)
 
 Pick the URL matching your provider:

@@ -36,7 +36,8 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**"      = ["S"]
 "**/test_*.py"     = ["S"]
-"**/settings/*.py" = ["F405", "F403"]   # star imports across settings layers
+"**/tests.py"      = ["S"]                   # Django's default `startapp` stub
+"**/settings/*.py" = ["F405", "F403"]        # star imports across settings layers
 
 [tool.ruff.lint.isort]
 known-first-party = ["{project_slug}"]
