@@ -23,15 +23,15 @@ uv --version
 ### Add-ons
 
 - `references/auth.md` — `django-allauth` (passwords, verification, social) or `django-mail-auth` (passwordless magic-link); ask, or none for stock auth
-- `references/debug.md` — django-orbit (observability + MCP) or django-silk (profiling); ask
+- `references/debug.md` — orbit / silk dispatcher → loads `debug-orbit.md` or `debug-silk.md`
 - `references/redis.md` — Redis cache (django-redis)
 - `references/storage-whitenoise.md` — static via WhiteNoise + media volume on VPS
 - `references/storage-s3.md` — static + media on S3-compatible storage
 - `references/tasks-celery.md` — Celery + Redis
-- `references/tasks-django.md` — Django Tasks (DB or RQ backend)
+- `references/tasks-django.md` — Django Tasks dispatcher → loads `tasks-django-db.md` or `tasks-django-rq.md`; optional `tasks-django-cron.md` for periodic
 - `references/email.md` — transactional email (console / SMTP / Mailpit)
 - `references/logging.md` — `structlog` JSON-in-prod / pretty-in-dev; ask yes / no
-- `references/analytics.md` — GoatCounter / Umami / Shynet / GA4
+- `references/analytics.md` — dispatcher → loads `analytics-goatcounter.md` / `-umami.md` / `-shynet.md` / `-ga4.md`
 
 ### Production
 
