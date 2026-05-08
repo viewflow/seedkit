@@ -86,7 +86,6 @@ After any setup step, update `README.md` with the key decisions (stack, DB, dev 
 Use the reference snippets as written.
 
 - Env var names: always `DJANGO_DEBUG` / `DJANGO_SECRET_KEY` / `DJANGO_ALLOWED_HOSTS`. Never the unprefixed forms.
-- `.gitignore` from `references/new-project.md` is mandatory — `.env` and `db.sqlite3` must be ignored before the first commit.
 - Don't add packages the user didn't ask for (`django-extensions`, etc.).
 - Don't create an app dir named after the project unless asked.
 - Don't restate values in `local.py` / `production.py` that `base.py` already sets.

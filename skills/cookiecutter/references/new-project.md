@@ -9,13 +9,11 @@ uv add django django-environ
 uv run django-admin startproject config .
 ```
 
-After `startproject`, only **edit** `config/settings.py` — do not strip lines `django-admin` wrote (keep `DEFAULT_AUTO_FIELD`, `STATIC_URL`, etc.). The instructions below replace `SECRET_KEY` / `DEBUG` / `ALLOWED_HOSTS` / `DATABASES`; everything else stays.
-
-Don't create an app named after the project (e.g. `shop/`) unless the user explicitly asked for one. The Django package is `config/`; apps come later when there's something to put in them.
+In `config/settings.py`, replace only `SECRET_KEY` / `DEBUG` / `ALLOWED_HOSTS` / `DATABASES`. Leave everything else `startproject` wrote.
 
 ## Settings — ask the user which structure they prefer
 
-Use the snippets below verbatim. Don't keep `import os` from the generated `settings.py`, don't add a redundant `env("DEBUG", ...)` after the cast, don't reimplement `env.list` with `.split(",")`. The shape is intentional.
+Use the snippets below verbatim.
 
 ---
 
@@ -38,9 +36,7 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])  # DEBUG already ac
 DATABASES = {"default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3" if DEBUG else None)}
 ```
 
-The `if DEBUG else None` defaults let dev / build steps boot with no `.env`. Production has `DJANGO_DEBUG` unset, so the defaults disappear and missing values raise `ImproperlyConfigured`.
-
-`manage.py`, `config/wsgi.py`, and `config/asgi.py` keep the default `DJANGO_SETTINGS_MODULE = "config.settings"`.
+Dev defaults are gated by `DEBUG`: in production `DJANGO_DEBUG` is unset, the defaults vanish, and missing values raise `ImproperlyConfigured`.
 
 ---
 
@@ -69,8 +65,6 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])  # DEBUG already ac
 DATABASES = {"default": env.db("DATABASE_URL", default="sqlite:///db.sqlite3" if DEBUG else None)}
 ```
 
-Dev-only defaults are gated by `DEBUG`. Production has `DJANGO_DEBUG` unset → defaults vanish → missing values raise `ImproperlyConfigured`.
-
 **config/settings/local.py**
 
 ```python
@@ -89,11 +83,12 @@ from .base import *
 
 ---
 
-## STATIC_ROOT
+## Static files
 
-Append to `config/settings.py` (or `config/settings/base.py` for split layout) so `collectstatic` has a destination — `startproject` only writes `STATIC_URL`:
+In `config/settings.py` (or `config/settings/base.py` for split):
 
 ```python
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 ```
 
@@ -124,9 +119,7 @@ uv run manage.py runserver
 
 Confirm `/admin/` login works before continuing.
 
-## Scripts
-
-Add [Poe the Poet](https://poethepoet.natn.io/) for cross-platform task shortcuts:
+## Scripts (optional — only if the user asks for task shortcuts)
 
 ```sh
 uv add --dev poethepoet
@@ -140,11 +133,4 @@ test    = "pytest"
 lint    = "ruff check ."
 ```
 
-Run any task with `uv run poe <name>`:
-
-```sh
-uv run poe dev
-uv run poe migrate
-uv run poe test
-uv run poe lint
-```
+Run with `uv run poe <name>`.

@@ -20,7 +20,7 @@ MIDDLEWARE = [
     ...
 ]
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STORAGES = {
@@ -32,7 +32,7 @@ STORAGES = {
     },
 }
 
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 ```
 
