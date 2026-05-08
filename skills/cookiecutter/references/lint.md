@@ -12,7 +12,7 @@ uv add --dev ruff
 
 ```toml
 [tool.ruff]
-target-version = "py312"
+# target-version is auto-detected from `requires-python` in pyproject.toml
 line-length = 100
 extend-exclude = ["migrations", "*/migrations/*"]
 

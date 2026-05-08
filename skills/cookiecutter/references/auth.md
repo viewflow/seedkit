@@ -45,8 +45,16 @@ LOGOUT_REDIRECT_URL = "/"
 
 ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION = "optional"   # dev default; tighten in production
+```
+
+In `config/settings/production.py` (split layout) — or gated on `not DEBUG` for single-file — require verified email:
+
+```python
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ```
+
+(Mandatory verification with the console email backend means the verification link only appears in `runserver` stdout — fine for prod with real SMTP, painful for local signup.)
 
 ### URLs
 

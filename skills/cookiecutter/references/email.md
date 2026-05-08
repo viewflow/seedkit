@@ -7,8 +7,7 @@ Console backend in development, SMTP backend in production — controlled by a s
 In `config/settings.py` (or `config/settings/base.py` for split settings):
 
 ```python
-EMAIL_CONFIG = env.email_url("EMAIL_URL", default="consolemail://")
-vars().update(EMAIL_CONFIG)
+globals().update(env.email_url("EMAIL_URL", default="consolemail://"))
 
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="webmaster@localhost")
 SERVER_EMAIL = env("SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)

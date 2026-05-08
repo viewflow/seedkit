@@ -27,12 +27,17 @@ Run `claude -p` from the project dir with `--model claude-opus-4-7`,
 restricted to read-only tools so the reviewer can't trigger the
 cookiecutter skill and rebuild the project. Tell the reviewer the
 project is a freshly generated *starter / scaffold* with no business
-logic on purpose, so it focuses on config / security / deployment
-correctness rather than flagging the missing feature code. Word the
-prompt as "audit the existing code", not "review the Django project" —
-the latter pattern-matches the skill description and starts a build.
-Pipe the output to `REVIEW.md` inside the project (`| tee REVIEW.md`)
-so the report is persisted next to the code. Paste a digest below.
+logic on purpose, and list the intentional design decisions of the
+skill (gated `default=... if DEBUG else None`; `globals().update(env.email_url(...))`;
+`local.py` deltas-only; WhiteNoise `STORAGES` in `production.py` only;
+`wsgi.py`/`asgi.py` → production, `manage.py` → local; email-only custom
+user with `UserManager`; `ACCOUNT_EMAIL_VERIFICATION` optional in base /
+mandatory in production) so the reviewer doesn't keep flagging them as
+bugs. Word the prompt as "audit the existing code", not "review the
+Django project" — the latter pattern-matches the skill description and
+starts a build. Pipe the output to `REVIEW.md` inside the project
+(`| tee REVIEW.md`) so the report is persisted next to the code. Paste
+a digest below.
 
 - What worked out of the box: …
 - What broke: …
