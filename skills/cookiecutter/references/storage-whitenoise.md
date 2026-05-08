@@ -11,16 +11,25 @@ WhiteNoise serves **static files only** (CSS, JS, images bundled with the app). 
 uv add whitenoise
 ```
 
-## config/settings/base.py
+## config/settings/base.py (or settings.py for single-file)
 
 Insert `whitenoise.middleware.WhiteNoiseMiddleware` into the **existing** `MIDDLEWARE` list — directly after `SecurityMiddleware`. Do not redeclare the full list.
 
-Add the rest below:
+Add the rest below (no `STORAGES` here yet — see next section):
 
 ```python
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+```
+
+## config/settings/production.py
+
+Manifest static storage requires `collectstatic` to have run, so it breaks `runserver` in dev. Configure it in production only:
+
+```python
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
@@ -29,12 +38,13 @@ STORAGES = {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
-
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
 ```
 
-The `CompressedManifestStaticFilesStorage` backend is the **only** switch needed for compression + hashed filenames. Don't invent `WHITENOISE_COMPRESS`, `WHITENOISE_USE_FINDERS`, `STATICFILES_STORAGE`, or other settings — they're either deprecated or don't exist.
+(Single-file layout: gate the same dict on `not DEBUG`, or skip the `STORAGES` override entirely until you deploy.)
+
+The `CompressedManifestStaticFilesStorage` backend is the **only** switch needed for compression + hashed filenames. Don't invent `WHITENOISE_COMPRESS` / `WHITENOISE_USE_FINDERS` — they don't exist.
+
+The `STORAGES` dict (Django 4.2+) replaces the legacy `STATICFILES_STORAGE` and `DEFAULT_FILE_STORAGE` settings. Use `STORAGES` only — never set the legacy keys alongside it.
 
 ## config/urls.py
 

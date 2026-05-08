@@ -67,6 +67,8 @@ uv run manage.py migrate
 
 Allauth ships its own templates; override only when the user wants custom branding.
 
+If a custom user model from `references/custom-user.md` is in use, drop the `username` field and use the email-as-`USERNAME_FIELD` variant — otherwise email-only signup will fail because `AbstractUser` requires a username.
+
 ---
 
 ## Option B — `django-mail-auth` (passwordless / magic link)

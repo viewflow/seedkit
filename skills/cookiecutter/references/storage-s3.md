@@ -14,6 +14,8 @@ uv add django-storages[s3]
 
 This block **replaces** any `STATIC_URL` / `STATIC_ROOT` / `MEDIA_URL` / `MEDIA_ROOT` set in the foundation. With S3 there's no local `STATIC_ROOT` — `collectstatic` writes straight to the bucket.
 
+The `STORAGES` dict (Django 4.2+) replaces the legacy `STATICFILES_STORAGE` and `DEFAULT_FILE_STORAGE` settings. Use `STORAGES` only — never set the legacy keys alongside it.
+
 ```python
 AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
