@@ -16,6 +16,7 @@ Local dev mode: uv on host. Postgres location: on the host (use `createdb silk_d
 Lint with Ruff: yes.
 Custom user model: no.
 Auth add-on: none.
+Structured logging: no.
 Add-ons:
   - debug: django-silk (profiling + `@silk_profile`)
   - tasks: Django Tasks with the Database backend (`django-tasks-db`)

@@ -16,6 +16,7 @@ Local dev mode: docker-compose (full stack: web + db + redis).
 Lint with Ruff: yes.
 Custom user model: no.
 Auth add-on: none.
+Structured logging: yes (`structlog`, JSON in prod / pretty in dev, request-scoped `request_id`).
 Add-ons:
   - redis
   - storage: S3-compatible (use MinIO in local Compose; configure via env)
@@ -34,6 +35,7 @@ Generate `docker-compose.yml` with services `web`, `db`, `redis`, `worker`, `min
 - `psycopg[binary]`, `django-tasks`, `django-tasks-rq`, `django-storages[s3]` (or `boto3`) in dependencies.
 - Ruff config present; `docker compose exec web uv run ruff check .` exits 0.
 - Named volumes for `pgdata`, `venv`, `uv-cache`, `minio-data`.
+- `structlog` installed; `LOGGING` configured with both `json` and `console` formatters, `console` chosen when `DEBUG`; `RequestContextMiddleware` inserted into `MIDDLEWARE`; a request to `/admin/login/` produces a log line carrying `request_id`.
 
 ## Run
 

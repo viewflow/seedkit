@@ -16,6 +16,7 @@ Local dev mode: uv on host. Postgres location: run only Postgres in Docker, Djan
 Lint with Ruff: no.
 Custom user model: no.
 Auth add-on: `django-mail-auth` (passwordless magic-link).
+Structured logging: no.
 Add-ons:
   - redis (for Celery)
   - tasks: Celery, with periodic tasks (Celery Beat)

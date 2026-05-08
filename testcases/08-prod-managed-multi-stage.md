@@ -16,6 +16,7 @@ Local dev mode: docker-compose (web + db + redis + minio).
 Lint with Ruff: yes.
 Custom user model: no.
 Auth add-on: `django-mail-auth` (passwordless magic-link).
+Structured logging: no.
 Add-ons:
   - redis
   - tasks: Celery

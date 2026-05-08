@@ -16,6 +16,7 @@ Local dev mode: docker-compose (web + db + redis).
 Lint with Ruff: yes.
 Custom user model: no.
 Auth add-on: none.
+Structured logging: yes (`structlog`, JSON in prod / pretty in dev, request-scoped `request_id`).
 Add-ons:
   - redis
   - tasks: Django Tasks with the Redis Queue backend (`django-tasks-rq`)
@@ -41,6 +42,7 @@ Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.
 - `.github/workflows/test.yml` runs migrations + pytest.
 - `.github/workflows/deploy.yml` uses SSH secrets, rsyncs source, runs `docker compose pull && up -d` on the remote.
 - Security settings applied only in `production.py`.
+- `structlog` installed; `LOGGING` with `json` (prod) / `console` (dev) formatters; `RequestContextMiddleware` inserted into `MIDDLEWARE`; production logs are valid JSON lines carrying `request_id`.
 
 ## Run
 

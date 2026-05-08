@@ -16,6 +16,7 @@ Local dev mode: uv on host. Postgres location: on the host (use `createdb` for t
 Lint with Ruff: yes.
 Custom user model: yes (custom `users.User` extending `AbstractUser`).
 Auth add-on: `django-allauth` (email login, mandatory email verification, no social providers).
+Structured logging: no.
 Add-ons:
   - storage: WhiteNoise for static files (no media volume yet)
   - email: SMTP (console backend in local, SMTP in production)

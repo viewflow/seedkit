@@ -30,6 +30,7 @@ uv --version
 - `references/tasks-celery.md` — background tasks with Celery + Redis
 - `references/tasks-django.md` — background tasks with Django Tasks (DB or RQ backend)
 - `references/email.md` — transactional email (console in dev, SMTP in prod, optional Mailpit)
+- `references/logging.md` — structured logging with `structlog` (pretty console in dev, JSON in prod); ask the user yes / no
 - `references/analytics.md` — site analytics (GoatCounter / Umami / Shynet / GA4)
 
 ### Going to production

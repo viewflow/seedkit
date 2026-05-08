@@ -76,6 +76,7 @@ Coverage rules. Use these to regenerate the suite when the skill changes.
    - Storage: `whitenoise` / `s3` / `none`
    - Tasks: `celery` / `django-tasks-db` / `django-tasks-rq` / `none`
    - Email: `console` / `smtp` / `mailpit` / `none`
+   - Structured logging (`structlog`): `yes` / `no`
    - Analytics: `goatcounter` / `umami` / `shynet` / `ga4` / `none`
 
    **Production** (separate test cases focused on deploy)

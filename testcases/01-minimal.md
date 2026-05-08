@@ -16,6 +16,7 @@ Local dev mode: uv on host.
 Lint with Ruff: no.
 Custom user model: no.
 Auth add-on: none (vanilla `django.contrib.auth`).
+Structured logging: no.
 Add-ons: none.
 Production setup: skip.
 

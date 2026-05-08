@@ -16,6 +16,7 @@ Local dev mode: uv on host.
 Lint with Ruff: yes.
 Custom user model: no.
 Auth add-on: none.
+Structured logging: no.
 Add-ons:
   - debug: django-orbit (observability dashboard + MCP)
   - email: console backend in local, plus Mailpit running in Docker for richer inspection
