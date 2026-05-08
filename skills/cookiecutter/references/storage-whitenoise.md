@@ -1,9 +1,9 @@
 # Storage — WhiteNoise + Local Media
 
-WhiteNoise serves **static files only** (CSS, JS, images bundled with the app). User-uploaded media files are served separately.
+WhiteNoise serves **static files only**. User-uploaded media goes elsewhere:
 
-- **VPS**: media served by Caddy from a Docker volume
-- **Managed platforms**: media files don't survive redeployment on ephemeral filesystems — use `storage-s3.md` for user uploads
+- **VPS**: Caddy serves media from a Docker volume.
+- **Managed platforms**: ephemeral filesystems lose media on redeploy — use `storage-s3.md`.
 
 ## Install
 
@@ -11,11 +11,11 @@ WhiteNoise serves **static files only** (CSS, JS, images bundled with the app). 
 uv add whitenoise
 ```
 
-## config/settings/base.py (or settings.py for single-file)
+## Settings — base / single-file
 
-Insert `whitenoise.middleware.WhiteNoiseMiddleware` into the **existing** `MIDDLEWARE` list — directly after `SecurityMiddleware`. Do not redeclare the full list.
+Insert `whitenoise.middleware.WhiteNoiseMiddleware` into the **existing** `MIDDLEWARE` directly after `SecurityMiddleware`. Don't redeclare the list.
 
-Add the rest below (no `STORAGES` here yet — see next section):
+Then:
 
 ```python
 STATIC_URL = "/static/"
@@ -25,30 +25,26 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 ```
 
-## config/settings/production.py
+## Settings — production.py
 
-Manifest static storage requires `collectstatic` to have run, so it breaks `runserver` in dev. Configure it in production only:
+Manifest storage requires `collectstatic` to have run, so it breaks `runserver` in dev. Configure it production-only:
 
 ```python
 STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 ```
 
-(Single-file layout: gate the same dict on `not DEBUG`, or skip the `STORAGES` override entirely until you deploy.)
+(Single-file layout: gate on `not DEBUG`, or skip until deploy.)
 
-The `CompressedManifestStaticFilesStorage` backend is the **only** switch needed for compression + hashed filenames. Don't invent `WHITENOISE_COMPRESS` / `WHITENOISE_USE_FINDERS` — they don't exist.
+`CompressedManifestStaticFilesStorage` is the only switch needed for compression + hashed filenames. `WHITENOISE_COMPRESS` / `WHITENOISE_USE_FINDERS` don't exist.
 
-The `STORAGES` dict (Django 4.2+) replaces the legacy `STATICFILES_STORAGE` and `DEFAULT_FILE_STORAGE` settings. Use `STORAGES` only — never set the legacy keys alongside it.
+`STORAGES` (Django 4.2+) replaces legacy `STATICFILES_STORAGE` and `DEFAULT_FILE_STORAGE`. Don't set the legacy keys alongside it.
 
 ## config/urls.py
 
-Add at the bottom so Django serves media in local development:
+Serve media in dev:
 
 ```python
 from django.conf import settings
@@ -60,7 +56,7 @@ if settings.DEBUG:
 
 ## VPS — docker-compose.prod.yml
 
-Add a shared `media` volume between `web` and `caddy`:
+Shared `media` volume between `web` and `caddy`:
 
 ```yaml
 services:
@@ -96,6 +92,4 @@ example.com {
 
 ## Managed platforms
 
-Static files are served by WhiteNoise directly from the container — no extra configuration needed.
-
-Media files (user uploads) require external storage because managed platforms use ephemeral filesystems. Use `storage-s3.md` to add S3-compatible storage for media.
+WhiteNoise serves static from the container — nothing extra. Media on managed platforms needs external storage; use `storage-s3.md`.

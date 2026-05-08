@@ -1,10 +1,10 @@
 # Celery
 
-Django itself has no background-task system — the request/response cycle is the whole runtime. Celery is the long-established Python distributed task queue: workers process jobs off a broker (Redis here), with retries, rate limits, schedules (Beat), priority queues, chained workflows, and a large ecosystem (Flower UI, monitoring exporters). Use it when you have non-trivial background work — emails, image processing, periodic syncs, multi-step pipelines.
+Django has no background-task system. Celery is the established Python distributed queue: workers process jobs off a broker (Redis here), with retries, rate limits, schedules (Beat), priority queues, chained workflows. Use it for non-trivial background work — emails, image processing, periodic syncs.
 
-Requires Redis. Set up `reference/redis.md` first if not already done.
+Requires Redis (`references/redis.md`).
 
-Ask the user if they also need **periodic tasks** (celery beat) — add the Beat section if yes.
+Ask the user about **periodic tasks** (Beat) — apply that section if yes.
 
 ## Install
 
@@ -18,8 +18,7 @@ uv add 'celery[redis]'
 import os
 from celery import Celery
 
-# Single-file layout: "config.settings"
-# Split layout: "config.settings.production"
+# Single-file: "config.settings". Split: "config.settings.production".
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 app = Celery("config")
@@ -37,12 +36,11 @@ __all__ = ("celery_app",)
 
 ## Settings
 
-Add to your settings module (`config/settings.py` for single-file, `config/settings/base.py` for split). If `redis.md` was already applied, reuse `REDIS_URL`; otherwise define it here:
+In `config/settings.py` (or `config/settings/base.py`). If `redis.md` set `REDIS_URL`, reuse it.
 
 ```python
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379")
 
-# Distinct logical DBs so cache.clear() doesn't wipe broker / result state.
 CELERY_BROKER_URL = f"{REDIS_URL}/1"
 CELERY_RESULT_BACKEND = f"{REDIS_URL}/2"
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # silence Celery 5+ deprecation
@@ -50,7 +48,7 @@ CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # silence Celery 5+ deprecatio
 
 ## Define a task
 
-Tasks must live in a registered Django app (`<app>/tasks.py`) — `app.autodiscover_tasks()` only scans `INSTALLED_APPS`. **Don't put `tasks.py` in `config/`** — `config/` is the project package and isn't in `INSTALLED_APPS`, so tasks defined there are never discovered. If no domain app exists yet, create one (`uv run django-admin startapp <name>`) and put the task in `<name>/tasks.py`.
+Tasks must live in a registered Django app — `app.autodiscover_tasks()` only scans `INSTALLED_APPS`. **Not in `config/`** (it isn't in `INSTALLED_APPS`). If no domain app exists, `uv run django-admin startapp <name>` first.
 
 ```python
 # <app>/tasks.py
@@ -69,7 +67,7 @@ send_welcome_email.delay(user.id)
 
 ## Local — docker-compose.yml
 
-Mirror the dev `web` service: raw uv image + bind mount + shared `venv` / `uv-cache` volumes so code edits hit the worker without a rebuild.
+Mirror the dev `web` service so code edits reach the worker without a rebuild:
 
 ```yaml
 services:
@@ -94,7 +92,7 @@ services:
 
 ## VPS — docker-compose.prod.yml
 
-Production image has `/app/.venv/bin` on `PATH`, so call `celery` directly — no `uv run` overhead per container start.
+Production image has `/app/.venv/bin` on `PATH` — call `celery` directly:
 
 ```yaml
 services:
@@ -112,27 +110,21 @@ services:
 
 ## Managed platforms
 
-Run the worker as a separate process/service alongside web:
-
-- **Fly.io** — add a `[processes]` section in `fly.toml`:
+- **Fly.io** — `fly.toml`:
   ```toml
   [processes]
     web = "gunicorn config.wsgi --bind 0.0.0.0:8000"
     worker = "celery -A config worker -l info"
   ```
-- **Railway / Render** — add a second service pointing at the same image with command `celery -A config worker -l info`.
+- **Railway / Render** — second service on the same image with command `celery -A config worker -l info`.
 
 ---
 
-## Periodic Tasks — Celery Beat
+## Periodic tasks — Celery Beat
 
-Add this section only if the user needs scheduled/periodic tasks.
-
-Beat's default `PersistentScheduler` writes a `celerybeat-schedule` file (plus `-shm` and `-wal` SQLite sidecars) to the working directory at runtime. Add `celerybeat-schedule*` to `.gitignore` — the generic `*.sqlite3` rule misses them because they have no extension.
+Beat's default `PersistentScheduler` writes `celerybeat-schedule` (+ `-shm`, `-wal` SQLite sidecars) at runtime. Add `celerybeat-schedule*` to `.gitignore` — the `*.sqlite3` rule misses them (no extension).
 
 ### Settings
-
-Add to the same settings module as above:
 
 ```python
 from celery.schedules import crontab
@@ -140,7 +132,7 @@ from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
     "example-task": {
         "task": "{project_slug}.tasks.example_task",
-        "schedule": crontab(hour=8, minute=0),  # daily at 08:00
+        "schedule": crontab(hour=8, minute=0),
     },
 }
 ```
@@ -180,4 +172,4 @@ services:
 
 ### Managed platforms
 
-Add a third process/service for beat alongside web and worker.
+Add a third process for beat alongside web and worker.

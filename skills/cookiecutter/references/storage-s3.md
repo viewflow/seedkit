@@ -1,6 +1,6 @@
 # Storage — S3
 
-Stores both static and media files in an S3-compatible bucket. Works on all deployment targets including managed platforms with ephemeral filesystems.
+Static and media in an S3-compatible bucket. Works on every deploy target including managed platforms with ephemeral filesystems.
 
 Compatible providers: AWS S3, DigitalOcean Spaces, Cloudflare R2, Backblaze B2, MinIO.
 
@@ -10,20 +10,19 @@ Compatible providers: AWS S3, DigitalOcean Spaces, Cloudflare R2, Backblaze B2, 
 uv add django-storages[s3]
 ```
 
-## config/settings/base.py
+## Settings
 
 This block **replaces** any `STATIC_URL` / `STATIC_ROOT` / `MEDIA_URL` / `MEDIA_ROOT` set in the foundation. With S3 there's no local `STATIC_ROOT` — `collectstatic` writes straight to the bucket.
 
-The `STORAGES` dict (Django 4.2+) replaces the legacy `STATICFILES_STORAGE` and `DEFAULT_FILE_STORAGE` settings. Use `STORAGES` only — never set the legacy keys alongside it.
+`STORAGES` (Django 4.2+) replaces legacy `STATICFILES_STORAGE` / `DEFAULT_FILE_STORAGE`. Don't set the legacy keys alongside it.
 
 ```python
 AWS_ACCESS_KEY_ID = env("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = env("AWS_SECRET_ACCESS_KEY")
 AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME")
 AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="us-east-1")
-# For S3-compatible providers (MinIO, R2, B2, Spaces) — set the endpoint
-# and skip AWS_S3_CUSTOM_DOMAIN so django-storages signs URLs against
-# the endpoint. AWS-only deployments should set AWS_S3_CUSTOM_DOMAIN.
+# Non-AWS providers (MinIO, R2, B2, Spaces): set the endpoint, skip
+# AWS_S3_CUSTOM_DOMAIN so django-storages signs URLs against the endpoint.
 AWS_S3_ENDPOINT_URL = env("AWS_S3_ENDPOINT_URL", default="")
 AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", default="")
 
@@ -38,9 +37,8 @@ STORAGES = {
     },
 }
 
-# When AWS_S3_CUSTOM_DOMAIN is set (real AWS / CloudFront) we can hardcode
-# the URL prefix; otherwise let django-storages generate URLs against the
-# endpoint, which is correct for MinIO and other compatibles.
+# Hardcode URLs only when CDN domain is set; otherwise django-storages
+# signs against the endpoint (correct for MinIO etc.).
 if AWS_S3_CUSTOM_DOMAIN:
     STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
@@ -53,24 +51,23 @@ AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_STORAGE_BUCKET_NAME=...
 AWS_S3_REGION_NAME=us-east-1
-# AWS_S3_ENDPOINT_URL=http://minio:9000      # set for non-AWS providers
-# AWS_S3_CUSTOM_DOMAIN=cdn.example.com       # set for real AWS + CloudFront
+# AWS_S3_ENDPOINT_URL=http://minio:9000      # non-AWS providers
+# AWS_S3_CUSTOM_DOMAIN=cdn.example.com       # AWS + CloudFront
 ```
 
-## Dockerfile
+## Dockerfile — remove build-time collectstatic
 
-Remove `collectstatic` from the Dockerfile — it needs AWS credentials at build time which aren't available:
+The Dockerfile in `references/docker.md` runs `collectstatic` at build. That works for WhiteNoise (local dir baked in) but **fails for S3** — collectstatic uploads to the bucket and needs real AWS credentials, which must not enter the build context. Delete the line:
 
 ```dockerfile
-# Remove this line:
-# RUN uv run manage.py collectstatic --noinput
+# Delete this RUN — collectstatic moves to deploy.
+# RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
+#     /app/.venv/bin/python manage.py collectstatic --noinput
 ```
 
-Run it instead as part of the deploy/release step.
+Run `collectstatic` at deploy with real env vars. Patterns below.
 
 ## VPS — deploy script
-
-Run `collectstatic` before starting containers:
 
 ```sh
 ssh user@vps
@@ -91,10 +88,10 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## Managed — Railway / Render
 
-Set the release command to:
+Release command:
 
 ```sh
 uv run manage.py migrate && uv run manage.py collectstatic --noinput
 ```
 
-Add the AWS env vars in the platform dashboard.
+AWS env vars go in the platform dashboard.

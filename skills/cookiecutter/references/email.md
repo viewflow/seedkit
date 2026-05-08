@@ -1,10 +1,10 @@
 # Email
 
-Stock Django requires picking the email backend (`EMAIL_BACKEND`, plus host/port/user/password/tls knobs) one setting at a time. This reference uses `django-environ`'s `email_url` parser so a single `EMAIL_URL` env var (`consolemail://`, `smtp+tls://user:pass@host:port`, etc.) drives everything — same shape as `DATABASE_URL`, swap providers without touching code, console in dev / SMTP in prod from one variable.
+Stock Django wires email backend / host / port / user / pass / tls one setting at a time. This reference uses `django-environ`'s `email_url` parser: a single `EMAIL_URL` env var (`consolemail://`, `smtp+tls://user:pass@host:port`, …) drives everything. Same shape as `DATABASE_URL`; swap providers without touching code.
 
 ## Settings
 
-In `config/settings.py` (or `config/settings/base.py` for split settings):
+In `config/settings.py` (or `config/settings/base.py`):
 
 ```python
 globals().update(env.email_url("EMAIL_URL", default="consolemail://"))
@@ -19,17 +19,17 @@ ADMINS = [("Admin", email) for email in env.list("DJANGO_ADMINS", default=[])]
 MANAGERS = ADMINS
 ```
 
-`ADMINS` receive 500-error emails (when `DEBUG=False`) and any `mail_admins()` call. Leave empty in dev — with the console backend the messages print to stdout anyway.
+`ADMINS` receive 500-error emails (when `DEBUG=False`) and any `mail_admins()` call. Leave empty in dev — console backend prints to stdout anyway.
 
-`EMAIL_URL` schemes (django-environ):
+`EMAIL_URL` schemes:
 
 - `consolemail://` — print to stdout (dev default)
 - `smtp://user:pass@host:port` — plain SMTP
-- `smtp+tls://user:pass@host:port` — STARTTLS (most providers on port 587)
+- `smtp+tls://user:pass@host:port` — STARTTLS (port 587)
 - `smtp+ssl://user:pass@host:port` — implicit TLS (port 465)
-- `dummymail://` — drop silently (useful in tests)
+- `dummymail://` — drop silently (tests)
 
-## .env (local development)
+## .env (local)
 
 ```sh
 EMAIL_URL=consolemail://
@@ -38,18 +38,15 @@ DEFAULT_FROM_EMAIL=webmaster@localhost
 
 ## .env.prod (VPS)
 
-Pick the URL that matches your provider. Examples:
+Pick the URL matching your provider:
 
 ```sh
 # Postmark SMTP
 EMAIL_URL=smtp+tls://<server-token>:<server-token>@smtp.postmarkapp.com:587
-
 # SendGrid SMTP
 EMAIL_URL=smtp+tls://apikey:<api-key>@smtp.sendgrid.net:587
-
 # Mailgun SMTP
 EMAIL_URL=smtp+tls://<smtp-user>:<smtp-password>@smtp.mailgun.org:587
-
 # AWS SES SMTP
 EMAIL_URL=smtp+tls://<smtp-user>:<smtp-password>@email-smtp.<region>.amazonaws.com:587
 
@@ -58,16 +55,16 @@ SERVER_EMAIL=django@example.com
 DJANGO_ADMINS=ops@example.com,alerts@example.com
 ```
 
-URL-encode any special characters in the password (`%40` for `@`, `%23` for `#`, etc.).
+URL-encode special characters in the password (`%40` for `@`, `%23` for `#`).
 
 ## Managed platforms
 
-Set `EMAIL_URL` and `DEFAULT_FROM_EMAIL` as environment variables in the platform dashboard.
+Set `EMAIL_URL` and `DEFAULT_FROM_EMAIL` as platform env vars.
 
 - **Fly.io**: `fly secrets set EMAIL_URL=... DEFAULT_FROM_EMAIL=...`
-- **Railway / Render**: add via project variables UI.
+- **Railway / Render**: project-variables UI.
 
-## Sending mail
+## Sending
 
 ```python
 from django.core.mail import send_mail
@@ -80,15 +77,15 @@ send_mail(
 )
 ```
 
-Error reports from `ADMINS` use `SERVER_EMAIL`. Application emails use `DEFAULT_FROM_EMAIL`.
+Application mail uses `DEFAULT_FROM_EMAIL`; error reports to `ADMINS` use `SERVER_EMAIL`.
 
 ---
 
-## Optional: Mailpit for local HTML preview
+## Optional — Mailpit for local HTML preview
 
-Add this section only if the user wants a web UI to inspect rendered emails locally.
+Apply only if the user wants a web UI to inspect rendered emails locally.
 
-### Local — docker-compose.yml
+### docker-compose.yml
 
 ```yaml
 services:
@@ -105,10 +102,8 @@ services:
 
 ### .env
 
-Replace the console backend with the mailpit SMTP endpoint:
-
 ```sh
 EMAIL_URL=smtp://mailpit:1025
 ```
 
-Open http://localhost:8025 to view captured emails.
+Open <http://localhost:8025> to view captured emails.

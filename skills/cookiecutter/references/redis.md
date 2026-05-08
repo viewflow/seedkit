@@ -1,6 +1,6 @@
 # Redis
 
-`django-redis` plugs Redis into Django's cache framework. Stock Django ships local-memory and DB cache backends only — neither survives a process restart or scales past one worker. Redis adds a shared, durable, fast cache plus the broker Celery and django-tasks-rq need.
+`django-redis` plugs Redis into Django's cache framework. Stock Django's local-memory / DB cache backends don't survive a restart and don't scale past one worker. Redis adds a shared, durable cache plus the broker Celery and django-tasks-rq need.
 
 ## Install
 
@@ -8,16 +8,15 @@
 uv add django-redis
 ```
 
-## config/settings/base.py
+## Settings
 
-Add after the `DATABASES` setting:
+In `config/settings.py` (or `config/settings/base.py`):
 
 ```python
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379")
 
-# Use logical DBs to keep cache, broker, and result backend isolated:
 # /0 cache, /1 Celery broker, /2 Celery results, /3 django-tasks-rq.
-# A `cache.clear()` only affects DB 0; brokers / queues stay intact.
+# `cache.clear()` only touches /0 — brokers / queues stay intact.
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -28,8 +27,6 @@ CACHES = {
 ```
 
 ## Local — docker-compose.yml
-
-Add `redis` service and update `web` depends_on:
 
 ```yaml
 services:
@@ -49,15 +46,13 @@ services:
       retries: 5
 ```
 
-Add to `.env`:
+`.env`:
 
 ```sh
-REDIS_URL=redis://redis:6379   # cache uses /0, Celery broker /1, results /2, RQ /3
+REDIS_URL=redis://redis:6379   # cache /0, Celery broker /1, results /2, RQ /3
 ```
 
 ## VPS — docker-compose.prod.yml
-
-Add `redis` service and update `web` depends_on:
 
 ```yaml
 services:
@@ -78,23 +73,19 @@ services:
       retries: 5
 ```
 
-Add to `.env.prod`:
+`.env.prod`:
 
 ```sh
-REDIS_URL=redis://redis:6379   # cache uses /0, Celery broker /1, results /2, RQ /3
+REDIS_URL=redis://redis:6379
 ```
 
 ## Managed platforms
 
-**Fly.io** — managed Redis via Upstash:
-
-```sh
-fly redis create
-fly redis attach <redis-name>
-```
-
-`REDIS_URL` is set automatically.
-
-**Railway** — add Redis service from the dashboard. `REDIS_URL` is injected automatically as a shared variable.
-
-**Render** — use [Upstash Redis](https://upstash.com/) (external). Copy the connection URL into the environment variables as `REDIS_URL`.
+- **Fly.io** — managed Redis via Upstash:
+  ```sh
+  fly redis create
+  fly redis attach <redis-name>
+  ```
+  `REDIS_URL` is set automatically.
+- **Railway** — add Redis from the dashboard; `REDIS_URL` injects as a shared variable.
+- **Render** — external [Upstash Redis](https://upstash.com/); paste the URL as `REDIS_URL`.

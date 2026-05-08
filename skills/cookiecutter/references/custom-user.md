@@ -2,7 +2,7 @@
 
 Set `AUTH_USER_MODEL` **before the first `migrate`**. Adding it later requires data migrations and breaks foreign keys to `auth.User`.
 
-A `pk=BigAutoField` empty subclass is enough — extending it later (extra fields, email-as-username, etc.) doesn't require schema changes to existing rows.
+An empty subclass suffices — extending it later (extra fields, email-as-username) doesn't require schema changes to existing rows.
 
 ## Create the app
 
@@ -10,11 +10,11 @@ A `pk=BigAutoField` empty subclass is enough — extending it later (extra field
 uv run django-admin startapp users
 ```
 
-(Creates `./users/`. If you prefer a nested layout like `apps/users/`, run `mkdir -p apps/users && uv run django-admin startapp users apps/users` and adjust the dotted reference.)
+For a nested layout: `mkdir -p apps/users && uv run django-admin startapp users apps/users` and adjust the dotted reference.
 
 ## users/models.py
 
-If the project keeps username-based login, plain `AbstractUser` is enough:
+Username-based login — plain `AbstractUser`:
 
 ```python
 from django.contrib.auth.models import AbstractUser
@@ -24,7 +24,7 @@ class User(AbstractUser):
     pass
 ```
 
-If the project uses email-only login (`django-allauth` with `ACCOUNT_LOGIN_METHODS = {"email"}`, or `django-mail-auth`), drop the `username` field, make `email` the `USERNAME_FIELD`, and enforce uniqueness — `AbstractUser`'s `email` column is **not unique** by default, which breaks email-based login lookups. With `USERNAME_FIELD = "email"` you also need a custom manager that uses email instead of username for `create_user` / `create_superuser`:
+Email-only login (allauth with `ACCOUNT_LOGIN_METHODS = {"email"}`, or `django-mail-auth`) — drop `username`, make `email` unique, switch `USERNAME_FIELD`, and ship a manager that creates users by email:
 
 ```python
 from django.contrib.auth.models import AbstractUser, BaseUserManager
@@ -70,7 +70,7 @@ class User(AbstractUser):
 
 ## users/admin.py
 
-For the plain `AbstractUser` variant, the default `UserAdmin` works as-is:
+Plain variant — default `UserAdmin` works:
 
 ```python
 from django.contrib import admin
@@ -81,7 +81,7 @@ from .models import User
 admin.site.register(User, UserAdmin)
 ```
 
-For the email-as-`USERNAME_FIELD` variant, override the add/change forms so the admin's "Add user" page collects email (default `UserCreationForm` expects a `username` field that no longer exists):
+Email-only variant — override add/change forms; default `UserCreationForm` expects a `username` field that no longer exists:
 
 ```python
 from django.contrib import admin
@@ -100,9 +100,7 @@ class UserCreationFormEmail(UserCreationForm):
 class UserChangeFormEmail(UserChangeForm):
     class Meta(UserChangeForm.Meta):
         model = User
-        # Don't inherit Meta.field_classes from the parent — it pins
-        # `{"username": UsernameField}`, and `username` no longer exists.
-        field_classes = {}  # type: ignore[assignment]
+        field_classes = {}  # type: ignore[assignment]   # parent pins {"username": UsernameField}
 
 
 @admin.register(User)
@@ -125,8 +123,6 @@ class UserAdmin(BaseUserAdmin):
 
 ## Settings
 
-In `config/settings.py` (or `config/settings/base.py` for split):
-
 ```python
 INSTALLED_APPS = [
     ...
@@ -138,4 +134,4 @@ AUTH_USER_MODEL = "users.User"
 
 ## Migrate
 
-Now run the boot check (`migrate`, `createsuperuser`). The `users_user` table replaces `auth_user`; `createsuperuser` will use the new model.
+Run the boot check next (`migrate`, `createsuperuser`). The `users_user` table replaces `auth_user`.

@@ -1,6 +1,6 @@
 # Linting — Ruff
 
-Ruff replaces flake8, isort, pyupgrade, and most of pylint in one fast tool. The `DJ` ruleset covers Django-specific issues.
+Replaces flake8, isort, pyupgrade, and most of pylint. The `DJ` ruleset covers Django-specific issues.
 
 ## Install
 
@@ -12,7 +12,7 @@ uv add --dev ruff
 
 ```toml
 [tool.ruff]
-# target-version is auto-detected from `requires-python` in pyproject.toml
+# target-version auto-detected from `requires-python`
 line-length = 100
 extend-exclude = ["migrations", "*/migrations/*"]
 
@@ -26,16 +26,16 @@ select = [
     "DJ",       # flake8-django
     "S",        # flake8-bandit
     "SIM",      # flake8-simplify
-    "RUF",      # ruff-specific
+    "RUF",
 ]
 ignore = [
-    "E501",     # line length — handled by formatter
+    "E501",     # line length — formatter handles it
     "S101",     # assert — fine in tests
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/**" = ["S"]
-"**/test_*.py" = ["S"]
+"**/tests/**"      = ["S"]
+"**/test_*.py"     = ["S"]
 "**/settings/*.py" = ["F405", "F403"]   # star imports across settings layers
 
 [tool.ruff.lint.isort]
@@ -45,7 +45,7 @@ known-first-party = ["{project_slug}"]
 quote-style = "double"
 ```
 
-After installing and configuring Ruff, run once to normalize the just-generated codebase (`startproject` writes single quotes by default):
+After install, normalize the generated codebase once (`startproject` writes single quotes):
 
 ```sh
 uv run ruff format .
@@ -54,15 +54,12 @@ uv run ruff check . --fix
 
 ## Poe tasks
 
-Add to `[tool.poe.tasks]`:
-
 ```toml
-lint   = "ruff check ."
-fmt    = "ruff format ."
-fix    = "ruff check . --fix"
+[tool.poe.tasks]
+lint = "ruff check ."
+fmt  = "ruff format ."
+fix  = "ruff check . --fix"
 ```
-
-Run:
 
 ```sh
 uv run poe lint
@@ -74,7 +71,7 @@ uv run poe fix
 
 Lightweight git hook (no `pre-commit` framework).
 
-**.githooks/pre-commit**
+`.githooks/pre-commit`:
 
 ```sh
 #!/bin/sh
@@ -88,11 +85,11 @@ chmod +x .githooks/pre-commit
 git config core.hooksPath .githooks
 ```
 
-The `core.hooksPath` line is per-clone — document it in `README.md` so contributors enable it after cloning.
+`core.hooksPath` is per-clone — document it in `README.md`.
 
 ## CI
 
-Add to `.github/workflows/test.yml` before `pytest`:
+In `.github/workflows/test.yml`, before `pytest`:
 
 ```yaml
       - run: uv run ruff check .
