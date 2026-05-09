@@ -60,6 +60,7 @@ uv run manage.py runserver &
 uv run celery -A config worker -l info &
 uv run celery -A config beat -l info &
 # enqueue + observe one task
+kill $(jobs -p); wait
 ```
 
 ## Log check
