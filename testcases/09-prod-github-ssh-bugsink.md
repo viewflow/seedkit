@@ -21,6 +21,7 @@ Add-ons:
   - redis
   - tasks: Django Tasks with the Redis Queue backend (`django-tasks-rq`)
   - analytics: Umami (self-hosted, env-driven website ID and host)
+  - email: none (deliberately skip `references/email.md`; this project does not send transactional mail and the test verifies the skip path).
 Production setup:
   - apply Django security settings
   - error reporting: Bugsink (self-hosted, sentry-sdk DSN)

@@ -22,6 +22,7 @@ Add-ons:
   - tasks: Celery
   - storage: S3-compatible (MinIO locally, real S3 in prod)
   - analytics: Google Analytics 4 (GA4)
+  - email: SMTP in production, console backend in local. Use a placeholder SendGrid URL (`EMAIL_URL=smtp+tls://apikey:<api-key>@smtp.sendgrid.net:587`); wire `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`. (django-mail-auth needs working email to send magic links.)
 Production setup:
   - apply Django security settings
   - error reporting: GlitchTip via sentry-sdk

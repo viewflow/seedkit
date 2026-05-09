@@ -17,7 +17,8 @@ Lint with Ruff: no.
 Custom user model: no.
 Auth add-on: none (vanilla `django.contrib.auth`).
 Structured logging: no.
-Add-ons: none.
+Add-ons:
+  - email: console backend (`EMAIL_URL=consolemail://`).
 Production setup: skip.
 
 Run the foundation, the boot check (migrate + createsuperuser), and confirm /admin/ login works.

@@ -81,11 +81,30 @@ In the chosen mode:
 
 Do not move on until the user confirms `/admin/` login works.
 
-### 5. Add-ons, then production
+### 5. Add-ons — one question at a time, in this order
 
-Same briefing rule before each add-on question: 1–2 sentences from the reference intro, then ask. For production deployment, ask which target (VPS / managed / GitHub SSH) before loading the deploy reference.
+Ask every question below. Don't drop any. Same briefing rule as foundation: 1–2 sentences from the reference intro on what the package adds beyond stock Django, then the question. `none` is always a valid answer.
 
-### 6. README
+1. Auth: `django-allauth` / `django-mail-auth` / `none` (`references/auth.md`).
+2. Debug: `django-orbit` / `django-silk` / `none` (`references/debug.md`).
+3. Redis cache: yes / no (`references/redis.md`).
+4. Static + media storage: `whitenoise` / `s3` / `none` (`references/storage-whitenoise.md`, `references/storage-s3.md`).
+5. Background tasks: `celery` / `django-tasks-db` / `django-tasks-rq` / `none` (`references/tasks-celery.md`, `references/tasks-django.md`).
+6. **Email backend: `console` / `smtp` / `mailpit` / `none` (`references/email.md`).** Always ask — every project sends mail eventually (password resets, error reports, allauth verification).
+7. Structured logging (`structlog`): yes / no (`references/logging.md`).
+8. Analytics: `goatcounter` / `umami` / `shynet` / `ga4` / `none` (`references/analytics.md`).
+
+### 6. Production
+
+Ask only after add-ons. Same briefing-then-ask rule for each.
+
+1. Security settings: yes / no (`references/security.md`).
+2. Error reporting: `bugsink` / `sentry` / `glitchtip` / `none` (`references/error-reporting.md`).
+3. GDPR helpers: yes / no (`references/gdpr.md`).
+4. CI on GitHub Actions: yes / no (`references/ci.md`).
+5. Deploy target: `vps` / `managed` / `github-ssh` / `none` (`references/deploy-vps.md` / `-managed.md` / `-github-ssh.md`).
+
+### 7. README
 
 After any setup step, update `README.md` with the key decisions (stack, DB, dev mode, add-ons, deploy target) and the main commands (install, test, migrate, run, deploy). Don't hardcode dependency versions — read them from `pyproject.toml`.
 

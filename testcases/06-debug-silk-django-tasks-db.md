@@ -21,6 +21,7 @@ Add-ons:
   - debug: django-silk (profiling + `@silk_profile`)
   - tasks: Django Tasks with the Database backend (`django-tasks-db`)
   - analytics: GoatCounter (self-hosted snippet, env-driven site code)
+  - email: console backend in local (`EMAIL_URL=consolemail://`).
 Production setup: skip.
 
 Run the foundation, the boot check, start `manage.py db_worker` in a second terminal, enqueue one example task and confirm it runs. Hit a profiled view and confirm the request appears under `/silk/`.

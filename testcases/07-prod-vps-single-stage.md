@@ -21,6 +21,7 @@ Add-ons:
   - redis
   - tasks: Celery (no Beat)
   - storage: WhiteNoise (static), media volume on the VPS host
+  - email: SMTP in production, console backend in local. Use a placeholder Postmark URL (`EMAIL_URL=smtp+tls://<token>:<token>@smtp.postmarkapp.com:587`); also wire `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`, `DJANGO_ADMINS`.
 Production setup:
   - apply Django security settings (HSTS, secure cookies, X-Frame, SSL redirect)
   - error reporting: Sentry SaaS (sentry-sdk)

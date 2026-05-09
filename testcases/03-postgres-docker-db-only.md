@@ -20,6 +20,7 @@ Structured logging: no.
 Add-ons:
   - redis (for Celery)
   - tasks: Celery, with periodic tasks (Celery Beat)
+  - email: console backend in local (`EMAIL_URL=consolemail://`).
 Production setup: skip.
 
 Ship a `docker-compose.yml` with `db` and `redis` services only. Run the foundation, start the containers, run migrate + createsuperuser, and define one trivial Celery task plus one Beat-scheduled task to prove autodiscovery works.
