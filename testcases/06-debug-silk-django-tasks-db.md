@@ -15,6 +15,9 @@ Database: PostgreSQL.
 Local dev mode: uv on host. Postgres location: on the host (use `createdb silk_db`).
 Lint with Ruff: yes.
 Test runner: manage.py test (stock Django).
+Type check (pyright + django-stubs): no.
+Pre-commit hooks: no.
+Internationalisation (i18n): no.
 Custom user model: no.
 Auth add-on: none.
 Structured logging: no.
@@ -23,6 +26,8 @@ Add-ons:
   - tasks: Django Tasks with the Database backend (`django-tasks-db`)
   - analytics: GoatCounter (self-hosted snippet, env-driven site code)
   - email: console backend in local (`EMAIL_URL=consolemail://`).
+  - CORS: no.
+
 Production setup: skip.
 
 Run the foundation, the boot check, start `manage.py db_worker` in a second terminal, enqueue one example task and confirm it runs. Hit a profiled view and confirm the request appears under `/silk/`.

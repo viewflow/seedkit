@@ -15,6 +15,9 @@ Database: PostgreSQL.
 Local dev mode: docker-compose (web + db + redis).
 Lint with Ruff: yes.
 Test runner: pytest + pytest-django.
+Type check (pyright + django-stubs): no.
+Pre-commit hooks: no.
+Internationalisation (i18n): no.
 Custom user model: no.
 Auth add-on: none.
 Structured logging: yes (`structlog`, JSON in prod / pretty in dev, request-scoped `request_id`).
@@ -23,6 +26,8 @@ Add-ons:
   - tasks: Django Tasks with the Redis Queue backend (`django-tasks-rq`)
   - analytics: Umami (self-hosted, env-driven website ID and host)
   - email: none (deliberately skip `references/email.md`; this project does not send transactional mail and the test verifies the skip path).
+  - CORS: no.
+
 Production setup:
   - apply Django security settings
   - error reporting: Bugsink (self-hosted, sentry-sdk DSN)

@@ -15,6 +15,9 @@ Database: PostgreSQL.
 Local dev mode: uv on host. Postgres location: run only Postgres in Docker, Django runs on the host (publish 5432 to localhost).
 Lint with Ruff: no.
 Test runner: manage.py test (stock Django).
+Type check (pyright + django-stubs): no.
+Pre-commit hooks: no.
+Internationalisation (i18n): yes.
 Custom user model: no.
 Auth add-on: `django-mail-auth` (passwordless magic-link).
 Structured logging: no.
@@ -22,6 +25,8 @@ Add-ons:
   - redis (for Celery)
   - tasks: Celery, with periodic tasks (Celery Beat)
   - email: console backend in local (`EMAIL_URL=consolemail://`).
+  - CORS: no.
+
 Production setup: skip.
 
 Ship a `docker-compose.yml` with `db` and `redis` services only. Run the foundation, start the containers, run migrate + createsuperuser, and define one trivial Celery task plus one Beat-scheduled task to prove autodiscovery works.

@@ -15,6 +15,9 @@ Database: PostgreSQL.
 Local dev mode: docker-compose (full stack: web + db + redis).
 Lint with Ruff: yes.
 Test runner: pytest + pytest-django.
+Type check (pyright + django-stubs): no.
+Pre-commit hooks: yes.
+Internationalisation (i18n): no.
 Custom user model: yes (custom `users.User` extending `AbstractUser`).
 Auth add-on: `django-allauth` (email login + mandatory verification).
 Structured logging: yes (`structlog`, JSON in prod / pretty in dev, request-scoped `request_id`).
@@ -23,6 +26,8 @@ Add-ons:
   - tasks: Celery (no Beat)
   - storage: WhiteNoise (static), media volume on the VPS host
   - email: SMTP in production, console backend in local. Use a placeholder Postmark URL (`EMAIL_URL=smtp+tls://<token>:<token>@smtp.postmarkapp.com:587`); also wire `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`, `DJANGO_ADMINS`.
+  - CORS: no.
+
 Production setup:
   - apply Django security settings (HSTS, secure cookies, X-Frame, SSL redirect)
   - error reporting: Sentry SaaS (sentry-sdk)

@@ -15,12 +15,16 @@ Database: SQLite.
 Local dev mode: uv on host.
 Lint with Ruff: yes.
 Test runner: manage.py test (stock Django).
+Type check (pyright + django-stubs): no.
+Pre-commit hooks: no.
+Internationalisation (i18n): no.
 Custom user model: no.
 Auth add-on: none.
 Structured logging: no.
 Add-ons:
   - debug: django-orbit (observability dashboard + MCP)
   - email: console backend in local, plus Mailpit running in Docker for richer inspection
+  - CORS: no.
 Run the foundation + boot check. Spin up Mailpit via a one-service `docker-compose.yml`, point Django at SMTP `localhost:1025`, send a test mail, and confirm it appears in Mailpit's UI on `:8025`.
 ```
 

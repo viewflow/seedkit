@@ -15,6 +15,9 @@ Database: PostgreSQL.
 Local dev mode: docker-compose (full stack: web + db + redis).
 Lint with Ruff: yes.
 Test runner: manage.py test (stock Django).
+Type check (pyright + django-stubs): no.
+Pre-commit hooks: no.
+Internationalisation (i18n): no.
 Custom user model: no.
 Auth add-on: none.
 Structured logging: yes (`structlog`, JSON in prod / pretty in dev, request-scoped `request_id`).
@@ -23,6 +26,8 @@ Add-ons:
   - storage: S3-compatible (use MinIO in local Compose; configure via env)
   - tasks: Django Tasks with the Redis Queue backend (`django-tasks-rq`)
   - email: console backend in local (`EMAIL_URL=consolemail://`).
+  - CORS: yes.
+
 Production setup: skip.
 
 Generate `docker-compose.yml` with services `web`, `db`, `redis`, `worker`, `minio`. Run the foundation, `docker compose up -d`, migrate, createsuperuser, and confirm a sample task enqueues and completes.

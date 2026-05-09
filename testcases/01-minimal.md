@@ -15,11 +15,16 @@ Database: SQLite.
 Local dev mode: uv on host.
 Lint with Ruff: no.
 Test runner: manage.py test (stock Django).
+Type check (pyright + django-stubs): no.
+Pre-commit hooks: no.
+Internationalisation (i18n): no.
 Custom user model: no.
 Auth add-on: none (vanilla `django.contrib.auth`).
 Structured logging: no.
 Add-ons:
   - email: console backend (`EMAIL_URL=consolemail://`).
+  - CORS: no.
+
 Production setup: skip.
 
 Run the foundation, the boot check (migrate + createsuperuser), and confirm /admin/ login works.

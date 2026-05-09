@@ -15,12 +15,17 @@ Database: PostgreSQL.
 Local dev mode: uv on host. Postgres location: on the host (use `createdb` for the project DB).
 Lint with Ruff: yes.
 Test runner: pytest + pytest-django.
+Type check (pyright + django-stubs): yes.
+Pre-commit hooks: no.
+Internationalisation (i18n): no.
 Custom user model: yes (custom `users.User` extending `AbstractUser`).
 Auth add-on: `django-allauth` (email login, mandatory email verification, no social providers).
 Structured logging: no.
 Add-ons:
   - storage: WhiteNoise for static files (no media volume yet)
   - email: SMTP (console backend in local, SMTP in production)
+  - CORS: no.
+
 Production setup: skip.
 
 Assume Postgres is already running locally on port 5432 with user `postgres` / password `postgres`. Create database `shop_db` if missing (Postgres identifiers can't start with a digit, so use a clean name). Run the foundation + boot check.

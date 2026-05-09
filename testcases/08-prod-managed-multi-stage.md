@@ -15,6 +15,9 @@ Database: PostgreSQL.
 Local dev mode: docker-compose (web + db + redis + minio).
 Lint with Ruff: yes.
 Test runner: pytest + pytest-django.
+Type check (pyright + django-stubs): no.
+Pre-commit hooks: no.
+Internationalisation (i18n): no.
 Custom user model: no.
 Auth add-on: `django-mail-auth` (passwordless magic-link).
 Structured logging: no.
@@ -23,7 +26,9 @@ Add-ons:
   - tasks: Celery
   - storage: S3-compatible (MinIO locally, real S3 in prod)
   - analytics: Google Analytics 4 (GA4)
-  - email: SMTP in production, console backend in local. Use a placeholder SendGrid URL (`EMAIL_URL=smtp+tls://apikey:<api-key>@smtp.sendgrid.net:587`); wire `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`. (django-mail-auth needs working email to send magic links.)
+  - email: anymail (Postmark provider). Install `django-anymail[postmark]`; set `EMAIL_BACKEND = "anymail.backends.postmark.EmailBackend"` only when not DEBUG; gate `POSTMARK_SERVER_TOKEN` from env. Wire `DEFAULT_FROM_EMAIL`, `SERVER_EMAIL`. Console backend stays as the `EMAIL_URL` fallback in dev. (django-mail-auth needs working email to send magic links.) Also include the Anymail webhook URL (`path("anymail/", include("anymail.urls"))`) and `ANYMAIL["WEBHOOK_SECRET"]`.
+  - CORS: no.
+
 Production setup:
   - apply Django security settings
   - error reporting: GlitchTip via sentry-sdk
