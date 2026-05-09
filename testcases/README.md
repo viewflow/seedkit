@@ -89,6 +89,8 @@ Coverage rules. Use these to regenerate the suite when the skill changes.
    - Structured logging (`structlog`): `yes` / `no`
    - Analytics: `goatcounter` / `umami` / `shynet` / `ga4` / `none`
    - CORS: `yes` / `no` (default no)
+   - Database safety: `zeal` / `migration-linter` / `test-migrations` / `none` (each independently; all three appear in case 06)
+   - Billing: `stripe` (raw SDK) / `dj-stripe` / `none` (raw stripe appears in case 02)
 
    **Production** (separate test cases focused on deploy)
    - Security settings: applied / not applied

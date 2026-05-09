@@ -38,6 +38,7 @@ uv --version
 - `references/tasks-django.md` — Django Tasks dispatcher → loads `tasks-django-db.md` or `tasks-django-rq.md`; optional `tasks-django-cron.md` for periodic
 - `references/email.md` — transactional email (console / SMTP / Mailpit)
 - `references/rest.md` — REST API dispatcher → loads `rest-modern-rest.md` or `rest-bolt.md`; default no
+- `references/billing.md` — Stripe billing: raw `stripe` SDK (simple checkout + webhooks) or `dj-stripe` (full ORM sync of Stripe objects); default no
 - `references/tailwind.md` — Tailwind CSS via the standalone CLI (no Node.js, no npm); custom 404/403/500 templates as a follow-up; default no
 - `references/auth-hardening.md` — `django-axes` brute-force lockout + 2FA (allauth-2fa or django-otp); ask only when auth ≠ none
 - `references/healthcheck.md` — `/healthz` (liveness) + `/readyz` (DB-touching); default yes
@@ -123,12 +124,13 @@ Ask every question below. Don't drop any. Same briefing rule as foundation: 1–
 9. Analytics: `goatcounter` / `umami` / `shynet` / `ga4` / `none` (`references/analytics.md`).
 10. CORS for cross-origin frontends or API consumers: yes / no (`references/cors.md`). Default no — only ask yes when the project has a separate frontend on a different domain.
 11. REST API: `django-modern-rest` / `django-bolt` / `none` (`references/rest.md`). **Default no.** Stock Django doesn't ship a REST framework. `django-modern-rest` stays in the standard Django runtime (sync or async, pluggable schema lib). `django-bolt` runs a Rust HTTP server (Actix + PyO3 + msgspec) for high-RPS APIs and adds a separate `runbolt` process. Apply only the matching reference file.
-12. Frontend: `tailwind` / `none` (`references/tailwind.md`). Default no.
+12. Billing: `stripe` (raw SDK — Stripe-hosted Checkout + Customer Portal, you store the customer ID, write webhook handlers) / `dj-stripe` (syncs Stripe objects into Django ORM — query subscription state with `.filter()`, react via Django signals) / `none` (`references/billing.md`). **Default no.** Both use Stripe-hosted Checkout for the payment UI — the difference is whether Stripe data lives only on Stripe's servers (`stripe`) or is mirrored locally (`dj-stripe`). Recommend `dj-stripe` when the project needs to filter users by plan, display billing history, or gate features in Python; recommend raw `stripe` for simpler one-time or subscription flows where the Customer Portal handles everything.
+13. Frontend: `tailwind` / `none` (`references/tailwind.md`). Default no.
     - If tailwind=yes: custom 404/403/500 templates? Default yes.
     - If tailwind=yes: enable DaisyUI components? **Always ask explicitly — no default.** Apply per `references/tailwind.md` (registers `daisyui.mjs` as a `@plugin` in the source CSS).
-13. Health check endpoints (`/healthz` liveness, `/readyz` DB-touching): yes / no. **Default yes** — almost every deploy target (Fly, Caddy, GitHub-SSH) wires probes against these. Apply `references/healthcheck.md`. If a deploy target is later selected, also wire the matching probe block in its compose / `fly.toml` / nginx config.
-14. `robots.txt`: yes / no. **Default no** — only ask yes when the project is a public-facing site. Apply `references/robots.md`.
-15. `django-extensions` (dev toolbox: `shell_plus`, `runserver_plus`, `show_urls`): yes / no. **Default no.** Apply `references/django-extensions.md` only if yes; the package goes into `--dev` deps and `INSTALLED_APPS` in `local.py` (or DEBUG-gated for single-settings).
+14. Health check endpoints (`/healthz` liveness, `/readyz` DB-touching): yes / no. **Default yes** — almost every deploy target (Fly, Caddy, GitHub-SSH) wires probes against these. Apply `references/healthcheck.md`. If a deploy target is later selected, also wire the matching probe block in its compose / `fly.toml` / nginx config.
+15. `robots.txt`: yes / no. **Default no** — only ask yes when the project is a public-facing site. Apply `references/robots.md`.
+16. `django-extensions` (dev toolbox: `shell_plus`, `runserver_plus`, `show_urls`): yes / no. **Default no.** Apply `references/django-extensions.md` only if yes; the package goes into `--dev` deps and `INSTALLED_APPS` in `local.py` (or DEBUG-gated for single-settings).
 
 ### 6. Production
 

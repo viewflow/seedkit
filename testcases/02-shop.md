@@ -1,6 +1,6 @@
-# 02 — Split settings, Postgres on host, WhiteNoise + SMTP, Tailwind CSS
+# 02 — Split settings, Postgres on host, WhiteNoise + SMTP, Tailwind CSS + Stripe billing
 
-Covers split settings layout, host Postgres, Ruff, WhiteNoise statics, SMTP email, and `django-tailwind-cli` frontend integration verified through a public index page.
+Covers split settings layout, host Postgres, Ruff, WhiteNoise statics, SMTP email, `django-tailwind-cli` frontend integration, and Stripe billing (raw SDK — Checkout session, Customer Portal, webhook handler).
 
 ## Prompt
 
@@ -28,6 +28,7 @@ Add-ons:
   - REST API: none.
   - Frontend: `tailwind-cli` (custom 404/403/500 templates: yes; DaisyUI: yes). Also add a `pages` app with an `IndexView(TemplateView)` wired at `/`. Its `index.html` must include `text-blue-600` and `text-4xl` (utility check) and a `<button class="btn btn-primary">` (DaisyUI check) — concrete grep targets for the integration tests below.
   - Auth hardening: `django-axes` (yes), 2FA (no).
+  - Billing: `stripe` raw SDK.
   - Health check endpoints: yes.
   - `robots.txt`: yes.
   - `django-extensions`: no.
@@ -59,6 +60,9 @@ Assume Postgres is already running locally on port 5432 with user `postgres` / p
 - `django-axes` in dependencies; `axes` in `INSTALLED_APPS`; `axes.middleware.AxesMiddleware` is the **last** entry in `MIDDLEWARE`; `axes.backends.AxesBackend` is **first** in `AUTHENTICATION_BACKENDS`. After 5 wrong logins from the same IP+username, the 6th login attempt to `/accounts/login/` is locked out (axes returns its lockout response, not allauth's "wrong password").
 - `pages` app exposes `liveness` and `readiness` views; `urlpatterns` includes `path('healthz', ...)` and `path('readyz', ...)` (no trailing slash). `curl /healthz` returns 200 with body `ok`; `curl /readyz` returns 200 with body `ready`.
 - `pages` app exposes a `robots_txt` view; `path('robots.txt', ...)` is wired. `curl /robots.txt` returns 200 with `Content-Type: text/plain` and body containing `User-agent: *` and `Disallow: /admin/` (when `DEBUG=False`).
+- `stripe` in runtime dependencies (not dev-only). `STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` present in `.env.example` with placeholder values. `_stripe.api_key = STRIPE_SECRET_KEY` set in `base.py`.
+- `users.User` has a `stripe_customer_id` field; `users/migrations/` contains a migration adding it.
+- `billing/` app exists with `create_checkout_session`, `customer_portal`, `stripe_webhook` views. Webhook view is decorated with `@csrf_exempt` and `@require_POST`. Webhook view calls `stripe.Webhook.construct_event(request.body, sig_header, settings.STRIPE_WEBHOOK_SECRET)` and returns 400 on invalid signature, 200 on success. `billing/` URLs wired in `config/urls.py`.
 
 ## Run
 
@@ -89,6 +93,13 @@ test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 # robots.txt
 curl -sf http://127.0.0.1:8000/robots.txt | grep -q 'User-agent: \*'
 uv run ruff check .
+# billing: stripe package installed, env vars in .env.example, billing app wired
+python -c "import stripe"
+grep -q 'STRIPE_PUBLISHABLE_KEY' .env.example
+grep -q 'STRIPE_WEBHOOK_SECRET' .env.example
+grep -rq 'stripe_customer_id' users/
+grep -rq 'csrf_exempt' billing/
+grep -rq 'construct_event' billing/
 ```
 
 ## Check report
@@ -99,7 +110,7 @@ uv run ruff check .
 claude -p \
   --model claude-opus-4-7 \
   --allowedTools "Read,Grep,Glob,Bash(ls:*),Bash(cat:*),Bash(rg:*)" \
-  "Audit the existing code in this directory. The following are INTENTIONAL design decisions of the seedkit skill — do NOT flag them as bugs even if they look unusual: (a) `default=... if DEBUG else None` gated defaults on SECRET_KEY / DATABASES (fail-fast in prod, zero-config in dev/build); (b) `globals().update(env.email_url(...))` is the documented django-environ idiom for spreading email settings; (c) `local.py` containing only `from .base import *` (deltas-only design; all dev defaults live in base via env vars); (d) WhiteNoise `STORAGES` configured only in `production.py`, never base (manifest storage requires collectstatic, breaks runserver); (e) `wsgi.py` / `asgi.py` defaulting to `config.settings.production` while `manage.py` defaults to `local` (intentional safety asymmetry); (f) custom user model with `username = None`, `email` as `USERNAME_FIELD`, and a custom `UserManager` when email-only auth is chosen; (g) `ACCOUNT_EMAIL_VERIFICATION = \"optional\"` in base, `\"mandatory\"` in production.py. Skip these in the report. This is a freshly generated Django *project starter / scaffold* — there is intentionally no business logic, no app code, no real content, AND no production hardening (no security settings, error reporting, GDPR, CI, deploy config, or production Dockerfile). Focus on configuration correctness for the dev/foundation scope and adherence to Django best practices for a starter. Do NOT flag the absence of feature code, app modules, domain models, or production-only settings — those are out of scope for this case. Do NOT create, generate, or modify any files — read-only review only. Do NOT invoke any skill (especially seedkit). List bugs, inconsistencies, and concrete fixes. Be brief, top issues first." \
+  "Audit the existing code in this directory. The following are INTENTIONAL design decisions of the seedkit skill — do NOT flag them as bugs even if they look unusual: (a) `default=... if DEBUG else None` gated defaults on SECRET_KEY / DATABASES (fail-fast in prod, zero-config in dev/build); (b) `globals().update(env.email_url(...))` is the documented django-environ idiom for spreading email settings; (c) `local.py` containing only `from .base import *` (deltas-only design; all dev defaults live in base via env vars); (d) WhiteNoise `STORAGES` configured only in `production.py`, never base (manifest storage requires collectstatic, breaks runserver); (e) `wsgi.py` / `asgi.py` defaulting to `config.settings.production` while `manage.py` defaults to `local` (intentional safety asymmetry); (f) custom user model with `username = None`, `email` as `USERNAME_FIELD`, and a custom `UserManager` when email-only auth is chosen; (g) `ACCOUNT_EMAIL_VERIFICATION = \"optional\"` in base, `\"mandatory\"` in production.py. (h) `stripe_customer_id` blank by default on `users.User` — populated on first checkout, not at signup; (i) `_stripe.api_key = STRIPE_SECRET_KEY` set at module level in `base.py` — intentional, this is the documented pattern for Django apps; (j) `@csrf_exempt` on the webhook view — Stripe cannot send CSRF tokens, this is required and correct; (k) empty placeholder values for `STRIPE_*` keys in `.env.example` — test keys go in `.env` which is gitignored. Skip these in the report. This is a freshly generated Django *project starter / scaffold* — there is intentionally no business logic, no app code, no real content, AND no production hardening (no security settings, error reporting, GDPR, CI, deploy config, or production Dockerfile). Focus on configuration correctness for the dev/foundation scope and adherence to Django best practices for a starter. Do NOT flag the absence of feature code, app modules, domain models, or production-only settings — those are out of scope for this case. Do NOT create, generate, or modify any files — read-only review only. Do NOT invoke any skill (especially seedkit). List bugs, inconsistencies, and concrete fixes. Be brief, top issues first." \
   | tee REVIEW.md
 ```
 
