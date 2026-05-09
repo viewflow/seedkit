@@ -140,12 +140,25 @@ DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
 Then `cp .env.example .env` and set a real dev key:
 
 ```sh
-uv run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+uv run python -c "import secrets; print(secrets.token_urlsafe(50))"
+```
+
+Use `secrets.token_urlsafe`, not Django's `get_random_secret_key()`. `get_random_secret_key()` draws from `string.printable[:64]` and freely emits `$`, `&`, `(`, `)`, `'`, `"`, `\` — all of which break (a) shell sourcing of `.env`, (b) Docker Compose `env_file:` (which interprets `$VAR` / `${VAR}`), and (c) any naive `sed` rewrite of the file. `token_urlsafe` produces `[A-Za-z0-9_-]` only — safe to drop in unquoted, anywhere. Django doesn't care about the alphabet, only the entropy.
+
+Write the new key directly into `.env` (don't `sed` it in — a key containing `&` or `/` would mangle the sed replacement string):
+
+```sh
+KEY=$(uv run python -c "import secrets; print(secrets.token_urlsafe(50))")
+uv run python -c "
+import pathlib, re, sys
+p = pathlib.Path('.env')
+p.write_text(re.sub(r'^DJANGO_SECRET_KEY=.*$', f'DJANGO_SECRET_KEY=$KEY', p.read_text(), flags=re.M))
+"
 ```
 
 `.env` is gitignored. Keep `.env.example` in sync as new `env(...)` calls land.
 
-If a value contains `$` and the project uses `docker-compose` with `env_file:`, escape as `$$` — Compose interpolates `${VAR}` and `$VAR` otherwise.
+For other secrets (DB passwords, API keys you cannot regenerate) that may contain `$` or quotes, either single-quote the value (`KEY='!@#$%'`) — django-environ accepts both single and double quotes — or, if the file is consumed by Docker Compose's `env_file:`, also escape `$` as `$$` (Compose interpolates `${VAR}` and `$VAR`). The `secrets.token_urlsafe` recommendation above sidesteps this problem entirely for `DJANGO_SECRET_KEY`.
 
 ## .gitignore
 

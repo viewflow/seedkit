@@ -75,8 +75,8 @@ Single-file layout: gate on `if DEBUG:`.
 {
   "mcpServers": {
     "django-orbit": {
-      "command": "python",
-      "args": ["manage.py", "orbit_mcp"],
+      "command": "uv",
+      "args": ["run", "manage.py", "orbit_mcp"],
       "cwd": "/path/to/project",
       "env": {"DJANGO_SETTINGS_MODULE": "config.settings"}
     }

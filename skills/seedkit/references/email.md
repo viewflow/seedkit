@@ -18,7 +18,7 @@ DEFAULT_FROM_EMAIL = env(
 )
 SERVER_EMAIL = env("SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
 
-ADMINS = [(email, email) for email in env.list("DJANGO_ADMINS", default=[])]
+ADMINS = [(email.split("@")[0], email) for email in env.list("DJANGO_ADMINS", default=[])]
 MANAGERS = ADMINS
 ```
 
