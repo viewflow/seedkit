@@ -44,6 +44,7 @@ Assume Postgres is already running locally on port 5432 with user `postgres` / p
 - `psycopg[binary]` in dependencies; `DATABASE_URL=postgres://...@localhost:5432/shop_db` in `.env`.
 - `config/settings/{base,local,production}.py` present; `manage.py` points at `config.settings.local`, `wsgi.py` at `config.settings.production`.
 - Ruff config in `pyproject.toml`; `uv run ruff check .` exits 0.
+- Pyright + django-stubs configured; `uv run pyright` exits 0.
 - WhiteNoise middleware listed in production settings only.
 - Email backend `django.core.mail.backends.console.EmailBackend` in local; SMTP wired via env in production.
 - `users/` app with `AbstractUser` subclass and admin registration; `AUTH_USER_MODEL = "users.User"` set **before** the initial migration; `users_user` table exists (no `auth_user`).
@@ -93,6 +94,7 @@ test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 # robots.txt
 curl -sf http://127.0.0.1:8000/robots.txt | grep -q 'User-agent: \*'
 uv run ruff check .
+uv run pyright
 # billing: stripe package installed, env vars in .env.example, billing app wired
 python -c "import stripe"
 grep -q 'STRIPE_PUBLISHABLE_KEY' .env.example
