@@ -28,23 +28,37 @@ AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="us-east-1")
 AWS_S3_ENDPOINT_URL  = env("AWS_S3_ENDPOINT_URL",  default="")
 AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", default="")
 
+# Media to S3 in every environment (MinIO in dev, real S3 in prod).
+# Static stays on Django's local backend in base — collectstatic + admin
+# CSS work in `runserver` without bucket creds. production.py flips static
+# to S3 for real deploys.
 STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {"location": "media"},
     },
     "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+STATIC_URL = "/static/"
+MEDIA_URL  = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/" if AWS_S3_CUSTOM_DOMAIN else "/media/"
+```
+
+In `config/settings/production.py`, flip static to S3:
+
+```python
+STORAGES = {
+    **STORAGES,
+    "staticfiles": {
         "BACKEND": "storages.backends.s3boto3.S3StaticStorage",
         "OPTIONS": {"location": "static"},
     },
 }
 
-# Always declare URLs so templates / admin can reference them. When
-# AWS_S3_CUSTOM_DOMAIN is set, point at the CDN; otherwise django-storages
-# signs against the endpoint (correct for MinIO, R2, B2, Spaces) and the
-# /static//media defaults remain valid placeholders.
-STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/" if AWS_S3_CUSTOM_DOMAIN else "/static/"
-MEDIA_URL  = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"  if AWS_S3_CUSTOM_DOMAIN else "/media/"
+if AWS_S3_CUSTOM_DOMAIN:
+    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
 ```
 
 ## .env / .env.prod

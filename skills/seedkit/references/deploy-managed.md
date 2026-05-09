@@ -15,7 +15,10 @@ primary_region = "iad"
   PORT = "8000"
 
 [deploy]
-  release_command = "uv run manage.py migrate"
+  # `python` not `uv run`: the multi-stage Dockerfile's runtime stage
+  # (python:3.X-slim-bookworm) has no uv binary — only the venv. /app/.venv/bin
+  # is on PATH per the Dockerfile so `python` resolves there.
+  release_command = "python manage.py migrate"
 
 [[services]]
   internal_port = 8000
@@ -43,4 +46,4 @@ fly deploy
 
 ## Railway / Render
 
-Same pattern: point at `Dockerfile`, set env vars in dashboard, configure release command to `uv run manage.py migrate`.
+Same pattern: point at `Dockerfile`, set env vars in dashboard, configure release command to `python manage.py migrate` (not `uv run` — the multi-stage runtime image only ships the venv).

@@ -54,6 +54,21 @@ example.com {
 
 The Caddyfile only proxies. WhiteNoise inside the `web` container handles `/static/`. Don't add a `handle /static/*` block pointing at a host path — `web` is the only thing that has the collected files (they live inside the image), so a Caddy block would 404.
 
+If the project also serves user-uploaded media via a shared volume (i.e. media on the VPS host, not S3 — see `references/storage-whitenoise.md`), serve it through Caddy:
+
+```
+example.com {
+    handle /media/* {
+        uri strip_prefix /media   # without this, file_server resolves /srv/media/media/<file>
+        root * /srv/media
+        file_server
+    }
+    reverse_proxy web:8000
+}
+```
+
+Mount the same `media` named volume into the `caddy` service in `docker-compose.prod.yml` (`./media:/srv/media:ro`).
+
 ## Deploy
 
 ```sh

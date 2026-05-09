@@ -108,7 +108,7 @@ Decide before the first migration. The choice mirrors `references/custom-user.md
 
 - **`mailauth.contrib.user`** (simplest, no custom code). Add the app and `AUTH_USER_MODEL = "mailauth_user.EmailUser"`. Skip `custom-user.md` entirely.
 - **Your own custom user** (`references/custom-user.md` email-only variant). Keep `users.User` as `AUTH_USER_MODEL`; mailauth works against any model with an `email` field.
-- **Stock `auth.User`**. Works, but the `username` field is dead weight — every signup still needs a unique username because mailauth populates it from the email's local part.
+- **Stock `auth.User`**. Works, but stock `auth.User.email` has no `unique=True`, and `MailAuthBackend.authenticate()` silently picks the first match when two users share an address — anyone who can sign up twice can hijack the other user's magic-link login. If you stay on stock `auth.User`, add a `UniqueConstraint` via a data migration *and* an admin-side validator. Easier path: pick `mailauth.contrib.user` (handles uniqueness for you) or the email-only custom user from `references/custom-user.md`.
 
 ### Settings
 

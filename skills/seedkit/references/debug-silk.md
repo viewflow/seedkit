@@ -13,7 +13,10 @@ uv add --dev django-silk
 ```python
 if DEBUG:
     INSTALLED_APPS += ["silk"]
-    MIDDLEWARE = ["silk.middleware.SilkyMiddleware"] + MIDDLEWARE
+    # AFTER SecurityMiddleware, not before. Prepending at index 0 routes
+    # the profiler around Django's security headers on every request.
+    sec_idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware")
+    MIDDLEWARE.insert(sec_idx + 1, "silk.middleware.SilkyMiddleware")
 ```
 
 ## URLs
@@ -32,15 +35,37 @@ uv run manage.py migrate
 
 ## Function profiling
 
+`silk` is removed from `INSTALLED_APPS` outside `DEBUG`, so its tables don't exist in production. A bare top-level `from silk.profiling.profiler import silk_profile` in app code raises at import on a prod boot; an unconditional `@silk_profile` decorator runs the profiling context manager and tries to write a `Request`/`Profile` row that has no table. Either pattern crashes prod.
+
+Do **not** decorate app code with `@silk_profile` outright. The middleware above already profiles every request — that's enough for most cases.
+
+If you need to profile a specific block:
+
 ```python
-from silk.profiling.profiler import silk_profile
+from django.conf import settings
+
+if settings.DEBUG:
+    from silk.profiling.profiler import silk_profile
+else:
+    def silk_profile(*_a, **_kw):
+        def deco(fn):
+            return fn
+        return deco
 
 @silk_profile(name="my expensive operation")
 def expensive_operation():
     ...
+```
 
-with silk_profile(name="inner block"):
-    ...
+For tasks under `django-tasks` / Celery, never stack `@silk_profile` outside `@task` — the task registry resolves the outer callable, so the worker would look up the silk wrapper instead of the task. Use the context-manager form inside the task body:
+
+```python
+from django.tasks import task
+
+@task()
+def send_welcome_email(user_id):
+    with silk_profile(name="send_welcome_email"):
+        ...
 ```
 
 ## Clear old data

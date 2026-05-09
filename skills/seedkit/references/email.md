@@ -175,6 +175,21 @@ send_mail(
 
 Application mail uses `DEFAULT_FROM_EMAIL`; error reports to `ADMINS` use `SERVER_EMAIL`.
 
+For multi-recipient broadcasts (newsletters, daily digests) **never** pass the full address list as `recipient_list=` — every recipient sees every other recipient's address in the `To:` header. Loop and send one message per user, or build an `EmailMessage` with `bcc=` set:
+
+```python
+for email in addresses:
+    send_mail("Daily digest", body, None, [email])     # one per user
+
+# or, single-shot via BCC:
+EmailMessage(
+    subject="Daily digest",
+    body=body,
+    to=["no-reply@example.com"],
+    bcc=addresses,
+).send()
+```
+
 ---
 
 ## Optional — Mailpit for local HTML preview

@@ -18,7 +18,11 @@ uv add 'celery[redis]'
 import os
 from celery import Celery
 
-# Single-file: "config.settings". Split: "config.settings.production".
+# Single-file: "config.settings". Split: "config.settings.local" — mirrors
+# manage.py. wsgi/asgi default to production for safety, but celery is
+# normally launched from the same compose / shell as the local web service,
+# so defaulting to production here forces a prod env (real SECRET_KEY,
+# DATABASE_URL, EMAIL_URL) on every dev `celery worker`.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 app = Celery("config")

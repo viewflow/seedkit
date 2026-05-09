@@ -34,14 +34,17 @@ TASKS = {
 
 # django-rq reads RQ_QUEUES separately from TASKS. URL form so host/port
 # come from REDIS_URL. /3 keeps it isolated from cache (/0) and Celery
-# broker / results (/1, /2). JOB_CLASS lifts the django-tasks-rq Job into
-# every queue so workers don't need a --job-class flag.
+# broker / results (/1, /2).
 RQ_QUEUES = {
-    "default": {
-        "URL": f"{REDIS_URL}/3",
-        "JOB_CLASS": "django_tasks_rq.Job",
-    },
+    "default": {"URL": f"{REDIS_URL}/3"},
 }
+
+# Job class for the rqworker. Goes in the top-level RQ dict (NOT inside
+# RQ_QUEUES[queue]) — django-rq's get_job_class() reads from settings.RQ
+# only. Without this the worker fetches jobs as rq.job.Job (the upstream
+# default) and every task explodes with `'Task' object is not callable`
+# because django-tasks-rq's overridden _execute() never runs.
+RQ = {"JOB_CLASS": "django_tasks_rq.Job"}
 ```
 
 ## Run worker (host)
@@ -50,7 +53,7 @@ RQ_QUEUES = {
 uv run manage.py rqworker default
 ```
 
-The `JOB_CLASS` in `RQ_QUEUES` is enough — `rqworker` reads it per queue. No `--job-class` flag needed.
+`settings.RQ["JOB_CLASS"]` is read globally by `rqworker`. No `--job-class` flag needed.
 
 ## Local — docker-compose.yml
 
