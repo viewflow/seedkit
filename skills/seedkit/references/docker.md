@@ -8,28 +8,44 @@
 
 ## Local development
 
-Source mounted, `runserver` reloads on edit.
+`.venv` is baked into the image; source is bind-mounted for live reload; no named volume for the venv. Adding a dependency is a `docker compose build`, not a live `uv add` inside a running container.
+
+### Dockerfile.dev
+
+```dockerfile
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project
+
+COPY . .
+RUN uv sync --frozen
+
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+```
+
+No `USER` switch (dev keeps root, simpler permissions). No `collectstatic` (`runserver` serves statics in DEBUG).
 
 ### docker-compose.yml
-
-No top-level `version:` — Compose v2 ignores it and warns.
 
 ```yaml
 services:
   web:
-    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-    working_dir: /app
-    environment:
-      UV_CACHE_DIR: /tmp/uv-cache
-      UV_LINK_MODE: copy
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     volumes:
-      - .:/app
-      - venv:/app/.venv          # isolate Linux venv from host (macOS/Windows)
-      - uv-cache:/tmp/uv-cache   # writable cache for any user
+      - .:/app          # source live-reload
+      - /app/.venv      # anonymous volume shadows host .venv that the bind mount would otherwise leak in
     env_file: .env
     ports:
       - "8000:8000"
-    command: sh -c "uv sync && uv run manage.py runserver 0.0.0.0:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -50,27 +66,40 @@ services:
 
 volumes:
   pgdata:
-  venv:
-  uv-cache:
 ```
 
 Drop the `db` service (and `depends_on`) for SQLite.
 
+The `/app/.venv` line declares an anonymous volume at that path so the source bind-mount above can't overlay a host `.venv` on top of the image's. `.dockerignore` should also list `.venv` — belt and braces.
+
 ### Boot check
 
 ```sh
-docker compose up -d
-docker compose exec web uv run manage.py migrate
-docker compose exec web uv run manage.py createsuperuser
+docker compose up -d --build
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py createsuperuser
 ```
+
+`python manage.py` not `uv run manage.py`: `.venv/bin` is on `PATH`, no need for the wrapper.
 
 Then open <http://localhost:8000/admin/>.
 
+### Adding a dependency
+
+```sh
+# On the host:
+uv add somepkg
+docker compose build web
+docker compose up -d
+```
+
+`uv add` updates `pyproject.toml` + `uv.lock` on the host; `docker compose build` rebuilds the image with the new lockfile. uv's BuildKit cache makes the rebuild fast (a few seconds) when only the lock changed.
+
 ### Pitfalls
 
-- **`Permission denied` on `/home/<user>/.cache/uv`** — happens if `web` is built from the production Dockerfile (`USER django`). Keep dev on the raw uv image; don't `build: .` for dev.
-- **`uv sync` hardlink warnings** — `UV_LINK_MODE: copy` silences them.
-- **`Ignoring existing virtual environment linked to non-existent Python interpreter`** — host `.venv` leaked in (named volume missing or stale). Harmless (uv rebuilds the venv); if it persists, `docker compose down -v` and rebuild.
+- **`uv sync` hardlink warnings** — `UV_LINK_MODE=copy` (set in Dockerfile.dev) silences them.
+- **Source edits not picked up** — confirm the bind-mount is `.:/app`, not a copy. `docker compose exec web ls /app` should show host changes immediately.
+- **`Ignoring existing virtual environment linked to non-existent Python interpreter`** — means a host `.venv` slipped into the image build (missing `.dockerignore` entry) or the anonymous volume above isn't declared. Add `.venv` to `.dockerignore`, ensure the compose service has `- /app/.venv`, then `docker compose build --no-cache web`.
 
 ---
 

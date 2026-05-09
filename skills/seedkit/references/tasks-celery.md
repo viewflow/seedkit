@@ -67,22 +67,19 @@ send_welcome_email.delay(user.id)
 
 ## Local — docker-compose.yml
 
-Mirror the dev `web` service so code edits reach the worker without a rebuild:
+Reuse the dev image (`Dockerfile.dev` from `references/docker.md`) so the worker shares the bind-mounted source for live reload:
 
 ```yaml
 services:
   celery:
-    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-    working_dir: /app
-    environment:
-      UV_CACHE_DIR: /tmp/uv-cache
-      UV_LINK_MODE: copy
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     volumes:
       - .:/app
-      - venv:/app/.venv
-      - uv-cache:/tmp/uv-cache
+      - /app/.venv          # anonymous volume — same shadowing trick as web
     env_file: .env
-    command: sh -c "uv sync && uv run celery -A config worker -l info"
+    command: celery -A config worker -l info
     depends_on:
       db:
         condition: service_healthy
@@ -142,17 +139,14 @@ CELERY_BEAT_SCHEDULE = {
 ```yaml
 services:
   celery-beat:
-    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-    working_dir: /app
-    environment:
-      UV_CACHE_DIR: /tmp/uv-cache
-      UV_LINK_MODE: copy
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     volumes:
       - .:/app
-      - venv:/app/.venv
-      - uv-cache:/tmp/uv-cache
+      - /app/.venv
     env_file: .env
-    command: sh -c "uv sync && uv run celery -A config beat -l info"
+    command: celery -A config beat -l info
     depends_on:
       - celery
 ```

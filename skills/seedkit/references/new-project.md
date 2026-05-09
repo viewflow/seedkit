@@ -15,17 +15,18 @@ uv run django-admin startproject config .
 
 ### docker-compose
 
-Don't run `uv add` / `uv run` on the host (creates a venv that collides with the container's). Run installs and `startproject` inside the container:
+uv runs on the host to manage `pyproject.toml` / `uv.lock` / `manage.py`; the container runs the actual server. This is fine because `.venv` is gitignored and dockerignored — the image rebuilds its own `.venv` from the lockfile, never the host's.
 
 ```sh
 uv init --bare {project_slug}
 cd {project_slug}
-# Generate Dockerfile + docker-compose.yml first (references/docker.md), then:
-docker compose run --rm web uv add 'django>=6.0,<7.0' django-environ
-docker compose run --rm web uv run django-admin startproject config .
+uv add 'django>=6.0,<7.0' django-environ
+uv run django-admin startproject config .
+# Generate Dockerfile.dev + docker-compose.yml (references/docker.md), then:
+docker compose up -d --build
 ```
 
-Every Python command from here goes through `docker compose run --rm web …` or `docker compose exec web …`. `.venv` must be in `.dockerignore` so an accidental host venv never enters the build context.
+`.dockerignore` must include `.venv/`. Adding a dependency later: `uv add foo` on host, `docker compose build web` to refresh the image. Python commands inside the container go through `docker compose exec web python manage.py …`.
 
 In `config/settings.py`, replace only `SECRET_KEY` / `DEBUG` / `ALLOWED_HOSTS` / `DATABASES`. Leave everything else `startproject` wrote.
 

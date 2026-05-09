@@ -57,17 +57,14 @@ The `JOB_CLASS` in `RQ_QUEUES` is enough — `rqworker` reads it per queue. No `
 ```yaml
 services:
   worker:
-    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-    working_dir: /app
-    environment:
-      UV_CACHE_DIR: /tmp/uv-cache
-      UV_LINK_MODE: copy
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     volumes:
       - .:/app
-      - venv:/app/.venv
-      - uv-cache:/tmp/uv-cache
+      - /app/.venv
     env_file: .env
-    command: sh -c "uv sync && uv run manage.py rqworker default"
+    command: python manage.py rqworker default
     depends_on:
       db:
         condition: service_healthy

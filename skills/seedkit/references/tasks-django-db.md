@@ -44,17 +44,14 @@ Mirror the dev `web` service so code edits reach the worker:
 ```yaml
 services:
   worker:
-    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
-    working_dir: /app
-    environment:
-      UV_CACHE_DIR: /tmp/uv-cache
-      UV_LINK_MODE: copy
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     volumes:
       - .:/app
-      - venv:/app/.venv
-      - uv-cache:/tmp/uv-cache
+      - /app/.venv
     env_file: .env
-    command: sh -c "uv sync && uv run manage.py db_worker"
+    command: python manage.py db_worker
     depends_on:
       db:
         condition: service_healthy
