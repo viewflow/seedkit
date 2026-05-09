@@ -84,7 +84,7 @@ For every question that involves a third-party package: 1–2 sentences from the
 
 ### 1. Open the conversation
 
-Send one short message listing the groups from the Reference files section above with one sentence each on what's available. For existing projects: first follow `references/existing-project.md` and additionally list what's already detected per group. Invite the user to begin.
+List the groups above, one sentence each. For existing projects: first follow `references/existing-project.md` and note what's already detected per group. Invite the user to begin.
 
 ### 2. Project Foundation — new projects only, one question at a time, in order
 
@@ -178,13 +178,13 @@ After applying any reference, append the decision and any new commands to `READM
 
 ## Common pitfalls
 
-These are accumulated from runs where the model improvised and broke things. Each rule has a *why* — understand it and you can judge edge cases.
+Each rule has a *why* so you can judge edge cases.
 
 **Snippet integrity**
 
-- Use snippets verbatim. Don't drop lines that look obvious or redundant (`DEFAULT_AUTO_FIELD`, gated env defaults, top-level `RQ = {"JOB_CLASS": ...}`). The reviewer caught the same drop in five previous runs — keep it.
-- The fail-fast idiom for env vars is `default=<dev-value> if DEBUG else env.NOTSET`. Never write `default=… if DEBUG else None` — `env.db(None)` and `env.email_url(None)` crash with `AttributeError`/`TypeError` on URL parsing, and plain `env(default=None)` silently propagates `None` into Django settings. `env.NOTSET` raises `ImproperlyConfigured` naming the variable.
-- Don't restate values in `local.py` / `production.py` that `base.py` already sets — DRY plus base wins anyway.
+- Use snippets verbatim. Don't drop lines that look obvious or redundant — `DEFAULT_AUTO_FIELD`, gated env defaults, top-level `RQ = {"JOB_CLASS": ...}`. They look optional and are not.
+- The fail-fast idiom for env vars is `default=<dev-value> if DEBUG else env.NOTSET`. Never write `default=… if DEBUG else None` — `env.db(None)` and `env.email_url(None)` crash on URL parsing, and plain `env(default=None)` silently propagates `None` into Django settings. `env.NOTSET` raises `ImproperlyConfigured` naming the variable.
+- Don't restate values in `local.py` / `production.py` that `base.py` already sets.
 - Don't reimplement `django-environ` (no manual `.split(",")`, no leftover `import os`).
 
 **Env vars and `.env.example`**
