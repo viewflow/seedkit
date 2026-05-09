@@ -146,4 +146,15 @@ AUTH_USER_MODEL = "users.User"
 
 ## Migrate
 
-Run the boot check next (`migrate`, `createsuperuser`). The `users_user` table replaces `auth_user`.
+`startapp` does not generate a migration for the new `User` model. Run
+`makemigrations users` immediately, then `migrate`:
+
+```sh
+uv run manage.py makemigrations users
+uv run manage.py migrate
+uv run manage.py createsuperuser
+```
+
+Without the explicit `makemigrations`, the next `migrate` fails with
+`Dependency on app with no migrations: users`. The `users_user` table
+replaces `auth_user`.

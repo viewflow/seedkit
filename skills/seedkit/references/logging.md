@@ -72,6 +72,12 @@ structlog.configure(
 import uuid
 import structlog
 
+# Skip user-id binding for paths that must not block on the DB. Reading
+# `request.user.id` triggers AuthenticationMiddleware's lazy lookup, so
+# /healthz and /readyz would otherwise become contingent on auth-DB
+# health — defeating the point of a liveness probe.
+_NO_USER_PATHS = ("/healthz", "/readyz")
+
 
 class RequestContextMiddleware:
     def __init__(self, get_response):
@@ -79,10 +85,10 @@ class RequestContextMiddleware:
 
     def __call__(self, request):
         structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(
-            request_id=request.headers.get("X-Request-ID") or uuid.uuid4().hex,
-            user_id=getattr(getattr(request, "user", None), "id", None),
-        )
+        ctx = {"request_id": request.headers.get("X-Request-ID") or uuid.uuid4().hex}
+        if not request.path.startswith(_NO_USER_PATHS):
+            ctx["user_id"] = getattr(getattr(request, "user", None), "id", None)
+        structlog.contextvars.bind_contextvars(**ctx)
         try:
             return self.get_response(request)
         finally:

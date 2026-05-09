@@ -142,6 +142,27 @@ Trade-offs:
 uv add 'psycopg[binary]'
 ```
 
+### Persistent connections
+
+`env.db()` returns `CONN_MAX_AGE=0` by default — every request opens a new
+Postgres connection. Behind gunicorn this wastes one TCP handshake per
+request. Pass keep-alive options:
+
+```python
+# config/settings.py (or base.py)
+DATABASES = {
+    "default": env.db(
+        "DATABASE_URL",
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}" if DEBUG else env.NOTSET,
+        conn_max_age=60,            # reuse connections for 60s
+        conn_health_checks=True,    # validate before reuse — Django 4.1+
+    )
+}
+```
+
+`conn_health_checks` is a no-op for SQLite, so this is safe to set
+unconditionally.
+
 ### Variant A — Postgres on host
 
 ```sh

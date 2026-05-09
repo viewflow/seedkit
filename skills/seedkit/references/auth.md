@@ -117,10 +117,15 @@ Decide before the first migration. The choice mirrors `references/custom-user.md
 ### Settings
 
 ```python
+# `mailauth.contrib.admin` MUST come before `django.contrib.admin` —
+# Django resolves admin templates / login view in app order, so the
+# overriding app has to load first. After-ordering silently leaves the
+# stock password-login admin in place.
 INSTALLED_APPS = [
     ...
-    "mailauth",
     "mailauth.contrib.admin",       # admin login → magic link too
+    "django.contrib.admin",         # already present from startproject
+    "mailauth",
     "mailauth.contrib.user",        # only if EmailUser route picked
 ]
 
