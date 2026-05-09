@@ -1,8 +1,8 @@
 # New Django Project
 
-Bootstrap with uv on the host — for every dev mode. Containerisation is
-purely a runtime concern (`references/docker.md`); the `.venv` rebuilt
-inside the image comes from `pyproject.toml` / `uv.lock` written here.
+Bootstrap with uv on the host. Docker (`references/docker.md`) only
+changes how the project runs — its `.venv` rebuilds from the
+`pyproject.toml` / `uv.lock` written here.
 
 ## Create
 
@@ -77,8 +77,7 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}" if DEBUG else env.NOTSET)}  # 4 slashes = absolute, survives running manage.py from any cwd
 ```
 
-`local.py` and `production.py` carry **only deltas** from `base.py`:
-dev tooling in `local.py`, production hardening in `production.py`.
+`local.py` and `production.py` carry **only deltas** from `base.py`.
 Never restate values base sets; never redeclare `MIDDLEWARE` /
 `INSTALLED_APPS` / `DATABASES` / `EMAIL_BACKEND` / `STORAGES`. Mutate
 inherited lists in place:
@@ -148,10 +147,10 @@ p.write_text(re.sub(r'^DJANGO_SECRET_KEY=.*$', f'DJANGO_SECRET_KEY=$KEY', p.read
 "
 ```
 
-Use `secrets.token_urlsafe`, not Django's `get_random_secret_key()` —
-the latter emits `$ & ( ) ' " \` which break shell sourcing of `.env`,
-Compose's `env_file:` (`$VAR` interpolation), and naive `sed` rewrites.
-`token_urlsafe` produces `[A-Za-z0-9_-]` only.
+Use `secrets.token_urlsafe`, not Django's `get_random_secret_key()`.
+The latter emits `$ & ( ) ' " \`, which breaks shell sourcing,
+Compose's `$VAR` interpolation, and naive `sed` rewrites. `token_urlsafe`
+produces `[A-Za-z0-9_-]` only.
 
 `.env` is gitignored. Keep `.env.example` in sync as new `env(...)`
 calls land.
@@ -170,9 +169,8 @@ uv run manage.py createsuperuser
 uv run manage.py runserver
 ```
 
-For docker-compose dev mode, run the equivalent commands inside the
-container — `references/docker.md` documents the wrapper. Confirm
-`/admin/` login works before continuing.
+For docker-compose, see `references/docker.md`. Confirm `/admin/` login
+works before continuing.
 
 ## Scripts (optional)
 

@@ -1,6 +1,6 @@
 # Email
 
-Stock Django wires email backend / host / port / user / pass / tls one setting at a time. This reference uses `django-environ`'s `email_url` parser: a single `EMAIL_URL` env var (`consolemail://`, `smtp+tls://user:pass@host:port`, …) drives everything. Same shape as `DATABASE_URL`; swap providers without touching code.
+Stock Django wires email backend / host / port / user / pass / tls one setting at a time. `django-environ`'s `email_url` parser collapses that into a single `EMAIL_URL` env var (`consolemail://`, `smtp+tls://user:pass@host:port`, …). Same shape as `DATABASE_URL`; swap providers without touching code.
 
 ## Settings
 
