@@ -48,7 +48,7 @@ Generate `docker-compose.yml` with services `web`, `db`, `redis`, `worker`, `min
 - `minio` exposes a bucket; uploaded media land there (verify via `mc` or admin UI).
 - `psycopg[binary]`, `django-tasks`, `django-tasks-rq`, `django-storages[s3]` (or `boto3`) in dependencies.
 - Ruff config present; `docker compose exec web uv run ruff check .` exits 0.
-- Pyright + `django-stubs` + `django-stubs-ext` configured; `[tool.pyright]` block in `pyproject.toml`; `django_stubs_ext.monkeypatch()` called from `config/settings/base.py`; `docker compose exec web uv run pyright` exits 0.
+- Pyright + `django-stubs` + `django-stubs-ext` configured; `[tool.pyright]` block in `pyproject.toml`; `django_stubs_ext.monkeypatch()` called from `config/settings/base.py` (inside an `except ImportError: pass` guard so the prod image without the dev dep keeps booting); `docker compose exec web uv run pyright` exits 0.
 - Named volumes for `pgdata`, `venv`, `uv-cache`, `minio-data`.
 - `structlog` installed; `LOGGING` configured with both `json` and `console` formatters, `console` chosen when `DEBUG`; `RequestContextMiddleware` inserted into `MIDDLEWARE`; a request to `/admin/login/` produces a log line carrying `request_id`.
 - `django-modern-rest[msgspec,openapi]` in dependencies; `dmr` is **not** in `INSTALLED_APPS`. `api/` Django app exists with `controllers.py`, `schemas.py`, `urls.py`. `MediaController(Controller[MsgspecSerializer])` defines `post()` typed with `Body[MediaCreate]` returning `MediaOut`. Router mounted under `/api/`. `POST /api/media/` with a valid JSON body returns 200 + parsed body echoed; an invalid body (missing `size`) returns a 422-class error from dmr's validator.

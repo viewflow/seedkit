@@ -18,24 +18,24 @@ uv add django-dbbackup
 
 ## `production.py` only
 
+Wrap the **entire** block in `if not DEBUG:` — including `INSTALLED_APPS += [...]`. The Dockerfile build runs `collectstatic` with `DJANGO_DEBUG=True`; if `dbbackup` is in `INSTALLED_APPS` unconditionally, the build evaluates `env("AWS_ACCESS_KEY_ID")` (no default) and crashes with `ImproperlyConfigured`.
+
 ```python
-INSTALLED_APPS = [
-    # ...
-    'dbbackup',
-]
+if not DEBUG:
+    INSTALLED_APPS += ["dbbackup"]
 
-# S3-compatible target. Reuse the s3 storage credentials from references/storage-s3.md.
-DBBACKUP_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-DBBACKUP_STORAGE_OPTIONS = {
-    'access_key': env('AWS_ACCESS_KEY_ID'),
-    'secret_key': env('AWS_SECRET_ACCESS_KEY'),
-    'bucket_name': env('DBBACKUP_BUCKET'),  # SEPARATE bucket from media — different lifecycle policy
-    'default_acl': 'private',
-}
+    # S3-compatible target. Reuse the s3 storage credentials from references/storage-s3.md.
+    DBBACKUP_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+    DBBACKUP_STORAGE_OPTIONS = {
+        "access_key": env("AWS_ACCESS_KEY_ID"),
+        "secret_key": env("AWS_SECRET_ACCESS_KEY"),
+        "bucket_name": env("DBBACKUP_BUCKET"),  # SEPARATE bucket from media — different lifecycle policy
+        "default_acl": "private",
+    }
 
-DBBACKUP_CLEANUP_KEEP = 14            # daily backups retained
-DBBACKUP_CLEANUP_KEEP_MEDIA = 7
-DBBACKUP_FILENAME_TEMPLATE = '{databasename}-{servername}-{datetime}.{extension}'
+    DBBACKUP_CLEANUP_KEEP = 14            # daily backups retained
+    DBBACKUP_CLEANUP_KEEP_MEDIA = 7
+    DBBACKUP_FILENAME_TEMPLATE = "{databasename}-{servername}-{datetime}.{extension}"
 ```
 
 `.env.example` additions:

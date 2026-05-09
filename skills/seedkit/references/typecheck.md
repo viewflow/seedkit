@@ -12,12 +12,18 @@ Skip this if your project doesn't use type hints — checking untyped code only 
 uv add --dev pyright django-stubs django-stubs-ext
 ```
 
-`django-stubs-ext` is the runtime companion that makes generics like `Manager[User]` and `QuerySet[Order]` evaluate at import time. Without it, every typed manager/queryset annotation raises `TypeError` when the module loads. Activate it once at the bottom of `config/settings/base.py` (or `config/settings.py` for single-file):
+`django-stubs-ext` is the runtime companion that makes generics like `Manager[User]` and `QuerySet[Order]` evaluate at import time. The activation call sits at the bottom of `config/settings/base.py` (or `config/settings.py` for single-file), guarded so the prod image (`uv sync --no-dev`, no dev group) just skips it:
 
 ```python
-import django_stubs_ext
-django_stubs_ext.monkeypatch()
+try:
+    import django_stubs_ext
+except ImportError:
+    pass                       # dev-only dep; prod doesn't need it
+else:
+    django_stubs_ext.monkeypatch()
 ```
+
+Without the guard, the dev-only dep would have to be promoted to main deps to keep `runserver` / `gunicorn` from `ImportError`-ing on startup. The guard keeps the runtime image lean.
 
 ## Config
 
@@ -32,6 +38,10 @@ exclude = [
     ".venv",
     "staticfiles",
     "media",
+    # django-environ's conditional default pattern (`default="x" if DEBUG else env.NOTSET`)
+    # produces false-positive reportArgumentType errors — pyright sees `str | NoValue`
+    # where `NoValue` is expected. Excluding settings avoids dozens of spurious errors.
+    "config/settings",
 ]
 venvPath = "."
 venv = ".venv"

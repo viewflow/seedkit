@@ -67,7 +67,7 @@ Run the foundation + boot check locally. Generate `Dockerfile`, `fly.toml`, `.gi
 - `django-mail-auth` installed; `mailauth` in `INSTALLED_APPS`; `MailAuthBackend` in `AUTHENTICATION_BACKENDS`; `accounts/` URL include with `mailauth` namespace; `/accounts/login/` renders an email-only form.
 - `django-axes` installed; `axes` in `INSTALLED_APPS`; `AxesMiddleware` last in `MIDDLEWARE`; `AxesBackend` first in `AUTHENTICATION_BACKENDS`. `AXES_HANDLER = 'axes.handlers.cache.AxesCacheHandler'` set in `production.py` (Redis is required and present). `axes_*` migrations applied.
 - `django-csp` installed; `csp.middleware.CSPMiddleware` in `production.py` `MIDDLEWARE`. `CONTENT_SECURITY_POLICY['DIRECTIVES']['script-src']` includes both `https://www.googletagmanager.com` and `https://www.google-analytics.com`. `connect-src` and `img-src` include `https://www.google-analytics.com`. No `'unsafe-inline'` in `script-src`.
-- Pyright + `django-stubs` + `django-stubs-ext` configured; `[tool.pyright]` block in `pyproject.toml`; `django_stubs_ext.monkeypatch()` called from `config/settings/base.py`; `docker compose exec web uv run pyright` exits 0.
+- Pyright + `django-stubs` + `django-stubs-ext` configured; `[tool.pyright]` block in `pyproject.toml`; `django_stubs_ext.monkeypatch()` called from `config/settings/base.py` (inside an `except ImportError: pass` guard so the prod image without the dev dep keeps booting); `docker compose exec web uv run pyright` exits 0.
 - `pages` app exposes `liveness` / `readiness`; `urlpatterns` wires `path('healthz', ...)` and `path('readyz', ...)`. `fly.toml` `[checks]` block has at least one entry with `path = "/readyz"` and `interval = "10s"`. `curl /healthz` against the local Compose stack returns 200 `ok`.
 
 ## Run

@@ -28,15 +28,23 @@ AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="us-east-1")
 AWS_S3_ENDPOINT_URL  = env("AWS_S3_ENDPOINT_URL",  default="")
 AWS_S3_CUSTOM_DOMAIN = env("AWS_S3_CUSTOM_DOMAIN", default="")
 
-# Media to S3 in every environment (MinIO in dev, real S3 in prod).
-# Static stays on Django's local backend in base — collectstatic + admin
-# CSS work in `runserver` without bucket creds. production.py flips static
-# to S3 for real deploys.
-STORAGES = {
-    "default": {
+# Media to S3 when a bucket is configured (MinIO in dev, real S3 in prod);
+# fall back to local FileSystemStorage when AWS_STORAGE_BUCKET_NAME is empty
+# so a fresh `runserver` boots before the operator wires up MinIO. Static
+# stays on Django's local backend in base — collectstatic + admin CSS work
+# in `runserver` without bucket creds. production.py flips static to S3.
+if AWS_STORAGE_BUCKET_NAME:
+    _default_storage = {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {"location": "media"},
-    },
+    }
+else:
+    _default_storage = {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    }
+
+STORAGES = {
+    "default": _default_storage,
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },

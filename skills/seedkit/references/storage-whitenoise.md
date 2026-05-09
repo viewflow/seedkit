@@ -15,6 +15,14 @@ uv add whitenoise
 
 Insert `whitenoise.middleware.WhiteNoiseMiddleware` into the **existing** `MIDDLEWARE` directly after `SecurityMiddleware`. Don't redeclare the list.
 
+```python
+# config/settings.py (or config/settings/base.py)
+sec_idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware")
+MIDDLEWARE.insert(sec_idx + 1, "whitenoise.middleware.WhiteNoiseMiddleware")
+```
+
+Without this line, the prod manifest static storage configured below produces 404s for every `/static/*` request — gunicorn has no static handler, and the prod proxy (Caddy / fly / etc.) routes everything to `web`.
+
 Then:
 
 ```python

@@ -49,25 +49,22 @@ Create or retrieve the Stripe customer on first checkout:
 ```python
 import stripe
 from django.conf import settings
-from django.contrib.auth import get_user_model
-from django.db import transaction
 
 def get_or_create_customer(user):
-    # Fast path — avoid the row lock when the customer already exists.
     if user.stripe_customer_id:
         return user.stripe_customer_id
-    User = get_user_model()
-    # Two concurrent first-checkout requests for the same user must not each
-    # call stripe.Customer.create — the second write would clobber the first
-    # and orphan a Stripe customer. Lock the row, re-check inside, then create.
-    with transaction.atomic():
-        locked = User.objects.select_for_update().get(pk=user.pk)
-        if locked.stripe_customer_id:
-            return locked.stripe_customer_id
-        customer = stripe.Customer.create(email=locked.email)
-        locked.stripe_customer_id = customer.id
-        locked.save(update_fields=["stripe_customer_id"])
-        return customer.id
+    # Stripe's idempotency key turns concurrent first-checkout requests for
+    # the same user into a no-op upsert: the second call returns the same
+    # customer instead of creating a duplicate. No DB row lock is held
+    # across the network round-trip — that pattern stalls workers and risks
+    # deadlocks if the Stripe call is slow.
+    customer = stripe.Customer.create(
+        email=user.email,
+        idempotency_key=f"customer:user:{user.pk}",
+    )
+    user.stripe_customer_id = customer.id
+    user.save(update_fields=["stripe_customer_id"])
+    return customer.id
 ```
 
 ### Checkout session

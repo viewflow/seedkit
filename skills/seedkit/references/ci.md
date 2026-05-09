@@ -33,6 +33,11 @@ jobs:
       DJANGO_SECRET_KEY: test-key
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: "*"
+      # `DEBUG=False` triggers the gated `env.NOTSET` branch on every
+      # required env var. Provide safe placeholders so settings load:
+      EMAIL_URL: consolemail://
+      DEFAULT_FROM_EMAIL: test@example.com
+      SERVER_EMAIL: test@example.com
 
     steps:
       - uses: actions/checkout@v4
