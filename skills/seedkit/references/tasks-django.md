@@ -11,6 +11,24 @@ Ask separately about **periodic tasks** (django-crontask) — `tasks-django-cron
 
 ## Define and enqueue (both backends)
 
+`tasks.py` must live inside a registered Django app. Unlike Celery's
+`autodiscover_tasks()`, `django.tasks` does **not** scan apps — a task is only
+visible once its module is imported. The reliable hook is `AppConfig.ready()`:
+
+```python
+# myapp/apps.py
+from django.apps import AppConfig
+
+class MyappConfig(AppConfig):
+    name = "myapp"
+
+    def ready(self) -> None:
+        from . import tasks  # noqa: F401  — register @task functions
+```
+
+Without this, `enqueue()` silently uses an unregistered callable and the
+worker raises `TaskDoesNotExist` at dequeue time.
+
 ```python
 from django.tasks import task
 

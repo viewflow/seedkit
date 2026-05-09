@@ -41,7 +41,11 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 SITE_ID = 1
-LOGIN_REDIRECT_URL = "/admin/"     # starter has no root view — change once the app has one
+LOGIN_REDIRECT_URL = "/"           # don't send non-staff users to /admin/
+                                   # — they bounce to a re-login screen.
+                                   # The root view can redirect to /admin/
+                                   # for now; replace once a real landing
+                                   # page lands.
 LOGOUT_REDIRECT_URL = "/accounts/login/"
 
 ACCOUNT_LOGIN_METHODS = {"email"}
@@ -131,7 +135,8 @@ AUTHENTICATION_BACKENDS = [
 AUTH_USER_MODEL = "mailauth_user.EmailUser"
 
 LOGIN_URL = "mailauth:login"
-LOGIN_REDIRECT_URL = "/admin/"      # starter has no root view
+LOGIN_REDIRECT_URL = "/"            # see Option A — don't dump non-staff
+                                    # users on /admin/.
 ```
 
 ### URLs

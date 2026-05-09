@@ -146,7 +146,6 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
     python manage.py collectstatic --noinput
 
 USER django
-ENTRYPOINT ["./entrypoint.sh"]
 CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]
 ```
 
@@ -271,7 +270,6 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
 
 USER django
 
-ENTRYPOINT ["./entrypoint.sh"]
 CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]
 ```
 
@@ -308,7 +306,6 @@ COPY --from=builder --chown=django:django /app /app
 
 USER django
 
-ENTRYPOINT ["./entrypoint.sh"]
 CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]
 ```
 
@@ -323,19 +320,19 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-project
 ```
 
-### entrypoint.sh
+### Waiting for Postgres
+
+No `entrypoint.sh`, no `pg_isready` loop. Compose's
+`depends_on: condition: service_healthy` (already wired on the `db` service)
+gates `web` startup until Postgres reports healthy. Migrations run as an
+explicit one-shot — see `references/deploy-vps.md` and
+`references/deploy-github-ssh.md`:
 
 ```sh
-#!/bin/sh
-set -e
-
-until pg_isready -d "$DATABASE_URL" -q; do
-    sleep 1
-done
-
-exec "$@"
+docker compose -f deploy/docker-compose.prod.yml run --rm web manage.py migrate
 ```
 
-```sh
-chmod +x entrypoint.sh
-```
+Keeping the container's job to "run gunicorn" makes restarts cheap, avoids
+re-running migrations on every replica boot, and removes the
+`pg_isready -d "$DATABASE_URL"` foot-gun (libpq URI scheme + missing-var
+silent spin).

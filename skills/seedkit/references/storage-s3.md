@@ -43,10 +43,23 @@ STORAGES = {
 }
 
 STATIC_URL = "/static/"
-MEDIA_URL  = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/" if AWS_S3_CUSTOM_DOMAIN else "/media/"
+
+# Derive scheme + host for media URLs. AWS_S3_CUSTOM_DOMAIN wins (CloudFront /
+# bucket vhost). Otherwise fall back to the endpoint host (MinIO in dev) so
+# generated URLs are reachable from the browser — `https://minio:9000/...`
+# is fine inside Docker but a host-side dev browser can't resolve it; set
+# AWS_S3_CUSTOM_DOMAIN=localhost:9000 + AWS_S3_URL_PROTOCOL=http: for that.
+AWS_S3_URL_PROTOCOL = env("AWS_S3_URL_PROTOCOL", default="https:")
+if AWS_S3_CUSTOM_DOMAIN:
+    MEDIA_URL = f"{AWS_S3_URL_PROTOCOL}//{AWS_S3_CUSTOM_DOMAIN}/media/"
+else:
+    MEDIA_URL = "/media/"
 ```
 
-In `config/settings/production.py`, flip static to S3:
+In `config/settings/production.py`, flip static to S3. Always set `STATIC_URL`
+in prod — without a fallback, missing `AWS_S3_CUSTOM_DOMAIN` leaves the base
+`/static/` value pointing at a path the prod app does not serve, so every
+admin asset 404s:
 
 ```python
 STORAGES = {
@@ -58,7 +71,14 @@ STORAGES = {
 }
 
 if AWS_S3_CUSTOM_DOMAIN:
-    STATIC_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/static/"
+    STATIC_URL = f"{AWS_S3_URL_PROTOCOL}//{AWS_S3_CUSTOM_DOMAIN}/static/"
+elif AWS_S3_ENDPOINT_URL:
+    # Non-AWS provider without a custom domain: serve from the endpoint host.
+    STATIC_URL = f"{AWS_S3_ENDPOINT_URL.rstrip('/')}/{AWS_STORAGE_BUCKET_NAME}/static/"
+else:
+    # AWS without CloudFront — bucket vhost. us-east-1 omits the region.
+    _region = "" if AWS_S3_REGION_NAME == "us-east-1" else f".{AWS_S3_REGION_NAME}"
+    STATIC_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3{_region}.amazonaws.com/static/"
 ```
 
 ## .env / .env.prod
@@ -70,6 +90,7 @@ AWS_STORAGE_BUCKET_NAME=...
 AWS_S3_REGION_NAME=us-east-1
 # AWS_S3_ENDPOINT_URL=http://minio:9000      # non-AWS providers
 # AWS_S3_CUSTOM_DOMAIN=cdn.example.com       # AWS + CloudFront
+# AWS_S3_URL_PROTOCOL=https:                 # override to http: for plain MinIO
 ```
 
 ## Dockerfile — remove build-time collectstatic

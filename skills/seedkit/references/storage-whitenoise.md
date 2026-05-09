@@ -56,7 +56,17 @@ if settings.DEBUG:
 
 ## VPS — docker-compose.prod.yml
 
-Shared `media` volume between `web` and `caddy`:
+Shared `media` volume between `web` and `caddy`. The production Dockerfile
+runs gunicorn as `USER django`, but Docker copies image contents into a
+**fresh** named volume only on first creation — and the resulting mount
+point is owned by root. Pre-create `/app/media` with `chown django:django`
+in the Dockerfile *before* the volume mounts in, otherwise the first upload
+fails with `EACCES`:
+
+```dockerfile
+# In the production Dockerfile, before `USER django`:
+RUN mkdir -p /app/media && chown django:django /app/media
+```
 
 ```yaml
 services:

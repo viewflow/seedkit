@@ -8,6 +8,14 @@ services:
     image: ghcr.io/{owner}/{project_slug}:latest
     restart: unless-stopped
     env_file: .env.prod
+    healthcheck:
+      # Container-level so Caddy `depends_on: condition: service_healthy`
+      # works and `restart: unless-stopped` recycles a hung gunicorn.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
     depends_on:
       db:
         condition: service_healthy
@@ -48,7 +56,15 @@ volumes:
 
 ```
 example.com {
-    reverse_proxy web:8000
+    reverse_proxy web:8000 {
+        # Probe `/healthz` (process up) — NOT `/readyz` (DB+deps).
+        # A transient DB blip on /readyz flips the upstream to "down" and
+        # Caddy stops serving 200s; better to let /readyz feed monitoring
+        # while the load-balancer probe stays liveness-only.
+        health_uri /healthz
+        health_interval 10s
+        health_timeout 3s
+    }
 }
 ```
 
@@ -80,4 +96,4 @@ docker compose -f deploy/docker-compose.prod.yml run --rm web uv run manage.py m
 docker compose -f deploy/docker-compose.prod.yml up -d
 ```
 
-Migrations run as a one-shot `docker compose run` *before* `up -d`. Don't generate an `entrypoint.sh` that bakes `migrate --noinput` and `pg_isready` loops into every container start — this re-runs migrations on every restart, races with concurrent web replicas on managed platforms, and the `pg_isready -d "$DATABASE_URL"` pattern is fragile (libpq honors only host/port from the URI; passing a full URI silently spins forever if the var is unset). Keep the deploy step explicit.
+Migrations run as a one-shot `docker compose run` *before* `up -d`. Compose's `depends_on: condition: service_healthy` (wired in `references/docker.md`) gates `web` on Postgres being ready — no `entrypoint.sh`, no `pg_isready` loop, no `migrate --noinput` baked into container start. The container's job is `gunicorn`, full stop. (Exception: the SQLite + Litestream pattern in `references/database.md` legitimately uses an entrypoint to restore the DB from S3 before launching gunicorn under `litestream replicate`.)

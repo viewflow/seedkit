@@ -134,7 +134,7 @@ For new projects: ask every question. For existing projects: only ask about comp
 
 1. Auth: `django-allauth` / `django-mail-auth` / `none`. **Default none.**
 2. `django-axes` brute-force lockout: yes / no. **Default yes.** Skip if auth = none.
-3. 2FA: yes / no. **Default no.** Skip if auth = none. When yes: `allauth-2fa` if auth = allauth, else `django-otp`.
+3. 2FA: yes / no. **Default no.** Skip if auth = none. When yes: built-in `allauth.mfa` if auth = allauth (via `django-allauth[mfa]` extra — never `allauth-2fa`, which is unmaintained), else `django-otp`.
 
 #### 5.3 Data & Storage
 
