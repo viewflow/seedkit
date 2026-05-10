@@ -38,96 +38,65 @@ Production setup: skip.
 Assume Postgres is already running locally on port 5432 with user `postgres` / password `postgres`. Create database `shop_db` if missing (Postgres identifiers can't start with a digit, so use a clean name). Run the foundation + boot check, then run `python manage.py tailwind build` once so the CSS asset exists, and verify the index page returns the Tailwind-styled HTML.
 ```
 
-## Expected outcome
-
-- `uv run manage.py runserver` boots; `/admin/` login works.
-- `psycopg[binary]` in dependencies; `DATABASE_URL=postgres://...@localhost:5432/shop_db` in `.env`.
-- `config/settings/{base,local,production}.py` present; `manage.py` points at `config.settings.local`, `wsgi.py` at `config.settings.production`.
-- Ruff config in `pyproject.toml`; `uv run ruff check .` exits 0.
-- Pyright + django-stubs configured; `uv run pyright` exits 0.
-- WhiteNoise middleware listed in production settings only.
-- Email backend `django.core.mail.backends.console.EmailBackend` in local; SMTP wired via env in production.
-- `users/` app with `AbstractUser` subclass and admin registration; `AUTH_USER_MODEL = "users.User"` set **before** the initial migration; `users_user` table exists (no `auth_user`).
-- `django-allauth` installed; `allauth`, `allauth.account`, `django.contrib.sites` in `INSTALLED_APPS`; `AccountMiddleware` in `MIDDLEWARE`; `accounts/` URL include; `ACCOUNT_EMAIL_VERIFICATION = "mandatory"`; `/accounts/login/` and `/accounts/signup/` render.
-- `django-tailwind-cli` in dependencies; `django_tailwind_cli` in `INSTALLED_APPS`. `STATICFILES_DIRS = [BASE_DIR / "assets"]` and the `assets/` directory exists on disk (Django raises at startup if missing). `TAILWIND_CLI_VERSION = "4.1.3"` pinned.
-- `templates/base.html` loads `{% load tailwind_cli %}` and calls `{% tailwind_css %}` inside `<head>`. `templates/index.html` extends `base.html` and uses Tailwind utility classes including `text-blue-600` and `text-4xl`.
-- `pages/` Django app exists with `IndexView(TemplateView)` and is wired as the root URL.
-- `python manage.py tailwind build` succeeds and produces a CSS file under `assets/` (default `assets/css/tailwind.css`) that contains rules for the classes used in `index.html`. The downloaded CLI lives in `<BASE_DIR>/.django_tailwind_cli/`.
-- DaisyUI vendored: `assets/css/daisyui.mjs` and `assets/css/daisyui-theme.mjs` exist in the repo (committed, not gitignored). `assets/css/source.css` exists, contains `@import "tailwindcss";`, `@source not "./tailwindcss";`, `@source not "./daisyui{,*}.mjs";`, and `@plugin "./daisyui.mjs";`. `TAILWIND_CLI_SRC_CSS = "assets/css/source.css"` is set in `base.py`. `TAILWIND_CLI_USE_DAISY_UI` is **not** set (the upstream `@plugin` path is used, not the cli-extra fork).
-- Built CSS contains DaisyUI's `.btn` and `.btn-primary` rules (in addition to the utility classes from the previous bullet).
-- `<html data-theme="light">` is present in `templates/base.html`.
-- `curl http://127.0.0.1:8000/` returns 200, the response body contains the literal `text-blue-600`, and the `<link>` element rendered by `{% tailwind_css %}` resolves to a 200 response whose body contains a rule matching `.text-blue-600`.
-- `templates/404.html`, `403.html`, `500.html` exist and load `tailwind_cli`. With `DEBUG=False` and `ALLOWED_HOSTS` set, `curl /this-route-does-not-exist` returns 404 and the body contains a Tailwind utility class (e.g. `text-6xl`). `500.html` does NOT extend `base.html`.
-- `django-axes` in dependencies; `axes` in `INSTALLED_APPS`; `axes.middleware.AxesMiddleware` is the **last** entry in `MIDDLEWARE`; `axes.backends.AxesBackend` is **first** in `AUTHENTICATION_BACKENDS`. After 5 wrong logins from the same IP+username, the 6th login attempt to `/accounts/login/` is locked out (axes returns its lockout response, not allauth's "wrong password").
-- `pages` app exposes `liveness` and `readiness` views; `urlpatterns` includes `path('healthz', ...)` and `path('readyz', ...)` (no trailing slash). `curl /healthz` returns 200 with body `ok`; `curl /readyz` returns 200 with body `ready`.
-- `pages` app exposes a `robots_txt` view; `path('robots.txt', ...)` is wired. `curl /robots.txt` returns 200 with `Content-Type: text/plain` and body containing `User-agent: *` and `Disallow: /admin/` (when `DEBUG=False`).
-- `stripe` in runtime dependencies (not dev-only). `STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` present in `.env.example` with placeholder values. `_stripe.api_key = STRIPE_SECRET_KEY` set in `base.py`.
-- `users.User` has a `stripe_customer_id` field; `users/migrations/` contains a migration adding it.
-- `billing/` app exists with `create_checkout_session`, `customer_portal`, `stripe_webhook` views. Webhook view is decorated with `@csrf_exempt` and `@require_POST`. Webhook view calls `stripe.Webhook.construct_event(request.body, sig_header, settings.STRIPE_WEBHOOK_SECRET)` and returns 400 on invalid signature, 200 on success. `billing/` URLs wired in `config/urls.py`.
-
-## Run
+## Boot check
 
 ```sh
-# Run from a scratch parent dir; the skill creates `02-shop/` via `uv init`.
 createdb shop_db || true
-# AI executes the skill here, then:
 cd 02-shop
-# One-shot CSS build so the asset exists before the smoke test (watch mode is optional in dev)
 uv run manage.py tailwind build
 uv run manage.py runserver &
 curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
-# Index page returns 200 and contains a Tailwind utility class from the template
 curl -sf http://127.0.0.1:8000/ | grep -q 'text-blue-600'
-# The CSS link injected by {% tailwind_css %} actually resolves and ships the rule
 CSS_URL=$(curl -sf http://127.0.0.1:8000/ | grep -oE 'href="[^"]*tailwind[^"]*\.css[^"]*"' | head -1 | sed 's/href="//;s/"//')
 test -n "$CSS_URL"
 curl -sf "http://127.0.0.1:8000${CSS_URL}" | grep -q '\.text-blue-600'
-# DaisyUI integration: vendored bundle present, @plugin directive wired, .btn rule shipped in served CSS, theme attribute on root
-test -f assets/css/daisyui.mjs
-test -f assets/css/daisyui-theme.mjs
-grep -q '@plugin "./daisyui.mjs"' assets/css/source.css
 curl -sf "http://127.0.0.1:8000${CSS_URL}" | grep -q '\.btn'
 curl -sf http://127.0.0.1:8000/ | grep -q 'data-theme='
-# Healthcheck endpoints
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
-# robots.txt
 curl -sf http://127.0.0.1:8000/robots.txt | grep -q 'User-agent: \*'
 uv run ruff check .
 uv run pyright
-# billing: stripe package installed, env vars in .env.example, billing app wired
-python -c "import stripe"
-grep -q 'STRIPE_PUBLISHABLE_KEY' .env.example
-grep -q 'STRIPE_WEBHOOK_SECRET' .env.example
-grep -rq 'stripe_customer_id' users/
-grep -rq 'csrf_exempt' billing/
-grep -rq 'construct_event' billing/
 kill $(jobs -p) 2>/dev/null; pkill -f 'manage.py' 2>/dev/null; wait
-```
-
-## Check report
-
-**Execute this command yourself before stopping. Do not present it as a "next step" for the user — the testcase isn't done until the review file exists.** It runs an independent review (the model that built the project shouldn't grade its own output) and writes the result to `REVIEW.md` in the project dir.
-
-```sh
-claude -p \
-  --model claude-opus-4-7 \
-  --allowedTools "Read,Grep,Glob,Bash(ls:*),Bash(cat:*),Bash(rg:*)" \
-  "Read-only audit of this directory. Generated runtime artifacts (`.env`, local DB files, `__pycache__/`, `staticfiles/`) are expected. The starter has no business logic and no production hardening beyond what the prompt requested — out of scope. Report only issues that (i) prevent the scaffold from booting, (ii) make one of the smoke checks above fail, or (iii) are an outright security hole. Every claim must quote the file path and the literal substring you read; do not infer state from training-data priors. Skip nitpicks (docstrings, style, hypothetical scaling, 'consider adding X'). Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for — a starter scaffold is supposed to be small. If unsure whether something is a real bug right now, omit it. If you patched something during this run, list it under 'Fixes applied', not 'Bugs'. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; 'No issues found.' is a valid report." \
-  | tee REVIEW.md
-```
-
-Paste the output below.
-
-- What worked out of the box:
-- What broke:
-- Fixes applied:
-- Suggested skill changes:
-
-## Cleanup
-
-Leave the code. Drop the host Postgres database:
-
-```sh
 dropdb shop_db
 ```
+
+## Review
+
+Read-only audit of the project in the current directory. Quote the file path and the literal substring you read for every claim — do not infer state from training-data priors.
+
+Verify these structural facts:
+
+**Foundation**
+- Files present: `pyproject.toml`, `uv.lock`, `manage.py`, `config/settings/{base,local,production}.py`, `.env`, `.gitignore`.
+- `manage.py` defaults `DJANGO_SETTINGS_MODULE` to `config.settings.local`; `wsgi.py` to `config.settings.production`.
+- `pyproject.toml` runtime deps include `psycopg[binary]`, `django-tailwind-cli`, `django-allauth`, `django-axes`, `stripe`, `whitenoise`. Dev deps include `ruff`, `pytest`, `pytest-django`, `pyright`, `django-stubs`, `django-stubs-ext`.
+- `pyproject.toml` has a `[tool.ruff]` block and a `[tool.pyright]` block.
+
+**Settings**
+- `config/settings/base.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.
+- `whitenoise.middleware.WhiteNoiseMiddleware` is present in `config/settings/production.py`'s `MIDDLEWARE` and absent from `base.py`.
+- `EMAIL_BACKEND` resolves to `django.core.mail.backends.console.EmailBackend` in `local.py` only; production reads SMTP settings from env.
+- `_stripe.api_key = STRIPE_SECRET_KEY` is set at module scope in `base.py`.
+
+**Custom user + auth**
+- `users/models.py` defines a `User` extending `AbstractUser`. `AUTH_USER_MODEL = "users.User"` in `base.py`.
+- `users/migrations/0001_initial.py` exists and creates the `users.User` table.
+- `users.User` has a `stripe_customer_id` field (in the model OR a follow-up migration in `users/migrations/`).
+- `INSTALLED_APPS` contains `allauth`, `allauth.account`, `django.contrib.sites`, `axes`. `MIDDLEWARE` ends with `axes.middleware.AxesMiddleware`. `AUTHENTICATION_BACKENDS` starts with `axes.backends.AxesBackend`.
+- `accounts/` URL include in `config/urls.py`. `ACCOUNT_EMAIL_VERIFICATION = "mandatory"` in `production.py`.
+
+**Tailwind + DaisyUI**
+- `INSTALLED_APPS` contains `django_tailwind_cli`. `STATICFILES_DIRS = [BASE_DIR / "assets"]`. `TAILWIND_CLI_VERSION` pinned. `TAILWIND_CLI_SRC_CSS = "assets/css/source.css"` in `base.py`. `TAILWIND_CLI_USE_DAISY_UI` is **not** set.
+- Files present: `assets/css/daisyui.mjs`, `assets/css/daisyui-theme.mjs`, `assets/css/source.css`.
+- `assets/css/source.css` contains `@import "tailwindcss";`, `@source not "./tailwindcss";`, `@source not "./daisyui{,*}.mjs";`, `@plugin "./daisyui.mjs";`.
+- `templates/base.html` loads `{% load tailwind_cli %}`, calls `{% tailwind_css %}` inside `<head>`, and contains `<html data-theme=`.
+- `templates/index.html` extends `base.html` and contains the literals `text-blue-600`, `text-4xl`, and `btn-primary`.
+- `templates/404.html`, `templates/403.html`, `templates/500.html` present. `500.html` does NOT extend `base.html`.
+
+**Pages + billing**
+- `pages/` app with `IndexView(TemplateView)` wired at `/`. `liveness` and `readiness` views, `path('healthz', ...)` and `path('readyz', ...)` (no trailing slash), `robots_txt` view at `path('robots.txt', ...)`.
+- `billing/` app with `create_checkout_session`, `customer_portal`, `stripe_webhook` views. Webhook decorated with `@csrf_exempt` AND `@require_POST`. Webhook calls `stripe.Webhook.construct_event(request.body, sig_header, settings.STRIPE_WEBHOOK_SECRET)`.
+- `STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` listed in `.env.example`. `billing/` URLs included in `config/urls.py`.
+
+Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks (docstrings, style, hypothetical scaling, "consider adding X"). Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.

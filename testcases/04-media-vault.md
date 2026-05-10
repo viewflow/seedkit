@@ -40,84 +40,63 @@ Production setup: skip.
 Generate `docker-compose.yml` with services `web`, `db`, `redis`, `worker`, `minio`. Run the foundation, `docker compose up -d`, migrate, createsuperuser, and confirm a sample task enqueues and completes.
 ```
 
-## Expected outcome
-
-- `docker compose up -d` starts all five services healthy.
-- `web` runs `runserver` on `:8000`; `/admin/` login works.
-- `worker` runs `manage.py rqworker default` and processes a queued task.
-- `minio` exposes a bucket; uploaded media land there (verify via `mc` or admin UI).
-- `psycopg[binary]`, `django-tasks`, `django-tasks-rq`, `django-storages[s3]` (or `boto3`) in dependencies.
-- Ruff config present; `docker compose exec web uv run ruff check .` exits 0.
-- Pyright + `django-stubs` + `django-stubs-ext` configured; `[tool.pyright]` block in `pyproject.toml`; `django_stubs_ext.monkeypatch()` called from `config/settings/base.py` (inside an `except ImportError: pass` guard so the prod image without the dev dep keeps booting); `uv run pyright` exits 0 on the host.
-- Named volumes for `pgdata`, `venv`, `uv-cache`, `minio-data`.
-- `structlog` installed; `LOGGING` configured with both `json` and `console` formatters, `console` chosen when `DEBUG`; `RequestContextMiddleware` inserted into `MIDDLEWARE`; a request to `/admin/login/` produces a log line carrying `request_id`.
-- `django-modern-rest[msgspec,openapi]` in dependencies; `dmr` is **not** in `INSTALLED_APPS`. `api/` Django app exists with `controllers.py`, `schemas.py`, `urls.py`. `MediaController(Controller[MsgspecSerializer])` defines `post()` typed with `Body[MediaCreate]` returning `MediaOut`. Router mounted under `/api/`. `POST /api/media/` with a valid JSON body returns 200 + parsed body echoed; an invalid body (missing `size`) returns a 422-class error from dmr's validator.
-- `.devcontainer/devcontainer.json` exists, sets `"dockerComposeFile": ["../docker-compose.yml"]`, `"service": "web"`, `"workspaceFolder": "/app"`, and `"shutdownAction": "stopCompose"`. `forwardPorts` includes `8000`. The file does **not** contain any secrets / DB passwords (those stay in `.env`).
-- `pages` app exposes `liveness` / `readiness`; `curl /healthz` → `ok`, `curl /readyz` → `ready` (DB reachable inside Compose).
-
-## Run
+## Boot check
 
 ```sh
-# Run from a scratch parent dir; the skill creates `04-media-vault/`.
-# AI executes the skill here, then:
 cd 04-media-vault
 docker compose up -d
-docker compose exec web uv run manage.py migrate
-docker compose exec web uv run manage.py createsuperuser --noinput || true
+docker compose ps
+docker compose exec -T web uv run manage.py migrate
+docker compose exec -T web uv run manage.py createsuperuser --noinput || true
 curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
-# REST endpoint — happy path
 curl -sf -X POST http://127.0.0.1:8000/api/media/ \
   -H 'content-type: application/json' \
   -d '{"filename":"a.png","size":42}' > /dev/null
-# REST endpoint — invalid body must NOT 200
 ! curl -sf -X POST http://127.0.0.1:8000/api/media/ \
   -H 'content-type: application/json' \
   -d '{"filename":"a.png"}' > /dev/null
-# Healthchecks
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
+docker compose exec -T web uv run ruff check .
 uv run pyright
-# Devcontainer file present and machine-readable
-test -f .devcontainer/devcontainer.json
-python3 -c "import json; d=json.load(open('.devcontainer/devcontainer.json')); assert d['service']=='web'; assert '../docker-compose.yml' in d['dockerComposeFile']"
-# enqueue + observe one task
-```
-
-## Log check
-
-Run after the boot check; the testcase is a failure if any of these print matches:
-
-```sh
-docker compose logs --tail=80 web worker db redis minio
 # fail on any traceback / unhandled error in any service:
 ! docker compose logs web worker 2>&1 | grep -iE 'traceback|^error|critical|unhandled'
 # worker should print rqworker startup line:
 docker compose logs worker 2>&1 | grep -iE 'rqworker|listening on|default'
-```
-
-## Check report
-
-**Execute this command yourself before stopping. Do not present it as a "next step" for the user — the testcase isn't done until the review file exists.** It runs an independent review (the model that built the project shouldn't grade its own output) and writes the result to `REVIEW.md` in the project dir.
-
-```sh
-claude -p \
-  --model claude-opus-4-7 \
-  --allowedTools "Read,Grep,Glob,Bash(ls:*),Bash(cat:*),Bash(rg:*)" \
-  "Read-only audit of this directory. Generated runtime artifacts (`.env`, local DB files, `__pycache__/`, `staticfiles/`) are expected. The starter has no business logic and no production hardening beyond what the prompt requested — out of scope. Report only issues that (i) prevent the scaffold from booting, (ii) make one of the smoke checks above fail, or (iii) are an outright security hole. Every claim must quote the file path and the literal substring you read; do not infer state from training-data priors. Skip nitpicks (docstrings, style, hypothetical scaling, 'consider adding X'). Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for — a starter scaffold is supposed to be small. If unsure whether something is a real bug right now, omit it. If you patched something during this run, list it under 'Fixes applied', not 'Bugs'. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; 'No issues found.' is a valid report." \
-  | tee REVIEW.md
-```
-
-Paste the output below.
-
-- What worked out of the box:
-- What broke:
-- Fixes applied:
-- Suggested skill changes:
-
-## Cleanup
-
-Leave the code. Tear down containers and volumes (web, db, redis, worker, minio + named volumes):
-
-```sh
 docker compose down -v
 ```
+
+## Review
+
+Read-only audit of the project in the current directory. Quote the file path and the literal substring you read for every claim — do not infer state from training-data priors.
+
+Verify these structural facts:
+
+**Foundation**
+- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production}.py`, `Dockerfile.dev`, `docker-compose.yml`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`.
+- `docker-compose.yml` defines services `web`, `db`, `redis`, `worker`, `minio`. Named volumes for `pgdata`, `venv` (or `web-venv`), and `minio-data`.
+- `pyproject.toml` runtime deps include `psycopg[binary]`, `django-tasks`, `django-tasks-rq`, `django-storages[s3]` (or `boto3`), `django-cors-headers`, `django-modern-rest[msgspec,openapi]`, `pyjwt`, `structlog`. Dev deps include `ruff`, `pyright`, `django-stubs`, `django-stubs-ext`.
+
+**Settings**
+- `config/settings/base.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.
+- `[tool.pyright]` block in `pyproject.toml`. `django_stubs_ext.monkeypatch()` called from `config/settings/base.py` inside an `except ImportError: pass` guard.
+- `STORAGES["default"]` resolves to `S3Boto3Storage` when `AWS_STORAGE_BUCKET_NAME` is set; falls back to `FileSystemStorage` when empty.
+- `LOGGING` is at module scope (not inside `if DEBUG:`), with `json` and `console` formatters, `console` chosen when `DEBUG`.
+
+**REST API**
+- `INSTALLED_APPS` does NOT contain `dmr`.
+- `api/` app with `controllers.py`, `schemas.py`, `urls.py`. `MediaController` typed with `Body[MediaCreate]` and a return type. Router mounted at `/api/` in `config/urls.py`.
+
+**Logging**
+- `config/middleware/logging.py` defines `RequestContextMiddleware` that binds `request_id` via `structlog.contextvars` and emits one log line per request. The middleware is in `MIDDLEWARE` after `AuthenticationMiddleware`.
+
+**Tasks**
+- `INSTALLED_APPS` includes `django_rq` and `django_tasks_rq`. `RQ_QUEUES` defined; `RQ = {"JOB_CLASS": "django_tasks_rq.Job"}` at module scope (not inside `RQ_QUEUES`).
+- A registered Django app has `apps.py` with `ready()` importing `tasks`, and a `tasks.py` defining at least one `@task`.
+
+**CORS + Devcontainer + Health**
+- `corsheaders` in `INSTALLED_APPS`; `corsheaders.middleware.CorsMiddleware` BEFORE `CommonMiddleware`.
+- `.devcontainer/devcontainer.json` parseable JSON: `"dockerComposeFile": ["../docker-compose.yml"]`, `"service": "web"`, `"workspaceFolder": "/app"`, `"shutdownAction": "stopCompose"`, `forwardPorts` includes `8000`. No secrets / DB passwords inline.
+- `pages` app exposes `liveness` and `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py` (no trailing slash).
+
+Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks. Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.

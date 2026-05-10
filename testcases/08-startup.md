@@ -49,95 +49,70 @@ Production setup:
 Run the foundation + boot check locally. Generate `Dockerfile`, `fly.toml`, `.github/workflows/test.yml`. Verify `docker build .` succeeds and the runtime stage uses `python:3.12-slim-bookworm`.
 ```
 
-## Expected outcome
-
-- Local `docker compose up -d` starts web + db + redis + worker + minio; `/admin/` login works.
-- Production Dockerfile has two stages: `builder` (uv image) → `runtime` (`python:3.12-slim-bookworm`); only `/app/.venv` and project source copied into runtime.
-- `docker build .` succeeds; final image notably smaller than 07 (`docker images` size diff).
-- `fly.toml` has `[processes]` with `web = "gunicorn ..."`, `worker = "celery ..."`, and `bolt = "python manage.py runbolt ..."`. The `bolt` process sets `DJANGO_SETTINGS_MODULE=config.settings.bolt` (via `[env]` block or inline); `web` keeps `config.settings.production`.
-- `django-bolt` in dependencies; `django_bolt` in `INSTALLED_APPS` (`base.py`).
-- `config/settings/bolt.py` exists and, after import, `MIDDLEWARE` excludes the five stripped middleware classes; `INSTALLED_APPS` excludes admin / sessions / messages / staticfiles; `TEMPLATES == []`; `ROOT_URLCONF == 'config.urls_bolt'`.
-- `config/urls_bolt.py` exists and does NOT import `django.contrib.admin` or the accounts URLConf.
-- `api/api.py` defines `api = BoltAPI()` and a `@api.get("/users/{user_id}")` async handler returning a `msgspec.Struct`.
-- `manage.py runbolt --dev` boots without raising; `curl http://127.0.0.1:<bolt-port>/users/<id>` returns the seeded user as JSON.
-- GlitchTip wired via `sentry-sdk` in `production.py`, DSN from env.
-- GDPR scaffolding present: `before_send` PII scrubber, `data_export` / `data_delete` views or management commands.
-- GA4 snippet in base template, measurement ID from env.
-- Security settings + CI workflow present.
-- `django-mail-auth` installed; `mailauth` in `INSTALLED_APPS`; `MailAuthBackend` in `AUTHENTICATION_BACKENDS`; `accounts/` URL include with `mailauth` namespace; `/accounts/login/` renders an email-only form.
-- `django-axes` installed; `axes` in `INSTALLED_APPS`; `AxesMiddleware` last in `MIDDLEWARE`; `AxesBackend` first in `AUTHENTICATION_BACKENDS`. `AXES_HANDLER = 'axes.handlers.cache.AxesCacheHandler'` set in `production.py` (Redis is required and present). `axes_*` migrations applied.
-- `django-csp` installed; `csp.middleware.CSPMiddleware` in `production.py` `MIDDLEWARE`. `CONTENT_SECURITY_POLICY['DIRECTIVES']['script-src']` includes both `https://www.googletagmanager.com` and `https://www.google-analytics.com`. `connect-src` and `img-src` include `https://www.google-analytics.com`. No `'unsafe-inline'` in `script-src`.
-- Pyright + `django-stubs` + `django-stubs-ext` configured; `[tool.pyright]` block in `pyproject.toml`; `django_stubs_ext.monkeypatch()` called from `config/settings/base.py` (inside an `except ImportError: pass` guard so the prod image without the dev dep keeps booting); `uv run pyright` exits 0 on the host.
-- `pages` app exposes `liveness` / `readiness`; `urlpatterns` wires `path('healthz', ...)` and `path('readyz', ...)`. `fly.toml` `[checks]` block has at least one entry with `path = "/readyz"` and `interval = "10s"`. `curl /healthz` against the local Compose stack returns 200 `ok`.
-
-## Run
+## Boot check
 
 ```sh
-# Run from a scratch parent dir; the skill creates `08-fly-app/`.
-# AI executes the skill here, then:
 cd 08-fly-app
 docker compose up -d
-docker compose exec web uv run manage.py migrate
+docker compose exec -T web uv run manage.py migrate
 curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
-# Healthchecks reachable via the standard Django process
+curl -sf http://127.0.0.1:8000/accounts/login/ > /dev/null
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
-# Fly.io [checks] block points at /readyz
-grep -E '^\s*path\s*=\s*"/readyz"' fly.toml
-uv run pyright
-# CSP enforced and includes GA4 hosts
-grep -q 'csp.middleware.CSPMiddleware' config/settings/production.py
-grep -q 'googletagmanager.com' config/settings/production.py
-# Bolt fast-path: smoke-check the slim settings load + endpoint serves
-docker compose exec -e DJANGO_SETTINGS_MODULE=config.settings.bolt web \
+docker compose exec -e DJANGO_SETTINGS_MODULE=config.settings.bolt -T web \
   uv run python -c "from django.conf import settings; \
-    assert 'django.contrib.admin' not in settings.INSTALLED_APPS, settings.INSTALLED_APPS; \
-    assert settings.ROOT_URLCONF == 'config.urls_bolt', settings.ROOT_URLCONF; \
-    assert settings.TEMPLATES == [], settings.TEMPLATES"
-# Boot runbolt in the background (port 8001 must be published in docker-compose.yml)
-# and curl from the host — the slim runtime image has no curl binary.
+    assert 'django.contrib.admin' not in settings.INSTALLED_APPS; \
+    assert settings.ROOT_URLCONF == 'config.urls_bolt'; \
+    assert settings.TEMPLATES == []"
 docker compose exec -d -e DJANGO_SETTINGS_MODULE=config.settings.bolt web \
   uv run manage.py runbolt --dev --port 8001
 sleep 2
 curl -sf http://127.0.0.1:8001/users/1 || true
+uv run pyright
 docker build -t 08-fly-app:test .
 docker images 08-fly-app:test
-```
-
-## Log check
-
-Run after the boot check; the testcase is a failure if any of these print matches:
-
-```sh
-docker compose logs --tail=80 web worker db redis minio
+docker run --rm 08-fly-app:test python --version | grep -q '3\.12'
 ! docker compose logs web worker 2>&1 | grep -iE 'traceback|^error|critical|unhandled'
 docker compose logs worker 2>&1 | grep -iE 'celery@.*ready|mingle|sync with'
-```
-
-## Check report
-
-**Execute this command yourself before stopping. Do not present it as a "next step" for the user — the testcase isn't done until the review file exists.** It runs an independent review (the model that built the project shouldn't grade its own output) and writes the result to `REVIEW.md` in the project dir.
-
-```sh
-claude -p \
-  --model claude-opus-4-7 \
-  --allowedTools "Read,Grep,Glob,Bash(ls:*),Bash(cat:*),Bash(rg:*)" \
-  "Read-only audit of this directory. Generated runtime artifacts (`.env`, local DB files, `__pycache__/`, `staticfiles/`) are expected. The starter has no business logic and no production hardening beyond what the prompt requested — out of scope. Report only issues that (i) prevent the scaffold from booting, (ii) make one of the smoke checks above fail, or (iii) are an outright security hole. Every claim must quote the file path and the literal substring you read; do not infer state from training-data priors. Skip nitpicks (docstrings, style, hypothetical scaling, 'consider adding X'). Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for — a starter scaffold is supposed to be small. If unsure whether something is a real bug right now, omit it. If you patched something during this run, list it under 'Fixes applied', not 'Bugs'. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; 'No issues found.' is a valid report." \
-  | tee REVIEW.md
-```
-
-Paste the output below.
-
-- What worked out of the box:
-- What broke:
-- Fixes applied:
-- Suggested skill changes:
-
-## Cleanup
-
-Leave the code. Tear down local containers and the built image. If you ran `flyctl launch` for real, also `fly apps destroy 08-fly-app` and revoke any tokens; otherwise nothing to undo on Fly.io.
-
-```sh
 docker compose down -v
 docker rmi 08-fly-app:test
 ```
+
+## Review
+
+Read-only audit of the project in the current directory. Quote the file path and the literal substring you read for every claim — do not infer state from training-data priors.
+
+Verify these structural facts:
+
+**Foundation**
+- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,bolt,test}.py`, `config/urls.py`, `config/urls_bolt.py`, `Dockerfile`, `docker-compose.yml`, `docker-compose.override.yml`, `fly.toml`, `.github/workflows/test.yml`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`.
+- `pyproject.toml` runtime deps include `psycopg[binary]`, `celery[redis]` (or `celery` + `redis`), `django-storages[s3]`, `django-mail-auth`, `django-axes`, `django-csp`, `django-bolt`, `msgspec`, `django-anymail[postmark]`, `sentry-sdk`, `gunicorn`. Dev deps include `pytest`, `pytest-django`, `pyright`, `django-stubs`, `django-stubs-ext`, `ruff`.
+
+**Settings (split + bolt)**
+- `config/settings/base.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`. `[tool.pyright]` block in `pyproject.toml`. `django_stubs_ext.monkeypatch()` called from `base.py` inside an `except ImportError: pass` guard.
+- `config/settings/bolt.py` imports from `base` and strips `SessionMiddleware`, `MessageMiddleware`, `CsrfViewMiddleware`, `AuthenticationMiddleware`, `WhiteNoiseMiddleware` from `MIDDLEWARE`, and `django.contrib.admin`, `django.contrib.sessions`, `django.contrib.messages`, `django.contrib.staticfiles` from `INSTALLED_APPS`. Sets `TEMPLATES = []` and `ROOT_URLCONF = "config.urls_bolt"`.
+- `config/urls_bolt.py` contains `urlpatterns: list = []` (BoltAPI auto-discovers; no `.urls` to mount). Does NOT import `django.contrib.admin` or `accounts`.
+- Security settings in `production.py` only, including `SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$"]`.
+- `csp.middleware.CSPMiddleware` in `production.py`'s `MIDDLEWARE` only. `CONTENT_SECURITY_POLICY['DIRECTIVES']['script-src']` includes `https://www.googletagmanager.com` and `https://www.google-analytics.com`. `connect-src` and `img-src` include `https://www.google-analytics.com`. No `'unsafe-inline'` in `script-src`.
+
+**Bolt API**
+- `api/api.py` defines `api = BoltAPI()` and a `@api.get("/users/{user_id}")` async handler returning a `msgspec.Struct` populated via `await User.objects.aget(id=user_id)`.
+- `INSTALLED_APPS` in `base.py` includes `django_bolt`.
+
+**Auth + analytics + GDPR + Sentry**
+- `INSTALLED_APPS` lists `mailauth.contrib.admin` BEFORE `django.contrib.admin`. `MailAuthBackend` in `AUTHENTICATION_BACKENDS`. `accounts/` URL include with `mailauth` namespace.
+- `MIDDLEWARE` ends with `axes.middleware.AxesMiddleware`. `AUTHENTICATION_BACKENDS` starts with `axes.backends.AxesBackend`. `AXES_HANDLER = 'axes.handlers.cache.AxesCacheHandler'` set in `production.py`.
+- GA4 snippet in `templates/_analytics.html` (or equivalent) using `{{ ANALYTICS_ID }}` from a context processor; included from `templates/base.html`.
+- `sentry_sdk.init(...)` called from `production.py` only with `before_send` PII scrubber, `send_default_pii=False`.
+- GDPR scaffolding present: `data_export` / `data_delete` views or management commands.
+
+**Deploy artefacts**
+- `Dockerfile` is multi-stage: `builder` on `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`, runtime on `python:3.12-slim-bookworm`. Build-push GitHub workflow uses `target: prod`.
+- `fly.toml` has `[processes]` with `web`, `worker`, `bolt`. The `bolt` process sets `DJANGO_SETTINGS_MODULE=config.settings.bolt`. `[env]` documents required `DJANGO_ALLOWED_HOSTS`, `DJANGO_BEHIND_PROXY=True`, etc. `[[checks]]` (or service health) hits `/readyz`.
+- `[checks]` / `[services.checks]` block in `fly.toml` references `/readyz`.
+
+**Health**
+- `pages` app exposes `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.
+- Anymail webhook URL `path("anymail/", include("anymail.urls"))` wired; `ANYMAIL["WEBHOOK_SECRET"]` set.
+
+Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks. Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.

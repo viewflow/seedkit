@@ -37,43 +37,25 @@ Production setup: skip.
 Run the foundation, the boot check (migrate + createsuperuser), and confirm /admin/ login works.
 ```
 
-## Expected outcome
-
-- `uv run manage.py runserver` boots without errors.
-- `/admin/` renders and the superuser can log in.
-- Files present: `pyproject.toml`, `uv.lock`, `manage.py`, `config/settings.py`, `db.sqlite3`, `.env`, `.gitignore`.
-- No Docker, no Postgres deps, no Ruff config.
-
-## Run
+## Boot check
 
 ```sh
-# Run from a scratch parent dir; the skill creates `01-minimal-blog/` via `uv init`.
-# AI executes the skill here, then:
 cd 01-minimal-blog
 uv run manage.py runserver &
 curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
 kill $(jobs -p) 2>/dev/null; pkill -f 'manage.py' 2>/dev/null; wait
 ```
 
-## Check report
+## Review
 
-**Execute this command yourself before stopping. Do not present it as a "next step" for the user — the testcase isn't done until the review file exists.** It runs an independent review (the model that built the project shouldn't grade its own output) and writes the result to `REVIEW.md` in the project dir.
+Read-only audit of the project in the current directory. Quote the file path and the literal substring you read for every claim — do not infer state from training-data priors.
 
-```sh
-claude -p \
-  --model claude-opus-4-7 \
-  --allowedTools "Read,Grep,Glob,Bash(ls:*),Bash(cat:*),Bash(rg:*)" \
-  "Read-only audit of this directory. Generated runtime artifacts (`.env`, local DB files, `__pycache__/`, `staticfiles/`) are expected. The starter has no business logic and no production hardening beyond what the prompt requested — out of scope. Report only issues that (i) prevent the scaffold from booting, (ii) make one of the smoke checks above fail, or (iii) are an outright security hole. Every claim must quote the file path and the literal substring you read; do not infer state from training-data priors. Skip nitpicks (docstrings, style, hypothetical scaling, 'consider adding X'). Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for — a starter scaffold is supposed to be small. If unsure whether something is a real bug right now, omit it. If you patched something during this run, list it under 'Fixes applied', not 'Bugs'. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; 'No issues found.' is a valid report." \
-  | tee REVIEW.md
-```
+Verify these structural facts:
 
-Paste the output below.
+- Files present at the project root: `pyproject.toml`, `uv.lock`, `manage.py`, `config/settings.py`, `db.sqlite3`, `.env`, `.gitignore`.
+- `pyproject.toml` declares `django>=6.0,<7.0` and `django-environ`. No Ruff config, no pyright config.
+- `config/settings.py` reads `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DATABASE_URL` via `environ.Env()`, and uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.
+- No Docker files (`Dockerfile`, `docker-compose.yml`).
+- `config/urls.py` redirects `/` to `/admin/`.
 
-- What worked out of the box:
-- What broke:
-- Fixes applied:
-- Suggested skill changes:
-
-## Cleanup
-
-Leave the code in place; no external resources to remove (SQLite file lives inside the project dir).
+Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks (docstrings, style, hypothetical scaling, "consider adding X"). Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for — a starter scaffold is supposed to be small. If unsure whether something is a real bug right now, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.

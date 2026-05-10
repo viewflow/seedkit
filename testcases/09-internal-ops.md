@@ -48,79 +48,60 @@ Production setup:
 Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.prod.yml`, `.github/workflows/test.yml`, `.github/workflows/deploy.yml`. Do not actually deploy — verify all artifacts are present, `docker build .` succeeds, and the deploy workflow references `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`.
 ```
 
-## Expected outcome
-
-- Local `docker compose up -d` starts web + db + redis + worker; `/admin/` login works.
-- `worker` runs `manage.py rqworker default` and processes a queued task.
-- Bugsink wired via `sentry-sdk` in `production.py`, DSN from env.
-- Umami snippet in base template (website ID + host from env).
-- GDPR scaffolding present (PII scrubber, export/delete views or commands).
-- `.github/workflows/test.yml` runs migrations + pytest.
-- `.github/workflows/deploy.yml` uses SSH secrets, rsyncs source, runs `docker compose pull && up -d` on the remote.
-- Security settings applied only in `production.py`.
-- `structlog` installed; `LOGGING` with `json` (prod) / `console` (dev) formatters; `RequestContextMiddleware` inserted into `MIDDLEWARE`; production logs are valid JSON lines carrying `request_id`.
-- `axes` is **not** in `INSTALLED_APPS` and `django-axes` is **not** in dependencies — the auth-hardening follow-up must be skipped because auth = none.
-- `dbbackup` is **not** in `INSTALLED_APPS` and `django-dbbackup` is **not** in dependencies — the dbbackup follow-up is gated on `deploy = vps`, and this case is `github-ssh`.
-- `django-csp` installed; `csp.middleware.CSPMiddleware` only in `production.py` `MIDDLEWARE`. `CONTENT_SECURITY_POLICY['DIRECTIVES']['script-src']` resolves to include the Umami host at runtime (read from env). No `'unsafe-inline'` in `script-src`.
-- `pages` app exposes `liveness` / `readiness`; `urlpatterns` wires `path('healthz', ...)` and `path('readyz', ...)`. `.github/workflows/deploy.yml` curls `/readyz` against the remote after `docker compose up -d` and fails the job on non-200.
-
-## Run
+## Boot check
 
 ```sh
-# Run from a scratch parent dir; the skill creates `09-ssh-deploy/`.
-# AI executes the skill here, then:
 cd 09-ssh-deploy
 docker compose up -d
-docker compose exec web uv run manage.py migrate
+docker compose exec -T web uv run manage.py migrate
 curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
-# Healthchecks
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
-# Deploy workflow probes /readyz post-deploy
-grep -q '/readyz' .github/workflows/deploy.yml
-# CSP enforced in production
-grep -q 'csp.middleware.CSPMiddleware' config/settings/production.py
-# Auth-hardening + dbbackup are correctly gated OFF
-! grep -E '^django-axes' pyproject.toml
-! grep -E '^django-dbbackup' pyproject.toml
 docker build -t 09-ssh-deploy:test .
-grep -E 'SSH_(HOST|USER|KEY)' .github/workflows/deploy.yml
-```
-
-## Log check
-
-Run after the boot check; the testcase is a failure if any of these print matches:
-
-```sh
-docker compose logs --tail=80 web worker db redis
 ! docker compose logs web worker 2>&1 | grep -iE 'traceback|^error|critical|unhandled'
 docker compose logs worker 2>&1 | grep -iE 'rqworker|listening on|default'
-```
-
-## Check report
-
-**Execute this command yourself before stopping. Do not present it as a "next step" for the user — the testcase isn't done until the review file exists.** It runs an independent review (the model that built the project shouldn't grade its own output) and writes the result to `REVIEW.md` in the project dir.
-
-```sh
-claude -p \
-  --model claude-opus-4-7 \
-  --allowedTools "Read,Grep,Glob,Bash(ls:*),Bash(cat:*),Bash(rg:*)" \
-  "Read-only audit of this directory. Generated runtime artifacts (`.env`, local DB files, `__pycache__/`, `staticfiles/`) are expected. The starter has no business logic and no production hardening beyond what the prompt requested — out of scope. Report only issues that (i) prevent the scaffold from booting, (ii) make one of the smoke checks above fail, or (iii) are an outright security hole. Every claim must quote the file path and the literal substring you read; do not infer state from training-data priors. Skip nitpicks (docstrings, style, hypothetical scaling, 'consider adding X'). Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for — a starter scaffold is supposed to be small. If unsure whether something is a real bug right now, omit it. If you patched something during this run, list it under 'Fixes applied', not 'Bugs'. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; 'No issues found.' is a valid report." \
-  | tee REVIEW.md
-```
-
-Paste the output below.
-
-- What worked out of the box:
-- What broke:
-- Fixes applied:
-- Suggested skill changes:
-
-## Cleanup
-
-Leave the code. Tear down local containers and the built image. If you actually ran the deploy workflow, SSH into the remote and `docker compose down -v` there, then revoke the deploy SSH key from `~/.ssh/authorized_keys` and the GitHub repo secrets.
-
-```sh
 docker compose down -v
 docker rmi 09-ssh-deploy:test
 ```
+
+## Review
+
+Read-only audit of the project in the current directory. Quote the file path and the literal substring you read for every claim — do not infer state from training-data priors.
+
+Verify these structural facts:
+
+**Foundation**
+- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,test}.py`, `Dockerfile`, `docker-compose.yml`, `docker-compose.override.yml`, `deploy/docker-compose.prod.yml`, `deploy/.env.prod.example`, `.github/workflows/{test.yml,deploy.yml}`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`.
+- `pyproject.toml` runtime deps include `psycopg[binary]`, `django-tasks`, `django-tasks-rq`, `django-rq`, `django-csp`, `sentry-sdk`, `structlog`, `gunicorn`. Dev deps include `pytest`, `pytest-django`, `ruff`.
+- `pyproject.toml` does NOT list `django-axes`, `django-dbbackup`, `django-allauth`, `django-mail-auth`, or anymail/email packages — auth = none, deploy = github-ssh, email = none.
+
+**Settings**
+- `config/settings/base.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.
+- Security settings (`SECURE_SSL_REDIRECT`, HSTS, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS`, `SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$"]`) live in `production.py` only.
+- `csp.middleware.CSPMiddleware` and `CONTENT_SECURITY_POLICY` in `production.py` only. `script-src` includes the Umami host (resolved from env at runtime). No `'unsafe-inline'` in `script-src`.
+- `INSTALLED_APPS` in `base.py` does NOT contain `axes`, `dbbackup`, `allauth`.
+
+**Tasks**
+- `INSTALLED_APPS` includes `django_rq` and `django_tasks_rq`. `RQ_QUEUES` defined; top-level `RQ = {"JOB_CLASS": "django_tasks_rq.Job"}`.
+- A registered Django app has `apps.py` with `ready()` importing `tasks`, and a `tasks.py` defining at least one `@task`.
+- `docker-compose.yml` (or override) defines a `worker` service running `manage.py rqworker default`.
+
+**Logging + Sentry/Bugsink**
+- `structlog` configured in `base.py`. `LOGGING` at module scope. `RequestContextMiddleware` in `MIDDLEWARE` after `AuthenticationMiddleware`, emits one log line per request.
+- `sentry_sdk.init(...)` called from `production.py` only with `before_send` PII scrubber, `send_default_pii=False`. DSN read from env.
+
+**Analytics + GDPR**
+- Umami snippet in `templates/_analytics.html` (or equivalent), gated on `ANALYTICS_ID` and `ANALYTICS_HOST` from a context processor. Included from `templates/base.html`.
+- GDPR scaffolding: `data_export` / `data_delete` views or management commands present.
+
+**Deploy artefacts**
+- `deploy/.env.prod.example` ships every var the prod compose references, including `DJANGO_SETTINGS_MODULE=config.settings.production`, `DJANGO_ALLOWED_HOSTS=example.com,localhost,127.0.0.1` (localhost+127.0.0.1 for the in-container healthcheck), `DJANGO_BEHIND_PROXY=True`, `POSTGRES_PASSWORD`, `GITHUB_REPOSITORY`.
+- `.github/workflows/deploy.yml` uses `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`, `secrets.GHCR_TOKEN`. The SSH script `export GITHUB_REPOSITORY="${{ github.repository }}"` before `compose pull`. Every `docker compose` invocation passes `--env-file deploy/.env.prod`. `concurrency: group: deploy` set.
+- `docker/build-push-action` step has `target: prod` (multi-stage override layout).
+- The container healthcheck in `deploy/docker-compose.prod.yml` uses python urllib (no curl dependency).
+- `.github/workflows/test.yml` runs migrations + pytest. Env block ships `EMAIL_URL=consolemail://`, `REDIS_URL=redis://localhost:6379`, `DJANGO_SECRET_KEY` placeholder, `DJANGO_DEBUG=False`.
+
+**Health**
+- `pages` app exposes `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.
+
+Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks. Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.
