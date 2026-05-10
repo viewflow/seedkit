@@ -87,6 +87,7 @@ def create_checkout_session(request):
         success_url=request.build_absolute_uri("/billing/success/"),
         cancel_url=request.build_absolute_uri("/billing/cancel/"),
     )
+    assert session.url
     return redirect(session.url)
 ```
 
@@ -99,6 +100,7 @@ def customer_portal(request):
         customer=request.user.stripe_customer_id,
         return_url=request.build_absolute_uri("/billing/"),
     )
+    assert session.url
     return redirect(session.url)
 ```
 
@@ -291,6 +293,7 @@ def create_checkout_session(request):
         success_url=request.build_absolute_uri("/billing/success/"),
         cancel_url=request.build_absolute_uri("/billing/cancel/"),
     )
+    assert session.url
     return redirect(session.url)
 ```
 

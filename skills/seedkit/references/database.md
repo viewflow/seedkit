@@ -146,22 +146,21 @@ uv add 'psycopg[binary]'
 
 `env.db()` returns `CONN_MAX_AGE=0` by default — every request opens a new
 Postgres connection. Behind gunicorn this wastes one TCP handshake per
-request. Pass keep-alive options:
+request. Configure keep-alive via URL query parameters; django-environ
+lifts `conn_max_age`, `conn_health_checks`, `atomic_requests`, and
+`autocommit` to the top of the parsed dict where Django expects them:
 
-```python
-# config/settings.py (or base.py)
-DATABASES = {
-    "default": env.db(
-        "DATABASE_URL",
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}" if DEBUG else env.NOTSET,
-        conn_max_age=60,            # reuse connections for 60s
-        conn_health_checks=True,    # validate before reuse — Django 4.1+
-    )
-}
+```sh
+# .env / .env.prod
+DATABASE_URL=postgres://user:pass@host:5432/dbname?conn_max_age=60&conn_health_checks=True
 ```
 
-`conn_health_checks` is a no-op for SQLite, so this is safe to set
-unconditionally.
+```python
+DATABASES = {"default": env.db("DATABASE_URL", default=...)}
+```
+
+Safe to keep on the URL even when SQLite is the dev fallback —
+`conn_health_checks` is a no-op there.
 
 ### Variant A — Postgres on host
 

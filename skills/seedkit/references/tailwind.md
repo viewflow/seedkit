@@ -121,14 +121,13 @@ DaisyUI ships single-file `.mjs` plugin bundles per release. Place them under `a
 
 ```sh
 mkdir -p assets/css
-# Pin to a known release — replace v5.0.0 with the latest tag from
-# https://github.com/saadeghi/daisyui/releases. Commit the files; they're
-# vendored assets, not build artefacts.
 curl -fsSL -o assets/css/daisyui.mjs \
-    https://github.com/saadeghi/daisyui/releases/download/v5.0.0/daisyui.mjs
+    https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
 curl -fsSL -o assets/css/daisyui-theme.mjs \
-    https://github.com/saadeghi/daisyui/releases/download/v5.0.0/daisyui-theme.mjs
+    https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.mjs
 ```
+
+Commit both files — they're vendored assets, not build artefacts.
 
 Don't gitignore these — reproducible builds depend on the exact bundle that was committed.
 
