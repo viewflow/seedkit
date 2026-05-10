@@ -17,7 +17,12 @@ set -uo pipefail
 
 REPO="$(cd "$(dirname "$0")" && pwd)"
 TESTCASES="$REPO/testcases"
-WORKSPACE="$REPO/workspace"
+# Generated projects land in the sibling `seedkit-examples` submodule of
+# the parent repo. Logs live in `seedkit-examples/logs/` (gitignored
+# inside the examples repo) so the showcase landing page stays clean.
+# Override via $WORKSPACE if you want output elsewhere.
+WORKSPACE="${WORKSPACE:-$REPO/../seedkit-examples}"
+WORKSPACE="$(cd "$WORKSPACE" && pwd)"
 LOGS="$WORKSPACE/logs"
 MODEL="${MODEL:-claude-sonnet-4-6}"
 # Hard ceiling per case. The seedkit agent occasionally improvises a bash
@@ -76,9 +81,17 @@ fi
 } > "$SUMMARY"
 
 cleanup_workspace() {
-    # Remove everything in workspace EXCEPT the logs directory and the
-    # top-level README (regenerated at the end of every run).
-    find "$WORKSPACE" -mindepth 1 -maxdepth 1 ! -name 'logs' ! -name 'README.md' -exec rm -rf {} +
+    # Remove generated projects but preserve the examples-repo metadata
+    # (`.git`, `.gitignore`, `LICENSE`, top-level `README.md` regenerated
+    # at the end of the run) and the logs dir.
+    find "$WORKSPACE" -mindepth 1 -maxdepth 1 \
+        ! -name '.git' \
+        ! -name '.gitignore' \
+        ! -name '.gitattributes' \
+        ! -name 'LICENSE' \
+        ! -name 'README.md' \
+        ! -name 'logs' \
+        -exec rm -rf {} +
 }
 
 # Extract the fenced block under "## Prompt" from a testcase file.

@@ -41,13 +41,26 @@ The reviewer prompt at the bottom of every testcase is identical and short: repo
 
 Each case runs in its own session (portable `setsid_exec` Python shim) so the post-case sweep `kill -- -$pgid` reaches every descendant — orphaned celery workers, gunicorn, `runserver` autoreloader. A watchdog (default `TIMEOUT_PER_CASE=7200`) terminates the group if the case overruns. Cleanup is harness-side; the skill and testcase prompts must not invoke `pkill -f` (it matches the parent `claude` process).
 
+Generated projects land in `../seedkit-examples/` (the sibling submodule). Per-run logs land in `../seedkit-examples/logs/` (gitignored inside that repo). The harness prepends each testcase's `## Prompt` block to the generated project's `README.md` and writes a top-level `seedkit-examples/README.md` index after every run.
+
 ## Submodule workflow
 
-`seedkit/` is a submodule of `RobustaRush/Robusta`. After committing inside the submodule, immediately bump the parent pointer:
+`seedkit/` is a submodule of `RobustaRush/Robusta`. So is `seedkit-examples/` — they're siblings, neither nested in the other (so cloning `seedkit` alone doesn't drag the examples).
+
+After committing inside `seedkit/`, bump the parent pointer:
 
 ```sh
 # inside seedkit/
 git push origin main
 # in parent
 git -C .. add seedkit && git -C .. commit -m "chore: bump seedkit/ — <reason>" && git -C .. push origin main
+```
+
+Refresh the examples after a clean run:
+
+```sh
+cd seedkit-examples
+git add -A && git commit -m "refresh: $(date -u +%Y-%m-%d) run" && git push
+cd ..
+git add seedkit-examples && git commit -m "chore: bump seedkit-examples/" && git push
 ```
