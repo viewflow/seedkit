@@ -387,7 +387,10 @@ def test_migration_forward_and_back(migrator):
     MyModel = new_state.apps.get_model("myapp", "MyModel")
     assert MyModel.objects.filter(status="active").count() == 0
 
-    migrator.reset()  # rolls back to 0001 — verifies the backwards() function runs
+    # Roll back to 0001 to exercise the migration's `backwards()` /
+    # `RunPython.reverse_code` path. `migrator.reset()` only rebuilds the
+    # migration graph in memory — it does NOT undo the applied migration.
+    migrator.apply_initial_migration(("myapp", "0001_initial"))
 ```
 
 The `migrator` fixture is provided by `django-test-migrations`; no extra `conftest.py` needed.
