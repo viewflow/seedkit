@@ -6,6 +6,11 @@
 ```python
 # HTTPS
 SECURE_SSL_REDIRECT = True
+# Exempt healthcheck endpoints — managed-platform internal probes (Fly,
+# Railway, k8s) hit the container directly without traversing the TLS
+# proxy, so they arrive as plain HTTP and would be 301-redirected,
+# making the probe never see 200.
+SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$"]
 
 # X-Forwarded-Proto trust. ONLY enable when there's a TLS-terminating proxy
 # (Caddy / nginx / managed load balancer) in front of gunicorn. Without one,

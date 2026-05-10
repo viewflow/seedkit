@@ -89,6 +89,12 @@ jobs:
           script: |
             set -euo pipefail
             cd /srv/{project_slug}
+            # Compose interpolates `${GITHUB_REPOSITORY}` from the host's
+            # shell env (or a root `.env` file in the deploy dir) — it does
+            # NOT pick it up from `env_file:` (that only sets container env).
+            # Without an explicit export, the image line resolves to
+            # `ghcr.io/:latest` and `compose pull` aborts.
+            export GITHUB_REPOSITORY="${{ github.repository }}"
             # Authenticate the *server's* docker against ghcr.io. Without
             # this, `compose pull` against a private package silently fails
             # and `up -d` keeps running the previous image.

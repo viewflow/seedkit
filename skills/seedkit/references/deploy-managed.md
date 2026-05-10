@@ -13,6 +13,18 @@ primary_region = "iad"
 
 [env]
   PORT = "8000"
+  DJANGO_BEHIND_PROXY = "True"        # Fly's edge terminates TLS
+
+# Required prod settings come from `fly secrets set` (below) — do NOT
+# hardcode here:
+#   DJANGO_SECRET_KEY        — generate with secrets.token_urlsafe
+#   DJANGO_ALLOWED_HOSTS     — your fly.dev hostname + custom domain.
+#                              Without it ALLOWED_HOSTS=[] and DEBUG=False
+#                              return 400 for every request.
+#   DJANGO_CSRF_TRUSTED_ORIGINS — https://<host> for each allowed host
+#   DATABASE_URL             — auto-set by `fly postgres attach`
+#   EMAIL_URL                — see references/email.md
+#   SENTRY_DSN               — if error-reporting wired
 
 [deploy]
   # `python` not `uv run`: the multi-stage Dockerfile's runtime stage
@@ -40,7 +52,11 @@ primary_region = "iad"
 fly launch --no-deploy
 fly postgres create
 fly postgres attach <db-name>
-fly secrets set DJANGO_SECRET_KEY=... DJANGO_ALLOWED_HOSTS=...
+fly secrets set \
+    DJANGO_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_urlsafe(50))') \
+    DJANGO_ALLOWED_HOSTS=$(fly status -j | jq -r '.Hostname'),example.com \
+    DJANGO_CSRF_TRUSTED_ORIGINS=https://example.com \
+    EMAIL_URL=consolemail://     # replace with real provider URL
 fly deploy
 ```
 

@@ -11,7 +11,10 @@ services:
     healthcheck:
       # Container-level so Caddy `depends_on: condition: service_healthy`
       # works and `restart: unless-stopped` recycles a hung gunicorn.
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/healthz || exit 1"]
+      # Use python+urllib instead of curl — the prod image only installs
+      # postgresql-client; adding curl just for healthchecks bloats the
+      # image and is one more thing to keep in sync.
+      test: ["CMD-SHELL", "python -c 'import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(\"http://localhost:8000/healthz\",timeout=2).status==200 else 1)'"]
       interval: 10s
       timeout: 3s
       retries: 5
