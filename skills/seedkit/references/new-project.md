@@ -98,24 +98,13 @@ from .base import *
 Don't re-instantiate `env = environ.Env()` — it's already imported via
 `from .base import *`.
 
-Update **all three** entry points — `startproject` set them all to `config.settings`, which becomes the empty package directory. Edit each one:
+Edit `os.environ.setdefault("DJANGO_SETTINGS_MODULE", ...)` in **all three** entry points — `startproject` left them pointing at `config.settings` (now the empty package dir):
 
-```python
-# manage.py
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
-```
+- `manage.py` → `config.settings.local`
+- `config/wsgi.py` → `config.settings.production`
+- `config/asgi.py` → `config.settings.production`
 
-```python
-# config/wsgi.py
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
-```
-
-```python
-# config/asgi.py
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
-```
-
-`wsgi.py` and `asgi.py` default to production (safety asymmetry: a misconfigured prod box that forgets to set `DJANGO_SETTINGS_MODULE` still boots with hardening on). `manage.py` defaults to `local` so dev commands run with dev tooling.
+Safety asymmetry: a prod box without `DJANGO_SETTINGS_MODULE` set still boots with hardening on; dev commands default to dev tooling.
 
 ## Static files
 
