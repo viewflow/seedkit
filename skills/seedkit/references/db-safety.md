@@ -22,10 +22,9 @@ uv add --dev django-zeal
 # config/settings/local.py  (or DEBUG-gated block in single settings)
 if DEBUG:
     INSTALLED_APPS += ["zeal"]
+    MIDDLEWARE += ["zeal.middleware.zeal_middleware"]   # required to scope detection per request
     ZEAL_RAISE_ON_VIOLATION = True
 ```
-
-`zeal` uses Django's ORM signals — no middleware, no monkey-patching.
 
 ### Silencing intentional N+1s
 
@@ -60,6 +59,14 @@ Zeal works automatically in pytest-django tests that hit the DB — no extra set
 uv add --dev django-migration-linter
 ```
 
+### Settings (local / DEBUG-gated)
+
+```python
+# config/settings/local.py
+if DEBUG:
+    INSTALLED_APPS += ["django_migration_linter"]   # registers the `lintmigrations` command
+```
+
 ### Run
 
 ```sh
@@ -82,11 +89,13 @@ Add after `uv sync --frozen` and before the test step in `.github/workflows/test
       - run: uv run manage.py lintmigrations --exclude-apps allauth account socialaccount
 ```
 
-### pyproject.toml (optional — persist the exclusion list)
+### setup.cfg (optional — persist the exclusion list)
 
-```toml
-[tool.django-migration-linter]
-exclude_apps = ["allauth", "account", "socialaccount"]
+`django-migration-linter` reads `setup.cfg`, not `pyproject.toml`:
+
+```ini
+[django_migration_linter]
+exclude_apps = silk,allauth,account,socialaccount
 ```
 
 ## django-test-migrations
@@ -100,6 +109,8 @@ uv add --dev django-test-migrations
 ```
 
 ### Usage
+
+If `startapp` already created `myapp/tests.py`, delete it before creating the `tests/` package — Django can't import both.
 
 ```python
 # myapp/tests/test_migrations.py
