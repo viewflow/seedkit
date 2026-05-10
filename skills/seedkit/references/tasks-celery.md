@@ -14,22 +14,18 @@ uv add 'celery[redis]'
 
 ## config/celery.py
 
+Default the settings module to match the layout — split: `"config.settings.production"` (mirrors wsgi/asgi); single-file: `"config.settings"`. A worker booted without `DJANGO_SETTINGS_MODULE` set should run with prod hardening; dev compose / shells override via the env var.
+
 ```python
 import os
 from celery import Celery
 
-# Default to production, mirroring wsgi.py / asgi.py. A worker that boots
-# without DJANGO_SETTINGS_MODULE set should run with prod hardening, not
-# local. Dev compose / shells override via `DJANGO_SETTINGS_MODULE=config.
-# settings.local` in `.env` (or single-file: drop the `.local` suffix).
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")  # split layout
 
 app = Celery("config")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 ```
-
-For a single-file `config/settings.py` layout, use `"config.settings"` instead.
 
 ## config/\_\_init\_\_.py
 
