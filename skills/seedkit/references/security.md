@@ -38,5 +38,3 @@ SECURE_CONTENT_TYPE_NOSNIFF = True       # Django default but worth being explic
 # checking failed".
 CSRF_TRUSTED_ORIGINS = env.list("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 ```
-
-`SECURE_HSTS_INCLUDE_SUBDOMAINS = True` and `SECURE_HSTS_PRELOAD = True` are powerful but irreversible once browsers cache the directive. `INCLUDE_SUBDOMAINS` breaks any HTTP-only subdomain you later add (staging, an internal tool); `PRELOAD = True` plus submission to chrome-preload locks the policy in for ~12 months. Leave both off until the user has thought it through.

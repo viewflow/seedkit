@@ -25,12 +25,9 @@ Then load the matching file:
 - `rest-modern-rest.md` for `django-modern-rest`
 - `rest-bolt.md` for `django-bolt`
 
-## Interaction with other add-ons
+## CORS + REST
 
-- **CORS** — if the API is consumed by a separate frontend, set `cors=yes` (`references/cors.md`). Keep the question separate; don't bundle.
-- **Auth** — `django-allauth` / `django-mail-auth` solve session / magic-link auth for the Django side. For machine-to-machine API auth (JWT, API keys), see the per-library notes.
-- **Custom user model** — applies before any REST endpoints touch `User`; the order in `SKILL.md` already handles this (custom user is foundation, REST is add-on).
-- **CORS + REST together**: ensure `corsheaders.middleware.CorsMiddleware` sits **above** any REST middleware in `MIDDLEWARE`.
+If `cors=yes` (`references/cors.md`), `corsheaders.middleware.CorsMiddleware` must sit **above** any REST middleware in `MIDDLEWARE`.
 
 ## .env.example
 

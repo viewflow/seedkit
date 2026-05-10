@@ -58,7 +58,6 @@ uv run manage.py migrate
 
 - Behind a reverse proxy the `IP_address` lockout dimension only works if `IPWARE` (or the equivalent) is reading `X-Forwarded-For`. With WhiteNoise / Caddy / nginx wired correctly this is fine; check by hitting the login form from a known IP and reading `axes_accessattempt`.
 - `axes` writes one DB row per failed attempt. On heavy public-facing forms, switch the cache backend (`AXES_HANDLER = 'axes.handlers.cache.AxesCacheHandler'`) — requires Redis (`references/redis.md`).
-- Don't skip `AxesMiddleware` — without it, lockouts are recorded but never enforced on response.
 
 ## 2FA
 

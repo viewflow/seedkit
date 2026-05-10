@@ -32,9 +32,7 @@ For every question that involves a third-party package: 1–2 sentences from the
 - `references/typecheck.md` — pyright + django-stubs
 - `references/pre-commit.md` — pre-commit hook config wiring lint / format / typecheck
 - `references/devcontainer.md` — `.devcontainer/devcontainer.json` for VS Code / Codespaces / JetBrains Gateway
-- `references/debug.md` — orbit / silk dispatcher
-- `references/db-safety.md` — django-zeal / django-migration-linter / django-test-migrations
-- `references/django-extensions.md` — `shell_plus`, `runserver_plus`, `show_urls`
+- `references/dev-tools.md` — debug toolbar (orbit / silk), `django-extensions`, db-safety (zeal / migration-linter / test-migrations)
 - `references/logging.md` — `structlog` JSON-in-prod / pretty-in-dev
 
 ### Auth & Accounts
@@ -65,7 +63,7 @@ For every question that involves a third-party package: 1–2 sentences from the
 
 - `references/rest.md` — REST API dispatcher (`-modern-rest.md` / `-bolt.md`)
 - `references/billing.md` — Stripe SDK or dj-stripe
-- `references/analytics.md` — dispatcher (`-goatcounter.md` / `-umami.md` / `-shynet.md` / `-ga4.md`)
+- `references/analytics.md` — GoatCounter / Umami / Shynet / GA4
 
 ### Production & Deploy
 
