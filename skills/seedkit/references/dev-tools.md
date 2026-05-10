@@ -375,11 +375,7 @@ touch myapp/tests/__init__.py
 ```
 
 ```python
-# myapp/tests/test_migrations.py
-import pytest
-from django_test_migrations.contrib.unittest_case import MigratorTestCase
-
-# pytest style
+# myapp/tests/test_migrations.py — sample, write when you have a real migration to test
 def test_migration_forward_and_back(migrator):
     old_state = migrator.apply_initial_migration(("myapp", "0001_initial"))
     new_state = migrator.apply_tested_migration(("myapp", "0002_add_status"))
@@ -387,9 +383,8 @@ def test_migration_forward_and_back(migrator):
     MyModel = new_state.apps.get_model("myapp", "MyModel")
     assert MyModel.objects.filter(status="active").count() == 0
 
-    # Roll back to 0001 to exercise the migration's `backwards()` /
-    # `RunPython.reverse_code` path. `migrator.reset()` only rebuilds the
-    # migration graph in memory — it does NOT undo the applied migration.
+    # Roll back by re-applying the earlier migration. `migrator.reset()`
+    # only rebuilds the in-memory graph — it does not undo applied state.
     migrator.apply_initial_migration(("myapp", "0001_initial"))
 ```
 

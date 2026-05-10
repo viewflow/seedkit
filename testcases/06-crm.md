@@ -40,7 +40,7 @@ Add-ons:
 
 Production setup: skip.
 
-Run the foundation, the boot check, start `manage.py db_worker` in a second terminal, enqueue one example task and confirm it runs. Hit a profiled view and confirm the request appears under `/silk/`. Run `uv run manage.py lintmigrations`. Write a migration test in `jobs/tests/test_migrations.py` using the `migrator` fixture that applies the initial jobs migration forward and rolls it back. Run `uv run pytest`.
+Run the foundation, the boot check, start `manage.py db_worker` in a second terminal, enqueue one example task and confirm it runs. Hit a profiled view and confirm the request appears under `/silk/`. Run `uv run manage.py lintmigrations`. Run `uv run pytest` to confirm the test runner is wired (no project-specific tests required — `django-test-migrations` is installed for the user to write migration tests later).
 ```
 
 ## Boot check
@@ -84,7 +84,6 @@ Verify these structural facts:
 - `config/urls.py` mounts `silk.urls` only when `silk` is in `INSTALLED_APPS` (or `settings.DEBUG`).
 - `templates/base.html` (or analytics partial) renders the GoatCounter snippet, gated on `ANALYTICS_ID` and `ANALYTICS_HOST` from a context processor.
 - A registered Django app has `apps.py` with `ready()` importing `tasks`, and a `tasks.py` defining at least one `@task`.
-- `<app>/tests/test_migrations.py` exists and uses `migrator.apply_initial_migration` + `migrator.apply_tested_migration` (and asserts on rollback).
 - `pages` app exposes `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.
 
 Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks. Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.
