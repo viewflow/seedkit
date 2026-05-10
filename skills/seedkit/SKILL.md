@@ -183,7 +183,7 @@ Each rule has a *why* so you can judge edge cases.
 **Snippet integrity**
 
 - Use snippets verbatim. Don't drop lines that look obvious or redundant — `DEFAULT_AUTO_FIELD`, gated env defaults, top-level `RQ = {"JOB_CLASS": ...}`. They look optional and are not.
-- The fail-fast idiom for env vars is `default=<dev-value> if DEBUG else env.NOTSET`. Never write `default=… if DEBUG else None` — `env.db(None)` and `env.email_url(None)` crash on URL parsing, and plain `env(default=None)` silently propagates `None` into Django settings. `env.NOTSET` raises `ImproperlyConfigured` naming the variable.
+- The fail-fast idiom for env vars is `default=<dev-value> if DEBUG else env.NOTSET`. `env.NOTSET` raises `ImproperlyConfigured` naming the variable when the env var is missing in prod.
 - Don't restate values in `local.py` / `production.py` that `base.py` already sets.
 - Don't reimplement `django-environ` (no manual `.split(",")`, no leftover `import os`).
 

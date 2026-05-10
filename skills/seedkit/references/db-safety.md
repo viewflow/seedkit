@@ -110,15 +110,13 @@ uv add --dev django-test-migrations
 
 ### Usage
 
-If `startapp` already created `myapp/tests.py`, convert it to a package — don't delete it (any tests already written would be lost):
+If `startapp` already created `myapp/tests.py`, convert it to a package:
 
 ```sh
 mkdir myapp/tests
 git mv myapp/tests.py myapp/tests/test_initial.py
 touch myapp/tests/__init__.py
 ```
-
-Then add new test modules alongside it.
 
 ```python
 # myapp/tests/test_migrations.py

@@ -54,9 +54,7 @@ reportOptionalMemberAccess = "warning"
 strictListInference = true
 ```
 
-Don't add a `[tool.django-stubs]` block. That key is read by the **mypy** plugin only — pyright ignores it. Pyright resolves Django types from the static stubs shipped inside the `django-stubs` package; no extra wiring needed.
-
-Don't keep a separate `pyrightconfig.json` alongside this — pyright will read both and the precedence rules are surprising. One source of truth.
+Pyright resolves Django types from the static stubs shipped inside the `django-stubs` package; no extra wiring needed.
 
 ## Run
 

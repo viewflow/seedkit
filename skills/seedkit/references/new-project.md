@@ -43,9 +43,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 Defaults are gated by `DEBUG`: in production `DJANGO_DEBUG` is unset and
 `env.NOTSET` makes `django-environ` raise `ImproperlyConfigured` naming
-the missing variable. Don't write `default=None` for the prod branch —
-`env.db(default=None)` crashes on URL parsing and `env(default=None)`
-silently propagates `None` into Django settings.
+the missing variable.
 
 After inserting these lines at the top of `settings.py`, delete the
 original hardcoded `DATABASES` block + `# Database` comment that
