@@ -7,6 +7,23 @@ The skill asks the user up-front (Foundation step 4) which structure to use:
 
 The same choice applies in production — don't re-ask. The "Local development" and "Production" sections below each have a **simple** subsection (default) and an **override** subsection.
 
+## Image choice
+
+Use these three across every `FROM` in this reference. Don't substitute Alpine, distroless, or the full (non-slim) Debian.
+
+| Tier | Image | Use it for |
+|---|---|---|
+| **Slim runtime** | `python:3.12-slim-bookworm` | Final stage of the multi-stage prod Dockerfile. Wheels-only deps; no compile here. |
+| **Slim uv** *(default)* | `ghcr.io/astral-sh/uv:python3.12-bookworm-slim` | Dev image, single-stage prod, builder stage of multi-stage. Handles every wheels-based Django project (`psycopg[binary]`, `pillow`, `cffi`). |
+| **Full uv (escape hatch)** | `ghcr.io/astral-sh/uv:python3.12-bookworm` + `apt-get install -y --no-install-recommends build-essential libpq-dev default-libmysqlclient-dev` | Only when a dep has no manylinux wheel: `mysqlclient`, `lxml` from source, certain hand-rolled `cffi` packages. |
+
+Skip:
+- `python:3.12-alpine` — musl breaks manylinux wheels, slow rebuilds, recurring CVE noise.
+- `gcr.io/distroless/python3-debian12` — no shell, no apt, blocks `pg_dump` / `pg_isready` / debug.
+- `python:3.12` (full Debian) — never; slim covers every wheels-based project.
+
+Match the `python3.X` tag to `requires-python` in `pyproject.toml`. `uv sync --frozen` refuses to install on a mismatch.
+
 ## .dockerignore
 
 `.dockerignore` for Django + uv. Always include `.venv` so the host venv doesn't leak into the image.
