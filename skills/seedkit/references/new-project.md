@@ -77,10 +77,12 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 DATABASES = {"default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}" if DEBUG else env.NOTSET)}  # 4 slashes = absolute, survives running manage.py from any cwd
 ```
 
-`local.py` and `production.py` carry **only deltas** from `base.py`.
-Never restate values base sets; never redeclare `MIDDLEWARE` /
-`INSTALLED_APPS` / `DATABASES` / `EMAIL_BACKEND` / `STORAGES`. Mutate
-inherited lists in place:
+`local.py`, `production.py`, and `test.py` carry **only deltas** from
+`base.py`. `test.py` overrides what tests need cheap and deterministic —
+locmem email + cache, fast password hasher, eager task backend, in-memory
+storage, `DEBUG=False` to surface template errors. Never restate values
+base sets; never redeclare `MIDDLEWARE` / `INSTALLED_APPS` / `DATABASES`
+/ `EMAIL_BACKEND` / `STORAGES`. Mutate inherited lists in place:
 
 ```python
 # config/settings/local.py

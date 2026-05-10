@@ -16,11 +16,11 @@ uv add --dev pytest pytest-django
 
 ```ini
 [pytest]
-DJANGO_SETTINGS_MODULE = config.settings.local
+DJANGO_SETTINGS_MODULE = config.settings.test
 python_files = tests.py test_*.py *_tests.py
 ```
 
-For a single-settings layout, point at `config.settings`.
+For a single-settings layout, point at `config.settings`. The split layout already ships `config/settings/test.py` — see `references/new-project.md`.
 
 ## Run
 
