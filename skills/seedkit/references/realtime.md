@@ -191,3 +191,4 @@ async def test_chat_round_trip(authenticated_user):
 - `AsyncJsonWebsocketConsumer` requires JSON-serialisable payloads. Pass model instances through a serializer first.
 - The channel layer is fire-and-forget — `group_send` doesn't error if no one's listening. Don't rely on it for must-deliver messages; use the DB + a notification consumer.
 - Don't read `request.session` directly inside an async consumer — go through `database_sync_to_async`. `AuthMiddlewareStack` handles the session resolution at connect time.
+- `AllowedHostsOriginValidator` requires an `Origin` header. Browsers always send one; the Python `websockets` client does not by default — pass `origin='http://localhost'` (or matching `ALLOWED_HOSTS` entry) in smoke tests. Keep the validator unconditional in `config/asgi.py`.

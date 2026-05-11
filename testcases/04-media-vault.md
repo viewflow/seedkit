@@ -67,7 +67,9 @@ uv run python -c "
 import asyncio, json, websockets
 
 async def main():
-    async with websockets.connect('ws://127.0.0.1:8000/ws/echo/') as ws:
+    # AllowedHostsOriginValidator requires an Origin header; the Python
+    # websockets client doesn't send one by default.
+    async with websockets.connect('ws://127.0.0.1:8000/ws/echo/', origin='http://localhost') as ws:
         await ws.send(json.dumps({'text': 'ping'}))
         reply = json.loads(await asyncio.wait_for(ws.recv(), timeout=5))
         assert reply == {'text': 'ping'}, reply

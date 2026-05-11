@@ -33,15 +33,14 @@ api/
   urls.py           # router wiring
 ```
 
-## Minimal endpoint — `api/controllers.py`
+## Minimal endpoint
 
 Use msgspec by default. The user can substitute pydantic by importing `dmr.plugins.pydantic.PydanticFastSerializer` and `pydantic.BaseModel`.
 
 ```python
+# api/schemas.py
 import uuid
 import msgspec
-from dmr import Body, Controller
-from dmr.plugins.msgspec import MsgspecSerializer
 
 
 class UserCreate(msgspec.Struct):
@@ -51,6 +50,15 @@ class UserCreate(msgspec.Struct):
 class User(msgspec.Struct):
     uid: uuid.UUID
     email: str
+```
+
+```python
+# api/controllers.py
+import uuid
+from dmr import Body, Controller
+from dmr.plugins.msgspec import MsgspecSerializer
+
+from .schemas import User, UserCreate
 
 
 class UserController(Controller[MsgspecSerializer]):
