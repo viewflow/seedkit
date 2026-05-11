@@ -1,19 +1,21 @@
-# Robusta Seedkit
+# Rᴏʙᴜꜱᴛᴀ Sᴇᴇᴅᴋɪᴛ 🌱
   
-  An agent skill to start new Django projects or enhance old ones
+An agent skill to start new Django projects or enhance old ones
   
-  ```
-  **/seedkit** SaaS landing + waitlist, GDPR-friendly stack (mail, analytics, error reporting), VPS deploy
-  ```
+```
+/seedkit SaaS landing + waitlist, GDPR-friendly stack (mail, analytics, error reporting), VPS deploy
+ ```
   
-  ```
-  **/seedkit** add proper auth — magic link, lockout on brute force, optional 2FA
-  ```
+```
+/seedkit add proper auth — magic link, lockout on brute force, optional 2FA
+```
   
-  ```
-  /seedkit look at our repo and tell us what's worth adding next
-  ```
-  
+```
+/seedkit look at our repo and tell us what's worth adding next
+```
+
+[![View Outputs](https://img.shields.io/badge/View%20Outputs-8A2BE2?style=for-the-badge)](https://github.com/RobustaRush/seedkit-examples)
+
 ## The problem
 
 Setting up a real Django project — the kind that survives contact with users, lawyers, and the occasional auditor — is harder than it has any right to be. You have to pick a database; a way to run it locally without committing it to git by accident; a static-file story (which is also a deployment story, whether you wanted one or not); email, because eventually somebody will need a password reset; a task queue, because eventually somebody will need a slow thing to happen later; logging, because eventually it will all stop working in a way you cannot reproduce; analytics that don't anger the GDPR; error reporting that doesn't anger your wallet; and finally deployment, which is a whole second job.
