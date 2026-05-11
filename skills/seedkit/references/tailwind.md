@@ -31,10 +31,11 @@ The directory must exist on disk before `runserver` boots — Django raises at s
 mkdir -p assets
 ```
 
-Pin the CLI version in production-shaped projects (so a Tailwind 4.x point release can't change the build out from under CI):
+Pin the CLI version (always — not just in prod) so a Tailwind 4.x point release can't change the build out from under CI. Set in `base.py` or single-file settings:
 
 ```python
-TAILWIND_CLI_VERSION = '4.1.3'
+TAILWIND_CLI_VERSION = "4.1.3"
+TAILWIND_CLI_SRC_CSS = "assets/css/source.css"   # if a custom source CSS lands below
 ```
 
 For production images, also set `TAILWIND_CLI_AUTOMATIC_DOWNLOAD = False` and bake the binary in at build time, OR run `python manage.py tailwind build` during the image build (preferred — no extra binary management).

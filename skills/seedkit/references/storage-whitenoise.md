@@ -15,17 +15,9 @@ uv add whitenoise
 
 ## Settings — base / single-file
 
-Insert `whitenoise.middleware.WhiteNoiseMiddleware` into the **existing** `MIDDLEWARE` directly after `SecurityMiddleware`. Don't redeclare the list.
-
-```python
-# config/settings.py (or config/settings/base.py)
-sec_idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware")
-MIDDLEWARE.insert(sec_idx + 1, "whitenoise.middleware.WhiteNoiseMiddleware")
-```
-
-Without this line, the prod manifest static storage configured below produces 404s for every `/static/*` request — gunicorn has no static handler, and the prod proxy (Caddy / fly / etc.) routes everything to `web`.
-
-Then:
+Static + media paths only (no middleware in base — runserver serves
+static via finders in dev, and WhiteNoise's manifest storage needs
+`collectstatic` to have run):
 
 ```python
 STATIC_URL = "/static/"
@@ -37,16 +29,20 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 ## Settings — production.py
 
-Manifest storage requires `collectstatic` to have run, so it breaks `runserver` in dev. Configure it production-only:
+Insert `WhiteNoiseMiddleware` directly after `SecurityMiddleware`, and
+flip `staticfiles` to manifest storage:
 
 ```python
+sec_idx = MIDDLEWARE.index("django.middleware.security.SecurityMiddleware")
+MIDDLEWARE.insert(sec_idx + 1, "whitenoise.middleware.WhiteNoiseMiddleware")
+
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 ```
 
-(Single-file layout: gate on `not DEBUG`, or skip until deploy.)
+(Single-file layout: gate both on `not DEBUG`.)
 
 `CompressedManifestStaticFilesStorage` is the only switch needed for compression + hashed filenames. `WHITENOISE_COMPRESS` / `WHITENOISE_USE_FINDERS` don't exist.
 
