@@ -51,6 +51,10 @@ Then, in whatever empty directory you'd like to populate:
 - Smart additions: `/seedkit add [feature]` safely appends code without overwriting.
 - Low token footprint.
 
+## Contributing
+
+Please [open an issue](https://github.com/RobustaRush/seedkit/issues/new) before sending a pull request — even a one-liner. The skill is opinionated and a quick chat usually saves both sides from a wasted PR.
+
 ## License
 
 [MIT](./LICENSE) — © 2026 Mikhail Podgurskiy.
