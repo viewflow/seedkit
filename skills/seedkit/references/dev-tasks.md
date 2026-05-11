@@ -35,6 +35,13 @@ Generate one task per command the README would otherwise spell out. Include only
 | `collectstatic` | `uv run manage.py collectstatic --noinput` |
 | `worker` | `uv run celery -A config worker -l info` *(celery)* or `uv run manage.py db_worker` *(django-tasks)* |
 | `tailwind` | `uv run manage.py tailwind runserver` *(tailwind)* |
+| `deploy-migrate` | one-shot `docker compose … run --rm web uv run manage.py migrate` *(deploy=vps / github-ssh)* |
+| `deploy` | `deploy-migrate` then `docker compose -f deploy/docker-compose.prod.yml up -d` *(deploy=vps / github-ssh)* or `fly deploy` *(deploy=managed/fly)* |
+
+Deploy tasks: only generate when §6.6 deploy target was picked.
+- `vps` / `github-ssh`: `deploy` depends on `deploy-migrate` so the one-shot migrate always precedes `up -d` — that's the gap a bare `docker compose up -d --build` hits on first boot against an empty DB.
+- `managed` (Fly.io): single `deploy = fly deploy` task — Fly's release command runs migrations, no separate `deploy-migrate` needed.
+- `managed` (Railway / Render): skip — those platforms deploy on `git push`, no task to alias.
 
 ## mise.toml
 
@@ -53,6 +60,13 @@ run = "uv run manage.py migrate"
 
 [tasks.test]
 run = "uv run pytest"
+
+[tasks.deploy-migrate]
+run = "docker compose -f deploy/docker-compose.prod.yml run --rm web uv run manage.py migrate"
+
+[tasks.deploy]
+depends = ["deploy-migrate"]
+run = "docker compose -f deploy/docker-compose.prod.yml up -d"
 ```
 
 Run with `mise run dev`. First-time setup: `mise trust && mise install`.
@@ -71,6 +85,12 @@ migrate:
 
 test:
     uv run pytest
+
+deploy-migrate:
+    docker compose -f deploy/docker-compose.prod.yml run --rm web uv run manage.py migrate
+
+deploy: deploy-migrate
+    docker compose -f deploy/docker-compose.prod.yml up -d
 ```
 
 Run with `just dev`. `just --list` enumerates tasks.
@@ -93,6 +113,12 @@ migrate:
 
 test:
 	uv run pytest
+
+deploy-migrate:
+	docker compose -f deploy/docker-compose.prod.yml run --rm web uv run manage.py migrate
+
+deploy: deploy-migrate
+	docker compose -f deploy/docker-compose.prod.yml up -d
 ```
 
 ## poethepoet
@@ -107,6 +133,8 @@ install = "uv sync"
 dev     = "manage.py runserver"
 migrate = "manage.py migrate"
 test    = "pytest"
+deploy-migrate = { shell = "docker compose -f deploy/docker-compose.prod.yml run --rm web uv run manage.py migrate" }
+deploy = { sequence = ["deploy-migrate", { shell = "docker compose -f deploy/docker-compose.prod.yml up -d" }] }
 ```
 
 Poe strips `uv run` because it executes inside the venv. Run with `uv run poe dev`.

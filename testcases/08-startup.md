@@ -22,7 +22,7 @@ Internationalisation (i18n): no.
 Custom user model: no.
 Auth add-on: `django-mail-auth` (passwordless magic-link).
 Structured logging: no.
-Task runner: none.
+Task runner: mise.
 Add-ons:
   - redis
   - tasks: Celery
@@ -86,7 +86,8 @@ Read-only audit of the project in the current directory. Quote the file path and
 Verify these structural facts:
 
 **Foundation**
-- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,bolt,test}.py`, `config/urls.py`, `config/urls_bolt.py`, `Dockerfile`, `docker-compose.yml`, `docker-compose.override.yml`, `fly.toml`, `.github/workflows/test.yml`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`.
+- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,bolt,test}.py`, `config/urls.py`, `config/urls_bolt.py`, `Dockerfile`, `docker-compose.yml`, `docker-compose.override.yml`, `fly.toml`, `mise.toml`, `.github/workflows/test.yml`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`.
+- `mise.toml` has `[tasks.deploy]` running `fly deploy`.
 - `pyproject.toml` runtime deps include `psycopg[binary]`, `celery[redis]` (or `celery` + `redis`), `django-storages[s3]`, `django-mail-auth`, `django-axes`, `django-csp`, `django-bolt`, `msgspec`, `django-anymail[postmark]`, `sentry-sdk`, `gunicorn`. Dev deps include `pytest`, `pytest-django`, `pyright`, `django-stubs`, `django-stubs-ext`, `ruff`.
 
 **Settings (split + bolt)**

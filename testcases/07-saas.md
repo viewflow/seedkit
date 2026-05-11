@@ -22,7 +22,7 @@ Internationalisation (i18n): no.
 Custom user model: yes (custom `users.User` extending `AbstractUser`).
 Auth add-on: `django-allauth` (email login + mandatory verification).
 Structured logging: yes (`structlog`, JSON in prod / pretty in dev, request-scoped `request_id`).
-Task runner: none.
+Task runner: mise.
 Add-ons:
   - cache backend: sqlite (separate `cache.sqlite3` + `CacheRouter` + `DatabaseCache`)
   - tasks: Django Tasks with the Database backend (`django-tasks-db`). Also `uv run manage.py startapp jobs`, register `jobs` in `INSTALLED_APPS`, wire `jobs/apps.py` `ready()` to import `tasks`, and add a sample `@task` to `jobs/tasks.py`.
@@ -78,7 +78,8 @@ Read-only audit of the project in the current directory. Quote the file path and
 Verify these structural facts:
 
 **Foundation**
-- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,test}.py`, `config/routers.py`, `Dockerfile`, `Dockerfile.dev`, `docker-compose.yml`, `docker-compose.prod.yml`, `Caddyfile`, `litestream.yml`, `entrypoint.sh`, `.github/workflows/test.yml`, `.pre-commit-config.yaml`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`.
+- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,test}.py`, `config/routers.py`, `Dockerfile`, `Dockerfile.dev`, `docker-compose.yml`, `docker-compose.prod.yml`, `Caddyfile`, `litestream.yml`, `entrypoint.sh`, `mise.toml`, `.github/workflows/test.yml`, `.pre-commit-config.yaml`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`.
+- `mise.toml` has `[tasks.deploy-migrate]` running `docker compose -f docker-compose.prod.yml run --rm web uv run manage.py migrate` and `[tasks.deploy]` with `depends = ["deploy-migrate"]` running `docker compose -f docker-compose.prod.yml up -d`.
 - `pyproject.toml` runtime deps include `django-environ`, `django-tasks`, `django-tasks-db`, `whitenoise`, `django-allauth[mfa]`, `django-axes`, `django-csp`, `sentry-sdk`, `structlog`, `django-structlog`, `gunicorn`. **No** `psycopg`, `celery`, `redis`, `django-dbbackup`. Dev deps include `pytest`, `pytest-django`, `pyright`, `django-stubs`, `django-stubs-ext`, `ruff`, `pre-commit`.
 
 **Settings split + SQLite mini-prod**
