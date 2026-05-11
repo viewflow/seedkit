@@ -40,7 +40,7 @@ ignore = [
 "**/tests/**"      = ["S"]
 "**/test_*.py"     = ["S"]
 "**/tests.py"      = ["S"]                   # Django's default `startapp` stub
-"**/settings/*.py" = ["F405", "F403"]        # star imports across settings layers
+"**/settings/*.py" = ["F405", "F403", "S105", "S106"]  # star imports + dev-only SECRET_KEY / password defaults
 
 [tool.ruff.lint.isort]
 known-first-party = ["{project_slug}"]
