@@ -57,7 +57,4 @@ MIT (per `.claude-plugin/plugin.json`). A `LICENSE` file will turn up eventually
 
 ---
 
-> Sorry, you're right.
-> I probably shouldn't have deleted the production database.
->
-> Want me to at least write the restore script?
+<sub><i>Sorry, you're right. I probably shouldn't have deleted the production database. Want me to at least write the restore script?</i></sub>
