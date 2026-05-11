@@ -53,8 +53,8 @@ Then, in whatever empty directory you'd like to populate:
 
 ## Contributing
 
-- **[Open an issue](https://github.com/RobustaRush/seedkit/issues/new) first.** Please discuss proposed changes — even one-liners — before submitting a pull request to avoid wasted effort on an opinionated codebase.
-- **Expect long test cycles.** Validating agent behavior requires multiple test-review-fix iterations. Each cycle runs all nine end-to-end test cases and takes 1.5–2 hours. Plan accordingly when proposing larger edits.
+- Please [open an issue](https://github.com/RobustaRush/seedkit/issues/new) first. Discuss proposed changes — even one-liners — before submitting a pull request to avoid wasted effort.
+- Expect long test cycles. Validating agent behavior requires multiple test-review-fix iterations. Each cycle runs all nine end-to-end test cases and takes 1.5–2 hours.
 
 ## License
 
