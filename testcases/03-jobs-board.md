@@ -51,8 +51,9 @@ curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
 curl -sf http://127.0.0.1:8000/accounts/login/ > /dev/null
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
-# Confirm Celery autodiscovers without holding the worker open:
-uv run python -c "from config import celery_app; print(sorted(celery_app.tasks))"
+# Confirm Celery autodiscovers without holding a worker open. `import_default_modules`
+# forces eager loading — plain `celery_app.tasks` only lists built-in `celery.*` entries.
+uv run python -c "from config import celery_app; celery_app.loader.import_default_modules(); print(sorted(t for t in celery_app.tasks if not t.startswith('celery.')))"
 # docker logs must not contain fatal errors:
 ! docker compose logs db redis 2>&1 | grep -iE 'fatal|panic|traceback'
 kill $(jobs -p) 2>/dev/null; pkill -f 'manage.py' 2>/dev/null; wait
@@ -69,7 +70,7 @@ Verify these structural facts:
 - Files present: `pyproject.toml`, `manage.py`, `config/settings.py` (single-file), `config/celery.py`, `config/__init__.py`, `docker-compose.yml`, `.env`, `.env.example`, `.gitignore`.
 - `pyproject.toml` runtime deps include `psycopg[binary]`, `celery[redis]` (or `celery` + `redis`), `django-mail-auth`, `django-redis`. No `ruff`, no `pyright`.
 - `.env` sets `DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres` and `REDIS_URL=redis://localhost:6379/0`.
-- `docker-compose.yml` defines services `db` (postgres) and `redis` only — no `web`, no `worker`. Both ports published to localhost.
+- `docker-compose.yml` defines services `db` (postgres) and `redis` only — no `web`, no `worker`. Both ports bound to `127.0.0.1` (e.g. `"127.0.0.1:5432:5432"`), not `0.0.0.0`.
 
 **Settings**
 - `config/settings.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.

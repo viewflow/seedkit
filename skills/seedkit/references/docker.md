@@ -81,7 +81,7 @@ services:
     environment:
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"   # localhost only — not on every interface
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -214,7 +214,7 @@ services:
 
   db:
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"   # localhost only — not on every interface
 ```
 
 `docker compose up` in dev merges both files automatically. CI / production runs `docker compose -f docker-compose.yml up` (no override) to get the prod build.
