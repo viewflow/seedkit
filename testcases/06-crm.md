@@ -59,7 +59,7 @@ test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 uv run manage.py show_urls > /dev/null
 uv run manage.py lintmigrations
 uv run ruff check .
-uv run pytest
+uv run pytest; rc=$?; [ "$rc" -eq 0 ] || [ "$rc" -eq 5 ]   # exit 5 = no tests collected (empty scaffold)
 kill $(jobs -p) 2>/dev/null; pkill -f 'manage.py' 2>/dev/null; wait
 dropdb silk_db
 ```
