@@ -198,7 +198,7 @@ Each rule has a *why* so you can judge edge cases.
 
 **After `startproject` / `uv init` / `startapp`**
 
-- Set `requires-python = ">=3.12"` in `pyproject.toml` **immediately after `uv init`, before the first `uv add`**. `uv init` pins to the host interpreter (`>=3.14` on recent machines); `uv add` resolves against that pin and refuses Django 6 + companion deps. Fixing the pin after `uv add` requires re-resolving — easier to set it once up front.
+- Set `requires-python = ">=3.12"` in `pyproject.toml` immediately after `uv init`, before the first `uv add`. The host-derived pin (`>=3.14` on recent machines) refuses Django 6.
 - After inserting the env-driven `DATABASES = {...}` line in Option A of `references/new-project.md`, **delete** the original hardcoded `DATABASES` block + `# Database` comment that `startproject` emitted. Bottom wins; leaving both makes `DATABASE_URL` dead code. (Option B writes `base.py` from scratch, so this only applies to Option A.)
 - After `startapp <name>`, if Ruff is enabled, run `uv run ruff check --fix .` — `startapp` ships `admin.py` / `views.py` / `tests.py` with stub imports that fail `F401`.
 
