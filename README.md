@@ -56,6 +56,10 @@ Then, in whatever empty directory you'd like to populate:
 - Please [open an issue](https://github.com/RobustaRush/seedkit/issues/new) first. Discuss proposed changes — even one-liners — before submitting a pull request to avoid wasted effort.
 - Expect long test cycles. Validating agent behavior requires multiple test-review-fix iterations. Each cycle runs all nine end-to-end test cases and takes 1.5–2 hours.
 
+## Status
+
+Three weeks in, actively developed. The skill is verified against nine end-to-end scenarios in [seedkit-examples](https://github.com/RobustaRush/seedkit-examples); we're still exploring how it behaves on stacks outside that set. Reports and ideas welcome.
+
 ## License
 
 [MIT](./LICENSE) — © 2026 Mikhail Podgurskiy.
