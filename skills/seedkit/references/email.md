@@ -188,8 +188,10 @@ services:
   mailpit:
     image: axllent/mailpit:latest
     ports:
-      - "8025:8025"  # web UI
-      - "1025:1025"  # SMTP
+      # Bind to loopback — MP_SMTP_AUTH_ACCEPT_ANY + ALLOW_INSECURE
+      # would otherwise expose an open SMTP relay to the LAN.
+      - "127.0.0.1:8025:8025"  # web UI
+      - "127.0.0.1:1025:1025"  # SMTP
     environment:
       MP_MAX_MESSAGES: 5000
       MP_SMTP_AUTH_ACCEPT_ANY: 1
