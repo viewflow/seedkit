@@ -47,10 +47,11 @@ curl -sf http://127.0.0.1:8000/orbit/ > /dev/null
 curl -sf http://127.0.0.1:8025/ > /dev/null
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
-# Send a test mail and verify Mailpit captured it.
-uv run python -c "
+# Send a test mail and verify Mailpit captured it. `manage.py shell -c`
+# sets DJANGO_SETTINGS_MODULE and calls django.setup() for us — bare
+# `python -c` would silently no-op without env wiring.
+uv run manage.py shell -c "
 from django.core.mail import send_mail
-import django; django.setup()
 send_mail('hello', 'body', 'from@example.com', ['to@example.com'])
 "
 sleep 1
