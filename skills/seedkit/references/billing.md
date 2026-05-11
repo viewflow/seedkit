@@ -40,11 +40,14 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 
 ### Store the customer ID on the User model
 
-Add a nullable field to whatever model represents a user (or a `Profile`):
+Add fields to whatever model represents a user (or a `Profile`):
 
 ```python
 stripe_customer_id = models.CharField(max_length=255, blank=True, default="")
+is_subscribed = models.BooleanField(default=False)
 ```
+
+Run `makemigrations` after adding them. The webhook handlers below flip `is_subscribed` on `customer.subscription.created` / `.deleted`.
 
 Create or retrieve the Stripe customer on first checkout:
 
@@ -142,19 +145,19 @@ def stripe_webhook(request):
 
 
 def _handle_subscription_created(subscription):
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
+    # Import the concrete model — `get_user_model()` returns a generic type
+    # that hides custom fields from pyright (`stripe_customer_id`, `is_subscribed`).
+    from users.models import User
     try:
         user = User.objects.get(stripe_customer_id=subscription["customer"])
     except User.DoesNotExist:
         return
-    user.is_subscribed = True   # or whatever field tracks subscription state
+    user.is_subscribed = True
     user.save(update_fields=["is_subscribed"])
 
 
 def _handle_subscription_deleted(subscription):
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
+    from users.models import User
     try:
         user = User.objects.get(stripe_customer_id=subscription["customer"])
     except User.DoesNotExist:
