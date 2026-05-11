@@ -25,6 +25,7 @@ MODEL="${MODEL:-claude-opus-4-7}"
 TIMEOUT_PER_LOG="${TIMEOUT_PER_LOG:-3600}"
 
 command -v claude  >/dev/null || { echo "claude CLI not found in PATH"; exit 1; }
+command -v jq      >/dev/null || { echo "jq not found in PATH"; exit 1; }
 command -v python3 >/dev/null || { echo "python3 not found in PATH"; exit 1; }
 command -v git     >/dev/null || { echo "git not found in PATH"; exit 1; }
 
@@ -107,24 +108,42 @@ Hard constraints:
 - Keep every edit short.
 EOF
 
+total=${#LOGS[@]}
+idx=0
+declare -a RESULTS=()
+
 for log in "${LOGS[@]}"; do
+    idx=$((idx + 1))
     name=$(basename "$log")
     echo
-    echo "==> $name"
+    echo "==> ($idx/$total) $name"
+    echo "    log:   $log"
+    echo "    model: $MODEL"
 
     if [[ ! -f "$log" ]]; then
         echo "    skip: file vanished"
+        RESULTS+=("skip   $name")
         continue
     fi
 
     prompt="${PROMPT_TEMPLATE//LOGPATH/$log}"
     start=$(date +%s)
 
-    setsid_exec claude -p "$prompt" \
-        --dangerously-skip-permissions \
-        --model="$MODEL" \
-        --output-format text \
-        --print &
+    # stream-json + jq pulls text_delta events out token-by-token so the
+    # sub-claude's progress shows live; --output-format text would buffer
+    # until the run finishes.
+    PROMPT="$prompt" CASE_MODEL="$MODEL" \
+    setsid_exec bash -c '
+        claude -p "$PROMPT" \
+            --dangerously-skip-permissions \
+            --model="$CASE_MODEL" \
+            --output-format stream-json \
+            --include-partial-messages \
+            --print \
+            --verbose \
+        | jq --unbuffered -j -r '\''select(.event.delta.type? == "text_delta") | .event.delta.text'\''
+        exit "${PIPESTATUS[0]}"
+    ' &
     pid=$!
     pgid=$pid
 
@@ -152,8 +171,14 @@ for log in "${LOGS[@]}"; do
     kill -KILL -- -"$pgid" 2>/dev/null || true
 
     duration=$(( $(date +%s) - start ))
-    echo "    exit: $rc  duration: ${duration}s"
+    printf '    done: exit=%s duration=%ss [%d/%d]\n' "$rc" "$duration" "$idx" "$total"
+    RESULTS+=("$(printf 'exit=%-3s %5ss  %s' "$rc" "$duration" "$name")")
 done
 
+echo
+echo "════════ summary ════════"
+for line in "${RESULTS[@]}"; do
+    echo "    $line"
+done
 echo
 echo "done."
