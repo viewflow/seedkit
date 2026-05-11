@@ -54,3 +54,10 @@ Then, in whatever empty directory you'd like to populate:
 ## License
 
 MIT (per `.claude-plugin/plugin.json`). A `LICENSE` file will turn up eventually. Probably.
+
+---
+
+> Sorry, you're right.
+> I probably shouldn't have deleted the production database.
+>
+> Want me to at least write the restore script?
