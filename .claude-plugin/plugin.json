@@ -1,7 +1,7 @@
 {
   "name": "seedkit",
   "description": "AI-guided Django project setup — create only what you need, understand everything you create",
-  "version": "0.1.0",
+  "version": "26.20.1",
   "author": {
     "name": "Mikhail Podgurskiy",
     "email": "mikhail@viewflow.io"

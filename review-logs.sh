@@ -99,7 +99,8 @@ Workflow:
 4. Inside `/Users/kmmbvnr/Workspace/Robusta/seedkit/`: `git add -A`, then if anything changed commit and `git push origin main`. Use the host gitconfig — never pass `--author` or `-c user.email`.
 5. Inside `/Users/kmmbvnr/Workspace/Robusta/`: `git add seedkit`, commit `chore: bump seedkit/ — <one-line reason>`, push.
 6. `rm` the log file at LOGPATH (it's gitignored — plain `rm`, not `git rm`).
-7. Final line: `[<log basename>] <one sentence outcome>`.
+7. Don't touch CHANGELOG.md or SKILL.md `version:` — the final pass after the loop consolidates them in one shot.
+8. Final line: `[<log basename>] <one sentence outcome>`.
 
 Hard constraints:
 - Don't run `./run-tests.sh` or otherwise spawn a build.
@@ -180,5 +181,63 @@ echo "════════ summary ════════"
 for line in "${RESULTS[@]}"; do
     echo "    $line"
 done
+
+# Final pass: roll the per-log commits into one high-level CHANGELOG bullet.
+echo
+echo "════════ changelog ════════"
+
+TODAY_VER=$(date +%y.%V.%u)
+read -r -d '' CHANGELOG_TEMPLATE <<'EOF' || true
+Consolidate today's skill changes into the changelog.
+
+Today's version (year/ISO-week/ISO-weekday): **__TODAY__**
+
+1. Bump the version to **__TODAY__** in both files:
+   - `/Users/kmmbvnr/Workspace/Robusta/seedkit/.claude-plugin/plugin.json` → set `"version": "__TODAY__"`.
+   - `/Users/kmmbvnr/Workspace/Robusta/seedkit/skills/seedkit/SKILL.md` frontmatter → set `version: __TODAY__`.
+   The date drives the version — bumping on a fresh day; staying the same within a day.
+2. Read `/Users/kmmbvnr/Workspace/Robusta/seedkit/CHANGELOG.md`. If a `## __TODAY__ — ` section already exists, edit it in place; otherwise insert a new section at the top under the `# Changelog` heading.
+3. Run `git -C /Users/kmmbvnr/Workspace/Robusta/seedkit log --pretty=format:'%h %s' --since='24 hours ago'` to find commits worth recording. Batch related commits into ONE short bullet per theme — never one bullet per commit. Use Keep-a-Changelog headings (`### Added` / `### Changed` / `### Fixed` / `### Removed`), one-line bullets, high-level, user-facing.
+4. If an existing bullet in today's section covers a new commit, extend it instead of adding a duplicate.
+5. If CHANGELOG.md is longer than 200 lines after the edit, trim the **oldest** sections at the bottom to bring it back near 150 lines. Git keeps the dropped history.
+6. Commit the three files (plugin.json + SKILL.md + CHANGELOG.md) inside seedkit with message `docs: __TODAY__ changelog`. Push. Then in the parent repo `git add seedkit`, commit `chore: bump seedkit/ — __TODAY__ changelog`, push.
+7. Final line: `[changelog] <one sentence>`.
+
+Hard constraints:
+- Don't touch any other file.
+- Don't invoke any skill.
+- Use the host gitconfig — no `--author` overrides.
+- One bullet per theme. If nothing in the past 24h is meaningful, say "no changelog update" and skip the commit.
+EOF
+CHANGELOG_PROMPT="${CHANGELOG_TEMPLATE//__TODAY__/$TODAY_VER}"
+
+PROMPT="$CHANGELOG_PROMPT" CASE_MODEL="$REVIEW_MODEL" \
+setsid_exec bash -c '
+    claude -p "$PROMPT" \
+        --dangerously-skip-permissions \
+        --model="$CASE_MODEL" \
+        --output-format stream-json \
+        --include-partial-messages \
+        --print \
+        --verbose \
+    | jq --unbuffered -j -r '\''select(.event.delta.type? == "text_delta") | .event.delta.text'\''
+    exit "${PIPESTATUS[0]}"
+' &
+cpid=$!
+cpgid=$cpid
+
+( sleep 600
+  if kill -0 "$cpid" 2>/dev/null; then
+      echo "[review-logs] changelog step exceeded 600s — killing pgrp $cpgid" >&2
+      kill -TERM -- -"$cpgid" 2>/dev/null || true
+      sleep 5
+      kill -KILL -- -"$cpgid" 2>/dev/null || true
+  fi
+) &
+cwatch=$!
+wait "$cpid"; crc=$?
+kill "$cwatch" 2>/dev/null || true; wait "$cwatch" 2>/dev/null || true
+kill -TERM -- -"$cpgid" 2>/dev/null || true; sleep 1; kill -KILL -- -"$cpgid" 2>/dev/null || true
+
 echo
 echo "done."
