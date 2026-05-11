@@ -43,6 +43,14 @@ Then, in whatever empty directory you'd like to populate:
 /seedkit
 ```
 
+## What you get
+
+- Ready-to-run Django project.
+- No unused boilerplate.
+- Sane defaults out of the box.
+- Smart additions: `/seedkit add [feature]` safely appends code without overwriting.
+- Low token footprint.
+
 ## License
 
 MIT (per `.claude-plugin/plugin.json`). A `LICENSE` file will turn up eventually. Probably.
