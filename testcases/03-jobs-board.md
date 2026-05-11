@@ -72,7 +72,7 @@ Verify these structural facts:
 **Foundation**
 - Files present: `pyproject.toml`, `manage.py`, `config/settings.py` (single-file), `config/celery.py`, `config/__init__.py`, `docker-compose.yml`, `.env`, `.env.example`, `.gitignore`.
 - `pyproject.toml` runtime deps include `psycopg[binary]`, `celery[redis]` (or `celery` + `redis`), `django-mail-auth`, `django-redis`. No `ruff`, no `pyright`.
-- `.env` sets `DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres` and `REDIS_URL=redis://localhost:6379/0`.
+- `.env` sets `DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres` and `REDIS_URL=redis://localhost:6379` (no `/0` — settings append the db number per subsystem).
 - `docker-compose.yml` defines services `db` (postgres) and `redis` only — no `web`, no `worker`. Both ports bound to `127.0.0.1` (e.g. `"127.0.0.1:5432:5432"`), not `0.0.0.0`.
 
 **Settings**
