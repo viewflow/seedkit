@@ -88,7 +88,7 @@ By default, `runbolt` and `runserver` / `gunicorn` share the same settings modul
 Add `config/settings/bolt.py` that imports from `base` and strips what the API path doesn't need:
 
 ```python
-from .base import *  # noqa: F401,F403
+from .base import *
 from .base import INSTALLED_APPS, MIDDLEWARE
 
 # Auth happens in Rust (JWT / API key) — Django auth middleware adds no value.
