@@ -56,7 +56,8 @@ from django.core.mail import send_mail
 send_mail('hello', 'body', 'from@example.com', ['to@example.com'])
 "
 sleep 1
-test "$(curl -sf http://127.0.0.1:8025/api/v1/messages | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"total\"]>=1)')" = "True"
+TOTAL=$(curl -sf http://127.0.0.1:8025/api/v1/messages | python3 -c 'import json,sys; print(json.load(sys.stdin)["total"])')
+test "$TOTAL" -ge 1
 uv run ruff check .
 ! docker compose logs mailpit 2>&1 | grep -iE 'fatal|panic'
 kill $(jobs -p) 2>/dev/null; pkill -f 'manage.py' 2>/dev/null; wait
