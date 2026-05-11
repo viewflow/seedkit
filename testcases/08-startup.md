@@ -22,6 +22,7 @@ Internationalisation (i18n): no.
 Custom user model: no.
 Auth add-on: `django-mail-auth` (passwordless magic-link).
 Structured logging: no.
+Task runner: none.
 Add-ons:
   - redis
   - tasks: Celery

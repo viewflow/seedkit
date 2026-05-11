@@ -78,6 +78,7 @@ Coverage rules. Use these to regenerate the suite when the skill changes.
    - Type check (pyright): `yes` / `no` (default)
    - Pre-commit hooks: `yes` / `no` (default)
    - i18n (`gettext`): `yes` / `no` (default)
+   - Task runner: `mise` / `just` / `make` / `poe` / `none` (mise + just appear in cases 02 / 03)
 
    **Add-ons** (each at least once across the suite, but not in the minimal case)
    - Auth: `django-allauth` / `django-mail-auth` / `none`
