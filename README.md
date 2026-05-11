@@ -46,9 +46,10 @@ Then, in whatever empty directory you'd like to populate:
 ## What you get
 
 - Ready-to-run Django project.
+- Pick your stack — real alternatives at every step.
+- Smart additions: `/seedkit add [feature]` safely appends code without overwriting.
 - No unused boilerplate.
 - Sane defaults out of the box.
-- Smart additions: `/seedkit add [feature]` safely appends code without overwriting.
 - Low token footprint.
 
 ## Contributing
