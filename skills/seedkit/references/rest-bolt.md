@@ -9,10 +9,12 @@ Pre-1.0 — README explicitly says "under active development". Pin a version.
 ## Install
 
 ```sh
-uv add django-bolt
+uv add django-bolt msgspec
 ```
 
-The wheel includes a precompiled Rust extension. uv pulls the wheel on x86_64 / arm64 macOS and x86_64 Linux without a toolchain. **No aarch64-linux wheel** is published — Docker builds on Apple Silicon (linux/arm64 platform) compile from source. The builder stage of the prod Dockerfile must use the full uv image plus build tools — see `references/docker.md` "Full uv (escape hatch)" tier:
+`msgspec` is a transitive dep of `django-bolt`, but `api/api.py` imports it directly — pin it explicitly so the lockfile records it as a runtime dep.
+
+The wheel includes a precompiled Rust extension. uv pulls the wheel on x86_64 / arm64 macOS and x86_64 Linux without a toolchain. **No aarch64-linux wheel** is published — Docker builds on Apple Silicon (linux/arm64 platform) compile from source. Every stage that runs `uv sync` (builder for the `simple` multi-stage Dockerfile; both `dev` and `prod` for the `override` Dockerfile, since they share the `base` stage that does `uv sync`) must use the full uv image plus build tools — see `references/docker.md` "Full uv (escape hatch)" tier:
 
 ```dockerfile
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
@@ -21,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 ```
 
-The slim runtime stage stays on `python:3.12-slim-bookworm` — only the build needs the toolchain.
+The slim runtime stage stays on `python:3.12-slim-bookworm` — only stages that run `uv sync` need the toolchain. For the `override` Dockerfile, switch the shared `base` stage to the full uv image with `build-essential pkg-config`; both `dev` and `prod` inherit it.
 
 ## settings.py / base.py
 
