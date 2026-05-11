@@ -228,7 +228,7 @@ uv add --dev django-extensions
 from .base import *
 from .base import INSTALLED_APPS
 
-INSTALLED_APPS = INSTALLED_APPS + ['django_extensions']
+INSTALLED_APPS += ["django_extensions"]
 ```
 
 Don't add to `base.py` — production images would import a dev-only dep at boot and crash.
