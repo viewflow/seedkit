@@ -17,6 +17,8 @@ For every question that involves a third-party package: 1–2 sentences from the
 
 **Use answers already given.** Before asking any question, scan the user's initial request (and anything they've said since) for the answer. If it's there — explicit ("use PostgreSQL", "with Celery", "no auth") or unambiguous from context — take it as given, note the decision in one line, and move on. Don't re-ask to confirm. Only ask when the answer is genuinely missing or ambiguous.
 
+**Recipe, not guideline.** The reference files are the source of truth. For every step, read the matching reference *before* the tool call and use its snippets verbatim — same commands, same flags, same files. At minimum a new project pulls from `new-project.md`, `database.md`, `gitignore.md`, `env.md`, plus one file per add-on the questionnaire selected. Don't substitute "looks equivalent" commands (e.g. `uv init` without `--bare`, hardcoded `SECRET_KEY` instead of `env.NOTSET`), don't skip files that look optional (`.env`, `.env.example`, `.gitignore`, root `/` → `/admin/` redirect), don't paraphrase. If a snippet says to create a file, create it.
+
 ## Reference files
 
 ### Project Foundation

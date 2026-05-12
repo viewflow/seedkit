@@ -17,6 +17,7 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ### Changed
 - `dev-tools.md` orbit logging section no longer marked "optional" — wire the orbit log handler whenever orbit is installed, otherwise the dashboard misses log records.
 - SKILL.md pitfall: run `manage.py startapp <name>` **before** listing the app in `INSTALLED_APPS`. Otherwise `startapp` imports settings and crashes with `ModuleNotFoundError`.
+- SKILL.md "Recipe, not guideline." paragraph — read each reference before its step and use snippets verbatim. Surfaced by gemini-flash builds where the agent activated the skill but then improvised (skipped `--bare`, hardcoded SECRET_KEY, dropped `.env` / `.gitignore`). Applies to all models.
 - SKILL.md now tells the agent to scan the user's initial request for answers already given and treat them as decided — don't re-ask to confirm. Only ask when the answer is genuinely missing or ambiguous.
 - SKILL.md §8 README step requires the deploy command block from the matching `deploy-*.md` to be copied verbatim into a `## Deploy` section — surfaces the one-shot `manage.py migrate` step so first `up -d --build` doesn't hit an empty DB.
 - `deploy-vps.md` Caddyfile snippets call out that `example.com` needs replacing — Caddy fails TLS issuance for the placeholder domain.
