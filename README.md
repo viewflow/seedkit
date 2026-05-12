@@ -43,6 +43,10 @@ Then, in whatever empty directory you'd like to populate:
 /seedkit
 ```
 
+## What's in the skill
+
+The skill targets the problems that show up in LLM-generated Django code that doesn't run out of the box: stale package versions, outdated patterns, wrong async defaults, missing production wiring. The testcase loop's job is to find those failures and fix them in the instructions, so the next generation doesn't repeat them.
+
 ## What you get
 
 - Ready-to-run Django project.
