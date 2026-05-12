@@ -17,10 +17,11 @@ Set in repo settings:
   private images. `${{ secrets.GITHUB_TOKEN }}` is only valid inside Actions;
   the VPS needs its own credential.
 
-## .env.prod.example — ship this in the repo
+## deploy/.env.prod.example — ship this in the repo
 
-`docker-compose.prod.yml` references many vars; without a checked-in template
-the first deploy fails with cryptic compose errors. Provide every var:
+Lives next to `deploy/docker-compose.prod.yml`. `docker-compose.prod.yml`
+references many vars; without a checked-in template the first deploy fails
+with cryptic compose errors. Provide every var:
 
 ```sh
 # Django
