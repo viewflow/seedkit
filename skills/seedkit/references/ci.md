@@ -55,6 +55,8 @@ jobs:
       DEFAULT_FROM_EMAIL: test@example.com
       SERVER_EMAIL: test@example.com
       REDIS_URL: redis://localhost:6379       # only when redis / celery / django-tasks-rq is wired
+      POSTMARK_SERVER_TOKEN: ci-placeholder   # only when django-anymail[postmark] is wired
+      ANYMAIL_WEBHOOK_SECRET: ci-placeholder  # only when the Anymail webhook URL is wired
 
     steps:
       - uses: actions/checkout@v4
