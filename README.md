@@ -73,4 +73,5 @@ If you run into issues, strange behavior, or have ideas for new integrations, pl
 
 <br>
 
-<sub><i>$ Sorry, you're right. I probably shouldn't have deleted the production database.<br>&nbsp;&nbsp;Want me to at least write the restore script?</i></sub>
+---
+<sub><i>$ Sorry, you're right. I probably shouldn't have deleted the production database.<br>&nbsp;&nbsp;&nbsp;Want me to at least write the restore script?</i></sub>
