@@ -196,7 +196,14 @@ services:
       MP_MAX_MESSAGES: 5000
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8025/livez"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 ```
+
+`docker compose up -d --wait` polls this probe; without a `healthcheck` block `--wait` returns immediately on `running` and may race the SMTP listener.
 
 ### .env
 

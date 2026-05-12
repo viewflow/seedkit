@@ -13,6 +13,7 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 - README adds a status note that the testcase harness currently runs only against Claude Sonnet.
 - `realtime.md` install line adds `daphne` (channels doesn't pull it transitively); routing snippet carries `# type: ignore[arg-type]` for `path(..., Consumer.as_asgi())`.
 - `storage-s3.md` adds a MinIO docker-compose snippet with a `curl` healthcheck (`wget` is absent in `minio/minio:latest`) and a note not to gate `web.depends_on` on it.
+- `email.md` Mailpit compose snippet adds a `wget /livez` healthcheck so `docker compose up -d --wait` actually blocks until SMTP is ready.
 
 ## 26.20.1 — 2026-05-11
 
