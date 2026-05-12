@@ -5,6 +5,15 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ## 26.20.2 — 2026-05-12
 
 ### Fixed
+- `tailwind.md` DaisyUI inputs (`source.css`, `daisyui.mjs`, `daisyui-theme.mjs`) move to `tailwind-src/css/`, **outside** `STATICFILES_DIRS`. With them inside, `CompressedManifestStaticFilesStorage` walks the source CSS and fails to resolve `@import "tailwindcss"` / `@plugin "./daisyui.mjs"` as static URLs (`MissingFileError: css/tailwindcss`). Only the compiled `tailwind.css` stays under `assets/`.
+- `tailwind.md` production Dockerfile passes `DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True` to **both** `tailwind build` and `collectstatic`. `manage.py` defaults to `local.py`, which demands `SECRET_KEY` / `DATABASE_URL` that don't exist at image-build time.
+- `security.md` `SECURE_SSL_REDIRECT` reads from `DJANGO_SECURE_SSL_REDIRECT` (default `True`). Smoke / staging / direct-gunicorn runs need to disable it; hardcoded `True` returns 301 on every plain-HTTP probe, hiding security headers and breaking smoke assertions. Also adds `SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]` to match the deliberate HSTS opt-outs.
+- `storage-s3.md` `production.py` static override is now guarded by `if AWS_STORAGE_BUCKET_NAME:`. ASGI projects load `production.py` in dev too; without the guard, an empty bucket env crashes every admin page with boto3 `ParamValidationError: Invalid bucket name ""`.
+- `docker.md` dev compose `db` service no longer publishes 5432 to the host — every machine with host-installed Postgres collides on bind. Containers talk over the compose network; comment-only opt-in for host GUIs.
+- `new-project.md` ships a concrete `config/settings/test.py` snippet including `TASKS = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}}` so split-layout projects get the eager test backend without reverse-engineering the path.
+- `SKILL.md` §4 foundation smoke uses `runserver --noreload` + a 5-attempt curl poll instead of `sleep 2`; documents that `kill %1` and `pkill -f manage.py` both break in this harness (no job control / matches parent claude) — use the recorded PID.
+- `SKILL.md` Common pitfalls: if i18n = no, drop the `USE_I18N = True` + `# Internationalization` block `startproject` emits.
+
 - `uv.md` Project cheat-sheet now shows `uv init --bare {project_name}` to match `new-project.md`. Without `--bare`, `uv init` ships `main.py` / `README.md` / `.python-version` and the agent then has to delete them. Surfaced by a gemini build that read `uv.md` first and skipped `--bare`.
 - `database.md` Litestream Dockerfile pre-creates `/data` and chowns it to `django` before `USER django`; the named SQLite volume mounts as root:root, so without this the prod container EACCES on first write.
 - `csp.md` GA4 row now expands into an explicit three-directive snippet; the previous table format led the agent to put only one host in `script-src`.

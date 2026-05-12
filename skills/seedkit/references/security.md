@@ -6,8 +6,9 @@ Docs: <https://docs.djangoproject.com/en/stable/topics/security/> · <https://do
 ## config/settings/production.py
 
 ```python
-# HTTPS
-SECURE_SSL_REDIRECT = True
+# HTTPS — env-toggle so smoke / staging / direct-gunicorn access can run
+# without TLS. Hardcoding True returns 301 on every plain-HTTP probe.
+SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
 # Exempt healthcheck endpoints — managed-platform internal probes (Fly,
 # Railway, k8s) hit the container directly without traversing the TLS
 # proxy, so they arrive as plain HTTP and would be 301-redirected,
@@ -30,6 +31,10 @@ CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False   # opt in only after every subdomain serves HTTPS
 SECURE_HSTS_PRELOAD = False              # opt in only after manual review of the consequences
+
+# These two are deliberate opt-outs above, so silence the matching
+# `manage.py check --deploy` warnings.
+SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 
 # Other browser hardening
 SECURE_REFERRER_POLICY = "same-origin"

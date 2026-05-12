@@ -118,9 +118,8 @@ Generate files from the matching references. `.env` `DATABASE_URL` must match DB
 Run these yourself; do not ask the user. The goal is to catch foundation bugs before piling on add-ons, without making the user type `uv run …` commands that §5.1 may replace minutes later.
 
 - `migrate` in the chosen dev mode (host `uv run manage.py migrate`, or `docker compose exec web …`).
-- Start `runserver` (or the docker stack) in the background.
-- `curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null` — expects 200.
-- Stop the server.
+- Start `runserver --noreload` (or the docker stack) in the background. `--noreload` drops the StatReloader so the listener is ready sooner; a `sleep 2` then `curl` can still race on slow CI, so poll: `for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null && break; sleep 1; done`.
+- Stop the server. Use the recorded PID from the background-launch step (`kill "$PID"`); don't use `kill %1` (no job control in non-interactive bash) or `pkill -f manage.py` (matches the parent harness process).
 
 If `migrate` or the curl fails, fix the foundation before proceeding to §5. `createsuperuser` and the browser login move to §7 — they need a stable task runner name and a real browser, neither of which exists yet.
 
@@ -235,6 +234,7 @@ Each rule has a *why* so you can judge edge cases.
 - After inserting the env-driven `DATABASES = {...}` line in Option A of `references/new-project.md`, **delete** the original hardcoded `DATABASES` block + `# Database` comment that `startproject` emitted. Bottom wins; leaving both makes `DATABASE_URL` dead code. (Option B writes `base.py` from scratch, so this only applies to Option A.)
 - After `startapp <name>`, if Ruff is enabled, run `uv run ruff check --fix .` — `startapp` ships `admin.py` / `views.py` / `tests.py` with stub imports that fail `F401`.
 - Run `startapp <name>` **before** adding `<name>` to `INSTALLED_APPS`. `manage.py startapp` imports settings; if the app is already listed but the directory doesn't exist, the import fails with `ModuleNotFoundError`.
+- If i18n = no, remove the `USE_I18N = True` line and the `# Internationalization` comment block that `startproject` emits. Harmless to leave, but the reference's settings are single-language by default and the orphan block invites confusion.
 
 **Add-on scope**
 

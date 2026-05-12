@@ -99,6 +99,22 @@ from .base import *
 # MIDDLEWARE.insert(1, "...")              # order matters (e.g. WhiteNoise after SecurityMiddleware)
 ```
 
+```python
+# config/settings/test.py
+from .base import *
+
+DEBUG = False                              # surface TemplateSyntaxError instead of swallowing it
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+# Django Tasks: run inline in the request thread so tests see results without a worker.
+TASKS = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}}
+```
+
 Don't re-instantiate `env = environ.Env()` — it's already imported via
 `from .base import *`.
 

@@ -80,8 +80,10 @@ services:
     image: postgres:17
     environment:
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "127.0.0.1:5432:5432"   # localhost only — not on every interface
+    # No host port mapping. `web` reaches `db` over the compose network;
+    # publishing 5432 collides with any host-installed Postgres. Add a
+    # localhost-only binding (e.g. "127.0.0.1:5433:5432") only when a host
+    # GUI needs to connect.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -229,8 +231,10 @@ services:
       - /app/.venv      # anonymous volume shadows host .venv
 
   db:
-    ports:
-      - "127.0.0.1:5432:5432"   # localhost only — not on every interface
+    # No host port mapping. `web` reaches `db` over the compose network;
+    # publishing 5432 collides with any host-installed Postgres. Add a
+    # localhost-only binding (e.g. "127.0.0.1:5433:5432") only when a host
+    # GUI needs to connect.
 ```
 
 `docker compose up` in dev merges both files automatically. CI / production runs `docker compose -f docker-compose.yml up` (no override) to get the prod build.

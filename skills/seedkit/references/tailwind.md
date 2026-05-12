@@ -35,7 +35,7 @@ Pin the CLI version (always — not just in prod) so a Tailwind 4.x point releas
 
 ```python
 TAILWIND_CLI_VERSION = "4.1.3"
-TAILWIND_CLI_SRC_CSS = "assets/css/source.css"   # if a custom source CSS lands below
+TAILWIND_CLI_SRC_CSS = "tailwind-src/css/source.css"   # custom source — outside STATICFILES_DIRS
 ```
 
 For production images, also set `TAILWIND_CLI_AUTOMATIC_DOWNLOAD = False` and bake the binary in at build time, OR run `python manage.py tailwind build` during the image build (preferred — no extra binary management).
@@ -103,10 +103,16 @@ The compiled CSS must be in `STATIC_ROOT` before `collectstatic` runs.
 In a Dockerfile, add `tailwind build` after `uv sync` and before `collectstatic`:
 
 ```dockerfile
-RUN python manage.py tailwind build
+RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
+    python manage.py tailwind build
 RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
     python manage.py collectstatic --noinput
 ```
+
+Both steps need the production settings + `DJANGO_DEBUG=True` shim:
+`manage.py` defaults to `local.py`, which requires env vars (`SECRET_KEY`,
+`DATABASE_URL`) that don't exist at image-build time. `DJANGO_DEBUG=True`
+keeps those gated as dev-only.
 
 `tailwind build` produces a minified, purged CSS file at `STATICFILES_DIRS[0] / "css" / "tailwind.css"` (configurable via `TAILWIND_CLI_DIST_CSS`). `collectstatic` then picks it up and WhiteNoise / S3 serves it.
 
@@ -120,13 +126,13 @@ We follow the upstream Django guide (<https://daisyui.com/docs/install/django/>)
 
 ### 1. Drop the DaisyUI bundle next to the source CSS
 
-DaisyUI ships single-file `.mjs` plugin bundles per release. Place them under `assets/css/`:
+DaisyUI ships single-file `.mjs` plugin bundles per release. Place them under `tailwind-src/css/` — **outside `STATICFILES_DIRS`**. `CompressedManifestStaticFilesStorage` walks every file in `STATICFILES_DIRS` and tries to resolve each `@import` / `@plugin` reference as a static-file URL; with `source.css` inside, `collectstatic` fails with `MissingFileError: css/tailwindcss`. Keep only the compiled `tailwind.css` output under `assets/`.
 
 ```sh
-mkdir -p assets/css
-curl -fsSL -o assets/css/daisyui.mjs \
+mkdir -p tailwind-src/css
+curl -fsSL -o tailwind-src/css/daisyui.mjs \
     https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
-curl -fsSL -o assets/css/daisyui-theme.mjs \
+curl -fsSL -o tailwind-src/css/daisyui-theme.mjs \
     https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.mjs
 ```
 
@@ -136,13 +142,13 @@ Commit both files — they're vendored assets, not build artefacts. Reproducible
 
 ```python
 # settings (base.py or single settings.py)
-TAILWIND_CLI_SRC_CSS = 'assets/css/source.css'
+TAILWIND_CLI_SRC_CSS = 'tailwind-src/css/source.css'
 ```
 
 ### 3. Author the source CSS
 
 ```css
-/* assets/css/source.css */
+/* tailwind-src/css/source.css */
 @import "tailwindcss";
 
 @source not "./tailwindcss";
