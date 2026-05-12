@@ -82,18 +82,22 @@ if [[ ${#FILES[@]} -eq 0 ]]; then
     exit 1
 fi
 
-cleanup_workspace() {
-    # Remove generated projects but preserve the examples-repo metadata
-    # (`.git`, `.gitignore`, top-level `README.md` regenerated at the end
-    # of the run) and the logs dir.
-    find "$WORKSPACE" -mindepth 1 -maxdepth 1 \
-        ! -name '.git' \
-        ! -name '.gitignore' \
-        ! -name '.gitattributes' \
-        ! -name 'LICENSE' \
-        ! -name 'README.md' \
-        ! -name 'logs' \
-        -exec rm -rf {} +
+cleanup_testcase() {
+    # Remove the generated project dir(s) for a single testcase. The
+    # project name set inside the testcase doesn't always match the
+    # testcase filename (e.g. `01-blog.md` → `01-minimal-blog/`), so
+    # match by the leading `NN-` numeric prefix shared by both. Leaves
+    # siblings, logs, and examples-repo metadata untouched so a partial
+    # run (`./run-tests.sh 02`) doesn't nuke unrelated outputs.
+    local tc_name=$1 prefix
+    [[ -n "$tc_name" ]] || return 0
+    prefix="${tc_name%%-*}-"   # `02-shop` → `02-`
+    shopt -s nullglob
+    local match
+    for match in "$WORKSPACE/$prefix"*/; do
+        [[ -d "$match" ]] && rm -rf "$match"
+    done
+    shopt -u nullglob
 }
 
 # Extract the body of a `## <name>` section from a testcase file. Stops
@@ -233,7 +237,6 @@ run_phase() {
     return "$rc"
 }
 
-cleanup_workspace
 link_skill
 
 for tc in "${FILES[@]}"; do
@@ -244,6 +247,7 @@ for tc in "${FILES[@]}"; do
     echo "    log:    $log"
     echo "    case:   $tc"
 
+    cleanup_testcase "$name"
     : > "$log"
 
     # Marker so the project dir created during this case is identifiable
@@ -257,6 +261,7 @@ for tc in "${FILES[@]}"; do
     # ── Phase 1: build ───────────────────────────────────────────────
     prompt_section=$(extract_section "$tc" "Prompt")
     boot_section=$(extract_section "$tc" "Boot check")
+    deploy_section=$(extract_section "$tc" "Deploy check")
     {
         printf '%s\n\n' "$prompt_section"
         if [[ -n "$boot_section" ]]; then
@@ -266,6 +271,13 @@ for tc in "${FILES[@]}"; do
             printf -- '- Use `docker compose up -d --wait` (or `--wait-timeout 60`) when the smoke depends on services being up. It blocks on the compose-side healthchecks and exits non-zero on failure. Don'\''t hand-roll a polling loop.\n'
             printf -- '- Never pipe `docker compose ps --format json` into `json.load` — Compose v2.6+ emits newline-delimited JSON, not an array. `json.load` reads the whole stream and raises, your loop stays at exit 1, and the bash tool livelocks.\n'
             printf -- '- If a service has no healthcheck declared, add one in `docker-compose.yml` rather than polling externally.\n\n'
+        fi
+        if [[ -n "$deploy_section" ]]; then
+            printf 'Then exercise the **production artifact** end-to-end. This catches what the dev-mode boot can'\''t: missing prod deps, DEBUG=False breakage, `migrate --check` drift, `collectstatic` failures, missing security headers. Auto-fix any failure:\n\n'
+            printf '%s\n\n' "$deploy_section"
+            printf 'Deploy-smoke rules:\n'
+            printf -- '- Run gunicorn from the built prod image — never `runserver` against production settings.\n'
+            printf -- '- Always tear down the smoke containers, network, and volumes at the end (even on failure) — orphaned `postgres:17` containers from a previous run will collide on the next.\n\n'
         fi
         printf 'At the end, summarise: What worked out of the box / What broke / Fixes applied / Suggested skill changes.\n'
     } | run_phase "BUILD" "$MODEL" "$WORKSPACE" "$log" ""

@@ -34,7 +34,7 @@ Add-ons:
   - `robots.txt`: yes.
   - `django-extensions`: no.
 
-Production setup: skip.
+Production setup: VPS (Docker + Caddy). Dockerfile structure: simple (separate `Dockerfile.dev` + production `Dockerfile`). Use single-stage prod Dockerfile.
 
 Assume Postgres is already running locally on port 5432 with user `postgres` / password `postgres`. Create database `shop_db` if missing (Postgres identifiers can't start with a digit, so use a clean name). Run the foundation + boot check, then run `python manage.py tailwind build` once so the CSS asset exists, and verify the index page returns the Tailwind-styled HTML.
 ```
@@ -62,6 +62,66 @@ uv run pyright
 test -f mise.toml
 kill $(jobs -p) 2>/dev/null; pkill -f 'manage.py' 2>/dev/null; wait
 dropdb shop_db
+```
+
+## Deploy check
+
+Exercises the prod Dockerfile + `config/settings/production.py` + gunicorn end-to-end. Bypasses Caddy (port 80/443 may be busy on dev machines) by running `web` directly with a published port. Uses an isolated docker network + throwaway Postgres so it doesn't touch the host DB.
+
+```sh
+cd 02-shop
+
+# 1. Build the prod image from the generated Dockerfile.
+docker build -t shop-prod -f Dockerfile .
+
+# 2. Throwaway network + Postgres for the smoke (separate from host DB).
+docker network create shop-smoke
+docker run -d --name shop-smoke-db --network shop-smoke \
+    -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=shop_db \
+    --health-cmd='pg_isready -U postgres' --health-interval=2s --health-retries=10 \
+    postgres:17
+# Wait for db healthy — no hand-rolled polling.
+until [ "$(docker inspect -f '{{.State.Health.Status}}' shop-smoke-db)" = "healthy" ]; do sleep 1; done
+
+# 3. migrate --check against the prod image must fail (no tables yet), then migrate.
+docker run --rm --network shop-smoke \
+    -e DJANGO_SETTINGS_MODULE=config.settings.production \
+    -e DJANGO_SECRET_KEY=smoke-secret-not-for-prod \
+    -e DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost \
+    -e DATABASE_URL=postgres://postgres:postgres@shop-smoke-db:5432/shop_db \
+    shop-prod python manage.py migrate --noinput
+
+# 4. `manage.py check --deploy` against prod settings — no WARNING-level issues.
+docker run --rm --network shop-smoke \
+    -e DJANGO_SETTINGS_MODULE=config.settings.production \
+    -e DJANGO_SECRET_KEY=smoke-secret-not-for-prod \
+    -e DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost \
+    -e DATABASE_URL=postgres://postgres:postgres@shop-smoke-db:5432/shop_db \
+    shop-prod python manage.py check --deploy --fail-level WARNING
+
+# 5. Boot gunicorn from the image. Port 8000 published to host.
+docker run -d --name shop-smoke-web --network shop-smoke -p 8000:8000 \
+    -e DJANGO_SETTINGS_MODULE=config.settings.production \
+    -e DJANGO_SECRET_KEY=smoke-secret-not-for-prod \
+    -e DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost \
+    -e DATABASE_URL=postgres://postgres:postgres@shop-smoke-db:5432/shop_db \
+    shop-prod
+# Wait for healthz to return 200.
+for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/healthz >/dev/null && break; sleep 1; done
+
+# 6. Prod smoke assertions — gunicorn, not runserver.
+test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
+curl -sfI http://127.0.0.1:8000/admin/login/ | grep -qi '^x-frame-options: DENY'
+# DEBUG=False proof: a 404 must NOT contain the yellow debug-page boilerplate.
+curl -s http://127.0.0.1:8000/__definitely_missing__ | grep -qv "You're seeing this error because you have"
+# collectstatic ran during image build + WhiteNoise serves the file.
+ADMIN_CSS=$(curl -sf http://127.0.0.1:8000/admin/login/ | grep -oE '/static/[^"]*\.css' | head -1)
+test -n "$ADMIN_CSS"
+curl -sfI "http://127.0.0.1:8000${ADMIN_CSS}" | head -1 | grep -q '200'
+
+# 7. Teardown — always, even on failure.
+docker rm -f shop-smoke-web shop-smoke-db
+docker network rm shop-smoke
 ```
 
 ## Review
@@ -97,6 +157,13 @@ Verify these structural facts:
 - `templates/base.html` loads `{% load tailwind_cli %}`, calls `{% tailwind_css %}` inside `<head>`, and contains `<html data-theme=`.
 - `templates/index.html` extends `base.html` and contains the literals `text-blue-600`, `text-4xl`, and `btn-primary`.
 - `templates/404.html`, `templates/403.html`, `templates/500.html` present. `500.html` does NOT extend `base.html`.
+
+**Production artifacts**
+- Files present at project root: `Dockerfile`, `Dockerfile.dev`, `docker-compose.yml`, `.dockerignore`. Under `deploy/`: `docker-compose.prod.yml`, `Caddyfile`.
+- `Dockerfile` uses `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`, runs `uv sync --frozen --no-dev`, contains a `collectstatic --noinput` step under `DJANGO_SETTINGS_MODULE=config.settings.production`, switches to a non-root `django` user, and ends with `CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]`.
+- `pyproject.toml` runtime deps include `gunicorn`.
+- `.dockerignore` lists `.venv`.
+- `deploy/docker-compose.prod.yml` defines a `web` healthcheck using `python -c 'import urllib.request...'` (not curl) and a `db` healthcheck using `pg_isready`.
 
 **Pages + billing**
 - `pages/` app with `IndexView(TemplateView)` wired at `/`. `liveness` and `readiness` views, `path('healthz', ...)` and `path('readyz', ...)` (no trailing slash), `robots_txt` view at `path('robots.txt', ...)`.
