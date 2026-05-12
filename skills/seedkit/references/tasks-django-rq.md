@@ -4,12 +4,12 @@ Docs: <https://github.com/RealOrangeOne/django-tasks-rq> · <https://python-rq.o
 
 Requires Redis (`references/redis.md`).
 
-`django-rq` provides the `rqworker` management command + admin. `django-tasks` is the Django Tasks API (`from django_tasks import task`); `django-tasks-rq` is the adapter from that API to RQ.
+`django-rq` provides the `rqworker` management command + admin. `django.tasks` (built into Django 6.0+) is the Tasks API — `from django.tasks import task`. `django-tasks-rq` is the adapter from that API to RQ.
 
 ## Install
 
 ```sh
-uv add django-tasks django-tasks-rq django-rq
+uv add django-tasks-rq django-rq
 ```
 
 ## INSTALLED_APPS
