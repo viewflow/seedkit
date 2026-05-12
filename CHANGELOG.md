@@ -9,6 +9,7 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 - `ci.md` `services:` now includes an opt-in `redis:` block alongside `postgres:` for projects using `cache` / `celery` / `django-tasks-rq`. The `REDIS_URL` env was already there, but the matching service wasn't.
 - `analytics.md` ships a minimal `templates/base.html` stub for the `frontend: none` case so the `{% include "_analytics.html" %}` resolves. `csp.md` shows the env-driven Umami integration explicitly (`ANALYTICS_HOST` → `script-src` / `connect-src`). `gdpr.md` provides copy-paste `export_user_data` / `delete_user_data` management commands instead of just naming them.
 - `tasks-django-rq.md` `uv add` includes `django-tasks` explicitly alongside `django-tasks-rq` and `django-rq` — it was coming in transitively, leaving the runtime dep undeclared.
+- `dev-tools.md` prod `silk_profile` fallback is now a class implementing `__call__` + `__enter__`/`__exit__`, not a decorator factory — the same reference shows `with silk_profile(...)` inside `@task` bodies, which raised `AttributeError` on prod boot.
 
 ### Changed
 - `docker.md` BuildKit cache mount (`--mount=type=cache,target=/root/.cache/uv`) is now standard on every `RUN uv sync`, with `# syntax=docker/dockerfile:1` at the top of each Dockerfile. Was framed as "optional, speeds up CI"; it's actually load-bearing whenever a multi-stage build re-runs `uv sync` on Rust/C-backed packages without a manylinux/aarch64 wheel (e.g. `django-bolt` on linux/arm64) — without the cache mount the wheel recompiles in each stage.

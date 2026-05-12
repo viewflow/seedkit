@@ -168,10 +168,11 @@ from django.conf import settings
 if settings.DEBUG:
     from silk.profiling.profiler import silk_profile
 else:
-    def silk_profile(*_a, **_kw):
-        def deco(fn):
-            return fn
-        return deco
+    class silk_profile:  # no-op decorator + context manager for prod
+        def __init__(self, *_a, **_kw): pass
+        def __call__(self, fn): return fn
+        def __enter__(self): return self
+        def __exit__(self, *_a): return False
 
 @silk_profile(name="my expensive operation")
 def expensive_operation():
