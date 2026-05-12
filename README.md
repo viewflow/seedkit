@@ -57,11 +57,14 @@ This is a fresh project under active development. While the skill is verified ag
 
 The testcase harness currently runs only against Claude Sonnet. Other models (Opus, Haiku, GPT, Gemini) are not yet covered — they may work, but skill quality on those models is not verified.
 
+Production deployment scenarios (VPS, Fly, GitHub-SSH) still need verification — they are wired up in the skill but not yet exercised end-to-end against real targets.
+
 If you run into issues, strange behavior, or have ideas for new integrations, please open an issue. Feedback is welcome.
 
 ## Contributing
 
-- Please [open an issue](https://github.com/RobustaRush/seedkit/issues/new) first. Discuss proposed changes — even one-liners — before submitting a pull request to avoid wasted effort.
+- **The most valuable contribution right now:** run the testcase harness against other models (Opus, Haiku, GPT, Gemini) and send the logs back. The skill is only verified on Claude Sonnet today, so cross-model coverage is what the project needs most. Point `run-tests.sh` at the model you want to exercise and open an issue with the resulting `workspace/logs/` output attached.
+- For proposing changes, please [open an issue](https://github.com/RobustaRush/seedkit/issues/new) first. Discuss proposed changes — even one-liners — before submitting a pull request to avoid wasted effort.
 - Expect long test cycles. Validating agent behavior requires multiple test-review-fix iterations. Each cycle runs all nine end-to-end test cases and takes 1.5–2 hours.
 
 ## License
