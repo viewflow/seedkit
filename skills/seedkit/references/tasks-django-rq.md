@@ -9,8 +9,10 @@ Requires Redis (`references/redis.md`).
 ## Install
 
 ```sh
-uv add django-tasks-rq django-rq
+uv add django-tasks django-tasks-rq django-rq
 ```
+
+`django-tasks` ships `django.tasks` for Django <6.0 and is a transitive dep of `django-tasks-rq` — declare it explicitly so the dependency isn't implicit.
 
 ## INSTALLED_APPS
 
