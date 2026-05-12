@@ -4,7 +4,9 @@ Reverse proxies, container platforms, and uptime monitors expect `/healthz` (or 
 
 We don't pull in `django-health-check`. Two trivial views beat a dependency that adds 8 backends and a settings block.
 
-## `pages/views.py` (or any registered app)
+Put the views in `config/views.py`. If a suitable app already exists (a `core` app, an existing landing-page app), put them there instead — don't add a new app just for these views.
+
+## `config/views.py`
 
 ```python
 from django.db import connection
@@ -31,7 +33,7 @@ def readiness(_request):
 
 ```python
 from django.urls import path
-from pages.views import liveness, readiness
+from config.views import liveness, readiness
 
 urlpatterns = [
     # ...

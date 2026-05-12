@@ -22,6 +22,8 @@ Each reference is a paste-ready snippet plus the minimum prose needed to use it 
 
 **Cross-reference, don't duplicate.** When a snippet belongs in another reference (e.g. `test.py` settings live in `new-project.md`, not `pytest.md`), point to it with one sentence and stop. Two copies drift.
 
+**Good path only — no artefacts, no history.** A reference describes the path we want followed today. No "surfaced by run X", no "the agent used to do Y instead", no "previously we shipped Z". CHANGELOG is the place for that. A reader of the reference doesn't need provenance to follow the snippet.
+
 ## Changelog
 
 `seedkit/CHANGELOG.md` tracks user-facing changes. Versions are dated `YY.WW.D` — `date +%y.%V.%u` — one section per day; all of a day's commits collapse into one block. After every skill edit, append (or extend) one short bullet under today's section using Keep-a-Changelog headings (`Added` / `Changed` / `Fixed` / `Removed`). Batch related fixes into a single bullet. Bump `version` to the same date string in both `.claude-plugin/plugin.json` and `skills/seedkit/SKILL.md` frontmatter. If `CHANGELOG.md` exceeds ~200 lines, trim the oldest sections — git keeps the rest. `review-logs.sh` does this inline per log iteration — version bump + changelog edit happen in the same commit as the reference fix.

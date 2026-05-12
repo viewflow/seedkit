@@ -2,7 +2,9 @@
 
 Trivial endpoint — no package needed.
 
-## `pages/views.py`
+Put the view in `config/views.py`. If a suitable app already exists (a `core` app, a landing-page app), put it there instead — don't add a new app just for this view.
+
+## `config/views.py`
 
 ```python
 from django.conf import settings
@@ -31,7 +33,7 @@ def robots_txt(_request):
 
 ```python
 from django.urls import path
-from pages.views import robots_txt
+from config.views import robots_txt
 
 urlpatterns = [
     # ...
