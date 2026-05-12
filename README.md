@@ -47,6 +47,8 @@ Then, in whatever empty directory you'd like to populate:
 
 The skill targets the problems that show up in LLM-generated Django code that doesn't run out of the box: stale package versions, outdated patterns, wrong async defaults, missing production wiring. The testcase loop's job is to find those failures and fix them in the instructions, so the next generation doesn't repeat them.
 
+It also saves you the prompt-writing: the instructions that would otherwise need a paragraph per project are baked in.
+
 ## What you get
 
 - Ready-to-run Django project.
