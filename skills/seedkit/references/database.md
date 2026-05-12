@@ -115,6 +115,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget \
  && rm "litestream-v0.3.13-linux-${ARCH}.deb" \
  && rm -rf /var/lib/apt/lists/*
 # dpkg --print-architecture resolves amd64 / arm64 so the image builds on M-series Macs too.
+
+# Pre-create /data before `USER django` — the named volume mounts as root:root,
+# so the django user can't write site.sqlite3 / cache.sqlite3 / WAL files otherwise.
+RUN mkdir -p /data && chown django:django /data
 ```
 
 `litestream.yml`:
