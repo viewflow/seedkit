@@ -85,6 +85,6 @@ Verify these structural facts:
 - `config/urls.py` mounts `silk.urls` only when `silk` is in `INSTALLED_APPS` (or `settings.DEBUG`).
 - `templates/base.html` (or analytics partial) renders the GoatCounter snippet, gated on `ANALYTICS_ID` and `ANALYTICS_HOST` from a context processor.
 - A registered Django app has `apps.py` with `ready()` importing `tasks`, and a `tasks.py` defining at least one `@task`.
-- `pages` app exposes `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.
+- `pages/views.py` (or equivalent — `config/views.py` is fine) defines `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.
 
 Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks. Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.

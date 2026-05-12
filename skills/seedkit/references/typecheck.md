@@ -106,4 +106,5 @@ Allauth, axes, django-tasks, django-tailwind-cli, dj-stripe — no stubs, fall b
 - Admin `ModelAdmin` subclasses often need `# type: ignore[attr-defined]` on lines that touch dynamically-added attributes.
 - Use `if TYPE_CHECKING:` to import heavy types (factories, test fixtures) without runtime cost.
 - For `request.user` to type as your custom `User` (not `AbstractBaseUser | AnonymousUser`), import `django.contrib.auth.models.AbstractBaseUser` and narrow with `assert request.user.is_authenticated` before access — django-stubs handles the rest.
+- `get_user_model()` returns the generic `_UserModel` stub, so `user.email` (or any custom field) trips `reportAttributeAccessIssue`. Import the concrete model under `TYPE_CHECKING` instead of paying for `getattr` at runtime: `if TYPE_CHECKING: from users.models import User`, then `user: "User" = get_user_model().objects.get(...)`.
 - Bump `typeCheckingMode` to `"standard"` once the codebase has real type hints; jump straight to `"strict"` only after that pass is clean.

@@ -54,6 +54,7 @@ The venv lives **outside** the bind-mount root (`UV_PROJECT_ENVIRONMENT=/opt/ven
 ### Simple — Dockerfile.dev
 
 ```dockerfile
+# syntax=docker/dockerfile:1
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 ENV UV_COMPILE_BYTECODE=1 \
@@ -64,13 +65,17 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project
 
 COPY . .
-RUN uv sync --frozen
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 ```
+
+`# syntax=docker/dockerfile:1` enables the BuildKit cache-mount syntax. `--mount=type=cache,target=/root/.cache/uv` persists uv's wheel cache across builds (and across stages within the same build), so Rust-backed deps without a manylinux/aarch64 wheel (e.g. `django-bolt` on linux/arm64) compile once and the wheel is reused.
 
 No `USER` switch (dev keeps root, simpler permissions). No `collectstatic` (`runserver` serves statics in DEBUG).
 
@@ -169,6 +174,7 @@ One `Dockerfile` with two named targets (`dev` and `prod`). `docker-compose.yml`
 #### Dockerfile
 
 ```dockerfile
+# syntax=docker/dockerfile:1
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
 
 ENV UV_COMPILE_BYTECODE=1 \
@@ -179,10 +185,12 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project
 
 COPY . .
-RUN uv sync --frozen
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 
 
 FROM base AS dev
@@ -309,6 +317,7 @@ Both variants apply the [astral-sh uv-in-Docker](https://docs.astral.sh/uv/guide
 ### Variant A — single-stage (default)
 
 ```dockerfile
+# syntax=docker/dockerfile:1
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 ENV UV_COMPILE_BYTECODE=1 \
@@ -325,10 +334,12 @@ RUN groupadd --system django && useradd --system --gid django django
 WORKDIR /app
 
 COPY --chown=django:django pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 COPY --chown=django:django . .
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 # DELETE this RUN if storage is S3 (collectstatic needs bucket creds at
 # deploy time, not build). See references/storage-s3.md.
@@ -346,6 +357,7 @@ CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]
 ### Variant B — multi-stage (smaller runtime image)
 
 ```dockerfile
+# syntax=docker/dockerfile:1
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1 \
@@ -355,10 +367,12 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 COPY . .
-RUN uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
 
 # Same S3 caveat as variant A.
 RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
@@ -383,15 +397,6 @@ CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]
 ```
 
 Runtime uses `python:3.12-slim` — no uv binary, no build cache. ~100–200 MB lighter.
-
-### Optional — BuildKit cache mount
-
-Speeds up CI rebuilds when `uv.lock` is unchanged:
-
-```dockerfile
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
-```
 
 ### Waiting for Postgres
 

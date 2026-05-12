@@ -114,7 +114,7 @@ Verify these structural facts:
 - `[checks]` / `[services.checks]` block in `fly.toml` references `/readyz`.
 
 **Health**
-- `pages` app exposes `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.
+- `pages/views.py` (or equivalent — `config/views.py` is fine) defines `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.
 - Anymail webhook URL `path("anymail/", include("anymail.urls"))` wired; `ANYMAIL["WEBHOOK_SECRET"]` set.
 
 Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks. Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.

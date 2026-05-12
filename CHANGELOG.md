@@ -5,6 +5,10 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ## 26.20.2 — 2026-05-12
 
 ### Changed
+- `docker.md` BuildKit cache mount (`--mount=type=cache,target=/root/.cache/uv`) is now standard on every `RUN uv sync`, with `# syntax=docker/dockerfile:1` at the top of each Dockerfile. Was framed as "optional, speeds up CI"; it's actually load-bearing whenever a multi-stage build re-runs `uv sync` on Rust/C-backed packages without a manylinux/aarch64 wheel (e.g. `django-bolt` on linux/arm64) — without the cache mount the wheel recompiles in each stage.
+- `typecheck.md` Pragmatics: documents that `get_user_model()` returns the generic `_UserModel` stub, with the `TYPE_CHECKING` import + annotation pattern as the idiomatic fix (instead of `getattr`).
+- Testcases 04/06/07/08/09 relax `pages` app assertion to `pages/views.py (or equivalent — config/views.py is fine)`, matching the skill's recent move of trivial views to `config/views.py`.
+
 - `docker.md` venv moves to `/opt/venv` via `UV_PROJECT_ENVIRONMENT` so the `.:/app` bind-mount can't shadow it. Drops the anonymous `- /app/.venv` shadow volume from `web` and every worker compose service (`tasks-celery.md`, `tasks-django-db.md`, `tasks-django-rq.md`, `tasks-django-cron.md`). Cleaner cleanup — no `<project>_xxxx` hash-named anon volumes left over after `docker compose down -v`.
 - Testcase cleanup now runs `docker compose down -v --rmi local` (was `down -v`) so the compose-built dev image is removed alongside the volumes. Pulled base images (postgres/redis/mailpit/minio) stay shared.
 

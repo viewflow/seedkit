@@ -125,6 +125,6 @@ Verify these structural facts:
 **CORS + Devcontainer + Health**
 - `corsheaders` in `INSTALLED_APPS`; `corsheaders.middleware.CorsMiddleware` BEFORE `CommonMiddleware`.
 - `.devcontainer/devcontainer.json` parseable JSON: `"dockerComposeFile": ["../docker-compose.yml"]`, `"service": "web"`, `"workspaceFolder": "/app"`, `"shutdownAction": "stopCompose"`, `forwardPorts` includes `8000`. No secrets / DB passwords inline.
-- `pages` app exposes `liveness` and `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py` (no trailing slash).
+- `pages/views.py` (or equivalent — `config/views.py` is fine) defines `liveness` and `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py` (no trailing slash).
 
 Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks. Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.
