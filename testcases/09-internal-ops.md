@@ -26,7 +26,7 @@ Add-ons:
   - redis
   - tasks: Django Tasks with the Redis Queue backend (`django-tasks-rq`). Also `uv run manage.py startapp jobs`, register `jobs` in `INSTALLED_APPS`, wire `jobs/apps.py` `ready()` to import `tasks`, and add a sample `@task` to `jobs/tasks.py`.
   - analytics: Umami (self-hosted, env-driven website ID and host)
-  - email: none (deliberately skip `references/email.md`; this project does not send transactional mail and the test verifies the skip path).
+  - email: none (this project does not send transactional mail and the test verifies the skip path).
   - CORS: no.
   - REST API: none.
   - Frontend: none.
@@ -44,7 +44,7 @@ Production setup:
   - CI: GitHub Actions test workflow
   - deploy: GitHub Actions deploy via SSH (rsync + remote `docker compose pull && up -d`)
   - database backups via `django-dbbackup`: yes (self-managed host — no native backup service)
-  - production Dockerfile: multi-stage (per `references/docker.md`) — uv builder → `python:3.12-slim-bookworm` runtime
+  - production Dockerfile: multi-stage — uv builder → `python:3.12-slim-bookworm` runtime
 
 Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.prod.yml`, `.github/workflows/test.yml`, `.github/workflows/deploy.yml`. Do not actually deploy — verify all artifacts are present, `docker build .` succeeds, and the deploy workflow references `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`.
 ```

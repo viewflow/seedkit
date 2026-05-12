@@ -2,6 +2,11 @@
 
 Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One section per day; all of a day's commits collapse into one block. Trim to ≤ 200 lines; git keeps the rest.
 
+## 26.20.3 — 2026-05-13
+
+### Changed
+- Testcase Prompt blocks no longer name specific reference files for the agent to read (`references/docker.md`, `references/realtime.md`, `references/database.md`, `references/email.md`). The skill picks references itself; prompts only state the requirement. Touched 02-shop, 03-jobs-board, 04-media-vault, 07-saas, 09-internal-ops.
+
 ## 26.20.2 — 2026-05-12
 
 ### Added

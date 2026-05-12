@@ -41,8 +41,8 @@ Production setup:
   - error reporting: Sentry SaaS (sentry-sdk)
   - CI: GitHub Actions test workflow
   - deploy target: VPS (Docker + Caddy)
-  - database backups: Litestream replication to S3-compatible storage (the SQLite production path in `references/database.md`); do not use `django-dbbackup`
-  - production Dockerfile: multi-stage (per `references/docker.md`) with the Litestream `.deb` installed in the prod stage; ship `litestream.yml` + `entrypoint.sh` that restores the DB on boot, runs migrations, then execs `litestream replicate -exec "gunicorn ..."`
+  - database backups: Litestream replication to S3-compatible storage; do not use `django-dbbackup`
+  - production Dockerfile: multi-stage with the Litestream `.deb` installed in the prod stage; ship `litestream.yml` + `entrypoint.sh` that restores the DB on boot, runs migrations, then execs `litestream replicate -exec "gunicorn ..."`
 Skip GDPR for this case.
 
 Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.prod.yml`, `Caddyfile`, `litestream.yml`, `entrypoint.sh`, `.github/workflows/test.yml`. Do not actually push to a remote VPS — just verify all artifacts are present and `docker build .` succeeds.

@@ -12,7 +12,7 @@ Purpose: job board with background email notifications and a daily digest.
 
 Settings layout: single file.
 Database: PostgreSQL.
-Postgres location: Postgres in Docker (`docker-compose.yml` from `references/docker.md`, port `127.0.0.1:5432` published to the host).
+Postgres location: Postgres in Docker (`docker-compose.yml`, port `127.0.0.1:5432` published to the host).
 Lint with Ruff: no.
 Test runner: manage.py test (stock Django).
 Type check (pyright + django-stubs): no.
