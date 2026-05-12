@@ -60,7 +60,7 @@ uv run ruff check .
 uv run pyright
 # Task runner sanity — mise.toml present.
 test -f mise.toml
-kill $(jobs -p) 2>/dev/null; pkill -f 'manage.py' 2>/dev/null; wait
+kill $(jobs -p) 2>/dev/null; wait
 dropdb shop_db
 ```
 
