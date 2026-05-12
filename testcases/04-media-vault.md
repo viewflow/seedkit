@@ -84,7 +84,7 @@ uv run pyright
 docker compose logs worker 2>&1 | grep -iE 'rqworker|listening on|default'
 # uvicorn worker should announce itself in web logs:
 docker compose logs web 2>&1 | grep -iE 'uvicorn|uvicornworker|asgi'
-docker compose down -v
+docker compose down -v --rmi local
 ```
 
 ## Review

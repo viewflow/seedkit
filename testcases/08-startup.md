@@ -75,7 +75,7 @@ docker images 08-fly-app:test
 docker run --rm 08-fly-app:test python --version | grep -q '3\.12'
 ! docker compose logs web worker 2>&1 | grep -iE 'traceback|^error|critical|unhandled'
 docker compose logs worker 2>&1 | grep -iE 'celery@.*ready|mingle|sync with'
-docker compose down -v
+docker compose down -v --rmi local
 docker rmi 08-fly-app:test
 ```
 

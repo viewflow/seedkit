@@ -28,13 +28,28 @@ Match the `python3.X` tag to `requires-python` in `pyproject.toml`. `uv sync --f
 
 ## .dockerignore
 
-`.dockerignore` for Django + uv. Always include `.venv` so the host venv doesn't leak into the image.
+```
+.venv/
+.git/
+__pycache__/
+*.pyc
+*.sqlite3
+.env
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+staticfiles/
+node_modules/
+.django_tailwind_cli/
+```
+
+`.venv/` is the load-bearing entry — without it, `COPY . .` inside the Dockerfile drags the host venv into the image, bloats the build context, and (before `UV_PROJECT_ENVIRONMENT=/opt/venv`) shadowed the image venv at runtime. With the venv now at `/opt/venv` it's no longer a correctness issue, only wasted I/O — keep the entry.
 
 ---
 
 ## Local development
 
-`.venv` is baked into the image; source is bind-mounted for live reload; no named volume for the venv. Adding a dependency is a `docker compose build`, not a live `uv add` inside a running container.
+The venv lives **outside** the bind-mount root (`UV_PROJECT_ENVIRONMENT=/opt/venv`) so the source bind-mount can't shadow it. Adding a dependency is a `docker compose build`, not a live `uv add` inside a running container.
 
 ### Simple — Dockerfile.dev
 
@@ -43,7 +58,8 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:$PATH"
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
@@ -67,8 +83,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     volumes:
-      - .:/app          # source live-reload
-      - /app/.venv      # anonymous volume shadows host .venv that the bind mount would otherwise leak in
+      - .:/app          # source live-reload — venv lives at /opt/venv, untouched
     env_file: .env
     ports:
       - "8000:8000"
@@ -96,6 +111,11 @@ volumes:
   pgdata:
 ```
 
+Name every volume. Anonymous volumes (the `- /some/path` form without
+a left-hand name) accumulate on `docker compose down` as opaque hashes
+— hard to identify, easy to leak. Named volumes show up as
+`<project>_<name>` and clean up predictably with `docker compose down -v`.
+
 For SQLite, drop the `db` service and `depends_on`, and mount a named volume on `web` so the DB file survives container recreation:
 
 ```yaml
@@ -104,7 +124,6 @@ services:
     # ...
     volumes:
       - .:/app
-      - /app/.venv
       - sqlite_data:/data
 
 volumes:
@@ -112,8 +131,6 @@ volumes:
 ```
 
 `.env`: `DATABASE_URL=sqlite:////data/site.sqlite3` (four slashes = absolute path).
-
-The `/app/.venv` line declares an anonymous volume at that path so the source bind-mount above can't overlay a host `.venv` on top of the image's. `.dockerignore` should also list `.venv` — belt and braces.
 
 ### Boot check
 
@@ -123,7 +140,7 @@ docker compose exec web python manage.py migrate
 docker compose exec web python manage.py createsuperuser
 ```
 
-`python manage.py` not `uv run manage.py`: `.venv/bin` is on `PATH`, no need for the wrapper.
+`python manage.py` not `uv run manage.py`: `/opt/venv/bin` is on `PATH`, no need for the wrapper.
 
 Then open <http://localhost:8000/admin/>.
 
@@ -142,7 +159,7 @@ docker compose up -d
 
 - **`uv sync` hardlink warnings** — `UV_LINK_MODE=copy` (set in Dockerfile.dev) silences them.
 - **Source edits not picked up** — confirm the bind-mount is `.:/app`, not a copy. `docker compose exec web ls /app` should show host changes immediately.
-- **`Ignoring existing virtual environment linked to non-existent Python interpreter`** — means a host `.venv` slipped into the image build (missing `.dockerignore` entry) or the anonymous volume above isn't declared. Add `.venv` to `.dockerignore`, ensure the compose service has `- /app/.venv`, then `docker compose build --no-cache web`.
+- **`Ignoring existing virtual environment linked to non-existent Python interpreter`** — means a host `.venv` slipped into the image build (missing `.dockerignore` entry). Add `.venv` to `.dockerignore`, then `docker compose build --no-cache web`. With `UV_PROJECT_ENVIRONMENT=/opt/venv` the source bind-mount can't shadow the venv, so no extra volume is needed.
 - **`web` healthcheck with `curl`** — the `uv:python3.12-bookworm-slim` image has no `curl`. `docker compose up -d --wait` doesn't need a `web` healthcheck (it waits on `running` for services without one); if you do add one, use the urllib form from `references/deploy-vps.md`.
 
 ### Override — multi-stage Dockerfile + compose override
@@ -156,7 +173,8 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS base
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:$PATH"
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
@@ -227,8 +245,7 @@ services:
     build:
       target: dev
     volumes:
-      - .:/app          # source live-reload
-      - /app/.venv      # anonymous volume shadows host .venv
+      - .:/app          # source live-reload — venv lives at /opt/venv, untouched
 
   db:
     # No host port mapping. `web` reaches `db` over the compose network;
@@ -287,7 +304,7 @@ Both variants apply the [astral-sh uv-in-Docker](https://docs.astral.sh/uv/guide
 - `UV_COMPILE_BYTECODE=1` — pre-compile `.pyc` for faster cold start.
 - `UV_LINK_MODE=copy` — silence hardlink errors across mounts.
 - Two-step `uv sync`: deps (`--no-install-project`) before `COPY .`, project after.
-- `PATH=/app/.venv/bin:$PATH` — call `gunicorn` directly, skip `uv run`.
+- `UV_PROJECT_ENVIRONMENT=/opt/venv` + `PATH=/opt/venv/bin:$PATH` — venv lives outside `WORKDIR=/app` so dev bind-mounts can't shadow it; `gunicorn` runs directly without `uv run`.
 
 ### Variant A — single-stage (default)
 
@@ -296,7 +313,8 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    PATH="/app/.venv/bin:$PATH"
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
@@ -330,7 +348,9 @@ CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]
 ```dockerfile
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
-ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/opt/venv
 
 WORKDIR /app
 
@@ -342,10 +362,10 @@ RUN uv sync --frozen --no-dev
 
 # Same S3 caveat as variant A.
 RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
-    /app/.venv/bin/python manage.py collectstatic --noinput
+    /opt/venv/bin/python manage.py collectstatic --noinput
 
 FROM python:3.12-slim-bookworm AS runtime
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
@@ -354,6 +374,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd --system django && useradd --system --gid django django
 
 WORKDIR /app
+COPY --from=builder --chown=django:django /opt/venv /opt/venv
 COPY --from=builder --chown=django:django /app /app
 
 USER django

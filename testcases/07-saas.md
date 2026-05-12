@@ -67,7 +67,7 @@ docker run --rm 07-vps-sqlite-saas:test which gunicorn
 docker run --rm 07-vps-sqlite-saas:test which litestream
 docker run --rm 07-vps-sqlite-saas:test id -un | grep -q '^django$'
 ! docker compose logs web 2>&1 | grep -iE 'traceback|^error|critical|unhandled'
-docker compose down -v
+docker compose down -v --rmi local
 docker rmi 07-vps-sqlite-saas:test
 ```
 

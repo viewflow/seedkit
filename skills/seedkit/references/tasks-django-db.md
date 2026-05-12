@@ -51,7 +51,6 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - .:/app
-      - /app/.venv
     env_file: .env
     command: python manage.py db_worker
     depends_on:
@@ -61,7 +60,7 @@ services:
 
 ## VPS — docker-compose.prod.yml
 
-Production image has `/app/.venv/bin` on `PATH`:
+Production image has `/opt/venv/bin` on `PATH`:
 
 ```yaml
 services:

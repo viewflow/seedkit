@@ -4,6 +4,10 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 
 ## 26.20.2 — 2026-05-12
 
+### Changed
+- `docker.md` venv moves to `/opt/venv` via `UV_PROJECT_ENVIRONMENT` so the `.:/app` bind-mount can't shadow it. Drops the anonymous `- /app/.venv` shadow volume from `web` and every worker compose service (`tasks-celery.md`, `tasks-django-db.md`, `tasks-django-rq.md`, `tasks-django-cron.md`). Cleaner cleanup — no `<project>_xxxx` hash-named anon volumes left over after `docker compose down -v`.
+- Testcase cleanup now runs `docker compose down -v --rmi local` (was `down -v`) so the compose-built dev image is removed alongside the volumes. Pulled base images (postgres/redis/mailpit/minio) stay shared.
+
 ### Fixed
 - `tailwind.md` DaisyUI inputs (`source.css`, `daisyui.mjs`, `daisyui-theme.mjs`) move to `tailwind-src/css/`, **outside** `STATICFILES_DIRS`. With them inside, `CompressedManifestStaticFilesStorage` walks the source CSS and fails to resolve `@import "tailwindcss"` / `@plugin "./daisyui.mjs"` as static URLs (`MissingFileError: css/tailwindcss`). Only the compiled `tailwind.css` stays under `assets/`.
 - `tailwind.md` production Dockerfile passes `DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True` to **both** `tailwind build` and `collectstatic`. `manage.py` defaults to `local.py`, which demands `SECRET_KEY` / `DATABASE_URL` that don't exist at image-build time.

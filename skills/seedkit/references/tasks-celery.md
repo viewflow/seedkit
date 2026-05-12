@@ -64,8 +64,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     volumes:
-      - .:/app
-      - /app/.venv          # anonymous volume — same shadowing trick as web
+      - .:/app          # venv lives at /opt/venv per references/docker.md
     env_file: .env
     command: celery -A config worker -l info
     depends_on:
@@ -77,7 +76,7 @@ services:
 
 ## VPS — docker-compose.prod.yml
 
-Production image has `/app/.venv/bin` on `PATH` — call `celery` directly:
+Production image has `/opt/venv/bin` on `PATH` — call `celery` directly:
 
 ```yaml
 services:
@@ -132,7 +131,6 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - .:/app
-      - /app/.venv
     env_file: .env
     command: celery -A config beat -l info
     depends_on:

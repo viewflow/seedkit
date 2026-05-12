@@ -62,7 +62,7 @@ test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 docker build -t 09-ssh-deploy:test .
 ! docker compose logs web worker 2>&1 | grep -iE 'traceback|^error|critical|unhandled'
 docker compose logs worker 2>&1 | grep -iE 'rqworker|listening on|default'
-docker compose down -v
+docker compose down -v --rmi local
 docker rmi 09-ssh-deploy:test
 ```
 

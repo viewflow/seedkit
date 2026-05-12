@@ -67,7 +67,6 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - .:/app
-      - /app/.venv
     env_file: .env
     command: python manage.py rqworker default
     depends_on:

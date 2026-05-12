@@ -47,7 +47,6 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - .:/app
-      - /app/.venv
     env_file: .env
     command: python manage.py crontask
     depends_on:
