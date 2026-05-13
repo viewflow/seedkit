@@ -1,6 +1,6 @@
 ---
 name: seedkit-slim
-version: 26.20.2
+version: 26.20.3
 description: Bootstrap a new Django project, or add components to an existing one — auth, payments, REST, Celery / django-tasks, async / WebSockets, Tailwind, S3, structlog, healthchecks, Docker, CI, deploy, dbbackup, Sentry. Use whenever the user wants to scaffold Django or extend an existing Django project.
 ---
 
@@ -20,6 +20,8 @@ Before anything: `uv --version` to confirm uv is available. `none` (or `no`) is 
 Ask one question at a time. Never bundle.
 
 ## 1. Foundation — new projects only
+
+See `references/new-project.md` for the verbatim snippets (settings, urls, `.env`, `.gitignore`, boot check).
 
 1. Project name + one-line purpose.
 2. Settings layout: `single settings.py` / `split base+local+production`.
