@@ -11,6 +11,10 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 - `skills/seedkit-slim/references/django-modern-rest.md` — `pyjwt` is an implicit dep (imported unconditionally) and router-mount wiring for `config/urls.py`.
 - `skills/seedkit-slim/references/pyright.md` — `djangoSettingsModule` belongs under `[tool.django-stubs]`, not `[tool.pyright]`; channels `as_asgi()` needs `# type: ignore[arg-type]` in `path()`.
 - `skills/seedkit-slim/references/django-orbit.md` and `references/mailpit.md` — debug-only gating for orbit (app, middleware at index 1, URL mount, logging handler all inside `if DEBUG:`) and Mailpit compose with loopback-only port binds + `EMAIL_URL` wiring. Without these the slim agent shipped orbit in INSTALLED_APPS unconditionally and bound 1025/8025 to all interfaces.
+- `skills/seedkit-slim/references/django-tasks-db.md`, `django-zeal.md`, `django-migration-linter.md` — DB backend ships as the separate `django-tasks-db` package (`django_tasks_db.backend.DatabaseBackend`); zeal 2.x middleware is the lowercase function `zeal.middleware.zeal_middleware`; `lintmigrations` needs `django_migration_linter` in `INSTALLED_APPS` plus `MIGRATION_LINTER_OPTIONS.exclude_apps` for third-party migrations.
+
+### Changed
+- `new-project.md` directs dev tools through `uv add --group dev` (PEP 735 `[dependency-groups]`). The old `[tool.uv] dev-dependencies` table is deprecated in uv 0.11+.
 
 ### Fixed
 - `new-project.md` appends `[tool.uv] package = false` to `pyproject.toml` right after `uv init --bare`. Django apps aren't installable; without this, `uv sync` invoked hatchling and failed mid-foundation.

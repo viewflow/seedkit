@@ -13,6 +13,8 @@ uv add 'django>=6.0,<7.0' django-environ
 uv run django-admin startproject config .
 ```
 
+Add dev tools with `uv add --group dev <pkg>` — that writes to the PEP 735 `[dependency-groups]` table. The older `[tool.uv] dev-dependencies` key is deprecated in uv 0.11+.
+
 ## Settings — single file
 
 Replace only `SECRET_KEY` / `DEBUG` / `ALLOWED_HOSTS` / `DATABASES` in `config/settings.py`:
