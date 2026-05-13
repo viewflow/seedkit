@@ -7,6 +7,9 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ### Added
 - `skills/seedkit-slim/references/new-project.md` — foundation snippets for §1 (settings with `DJANGO_*` env vars + `env.NOTSET` prod guards, `/` → `/admin/` redirect in `config/urls.py`, `.gitignore` contents, `django>=6.0,<7.0` pin, boot check using `--noreload`). Slim runs were missing all of these.
 - `skills/seedkit-slim/references/django-mail-auth.md` — app label is `mailauth` (not `mail_auth`), backend `mailauth.backends.MailAuthBackend`, requires `django.contrib.sites` + `SITE_ID`, and ships no templates — `registration/login.html` + `registration/login_requested.html` must be scaffolded or `accounts/login/` returns 500.
+- `skills/seedkit-slim/references/django-tasks-rq.md` — backend module is `django_tasks_rq.backend` (singular), `django_rq` must be in `INSTALLED_APPS` for its migrations, plus the `RQ = {"JOB_CLASS": "django_tasks_rq.Job"}` setting.
+- `skills/seedkit-slim/references/django-modern-rest.md` — `pyjwt` is an implicit dep (imported unconditionally) and router-mount wiring for `config/urls.py`.
+- `skills/seedkit-slim/references/pyright.md` — `djangoSettingsModule` belongs under `[tool.django-stubs]`, not `[tool.pyright]`; channels `as_asgi()` needs `# type: ignore[arg-type]` in `path()`.
 
 ### Fixed
 - `new-project.md` appends `[tool.uv] package = false` to `pyproject.toml` right after `uv init --bare`. Django apps aren't installable; without this, `uv sync` invoked hatchling and failed mid-foundation.
