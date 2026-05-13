@@ -10,6 +10,7 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 - `skills/seedkit-slim/references/django-tasks-rq.md` — backend module is `django_tasks_rq.backend` (singular), `django_rq` must be in `INSTALLED_APPS` for its migrations, plus the `RQ = {"JOB_CLASS": "django_tasks_rq.Job"}` setting.
 - `skills/seedkit-slim/references/django-modern-rest.md` — `pyjwt` is an implicit dep (imported unconditionally) and router-mount wiring for `config/urls.py`.
 - `skills/seedkit-slim/references/pyright.md` — `djangoSettingsModule` belongs under `[tool.django-stubs]`, not `[tool.pyright]`; channels `as_asgi()` needs `# type: ignore[arg-type]` in `path()`.
+- `skills/seedkit-slim/references/django-orbit.md` and `references/mailpit.md` — debug-only gating for orbit (app, middleware at index 1, URL mount, logging handler all inside `if DEBUG:`) and Mailpit compose with loopback-only port binds + `EMAIL_URL` wiring. Without these the slim agent shipped orbit in INSTALLED_APPS unconditionally and bound 1025/8025 to all interfaces.
 
 ### Fixed
 - `new-project.md` appends `[tool.uv] package = false` to `pyproject.toml` right after `uv init --bare`. Django apps aren't installable; without this, `uv sync` invoked hatchling and failed mid-foundation.
