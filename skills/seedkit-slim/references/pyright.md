@@ -25,3 +25,5 @@ When `path()` complains about `Consumer.as_asgi()`:
 ```python
 path("ws/echo/", EchoConsumer.as_asgi()),  # type: ignore[arg-type]  # channels returns ASGIApp, path() expects view callable
 ```
+
+`django-stubs` exposes `User.pk`, not `User.id`. Use `user.pk` in serializers / API handlers. `request.user` types as `User | AnonymousUser`; narrow with `cast(User, request.user)` when a view is auth-gated.
