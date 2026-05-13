@@ -1,12 +1,12 @@
 ---
 name: seedkit-slim
-version: 26.20.2
-description: Bootstrap a new Django project, or add components to an existing one — auth, payments, REST, Celery / django-tasks, async / WebSockets, Tailwind, S3, structlog, healthchecks, Docker, CI, deploy, dbbackup, Sentry. Slim variant — questionnaire only, no implementation guidance. Use whenever the user wants to scaffold Django or extend an existing Django project.
+version: 26.20.3
+description: Bootstrap a new Django project, or add components to an existing one — auth, payments, REST, Celery / django-tasks, async / WebSockets, Tailwind, S3, structlog, healthchecks, Docker, CI, deploy, dbbackup, Sentry. Use whenever the user wants to scaffold Django or extend an existing Django project.
 ---
 
 ## How this skill works
 
-Pure requirements-gathering. Ask the questions below, collect answers, then generate the project — you already know the packages, the settings, and the wiring.
+Ask the questions below, collect answers, then generate the project. If a `references/<tool>.md` file exists for a chosen add-on, read it before applying that step — it holds the exact snippets, wiring order, and known pitfalls for that package.
 
 Two paths:
 
@@ -20,6 +20,8 @@ Before anything: `uv --version` to confirm uv is available. `none` (or `no`) is 
 Ask one question at a time. Never bundle.
 
 ## 1. Foundation — new projects only
+
+See `references/new-project.md` for the verbatim snippets (settings, urls, `.env`, `.gitignore`, boot check).
 
 1. Project name + one-line purpose.
 2. Settings layout: `single settings.py` / `split base+local+production`.
@@ -83,7 +85,7 @@ Only when Foundation §1.4 = `asgi+channels`.
 ## 3. Production & Deploy
 
 1. Security settings: yes / no. Default no.
-   - If yes: `django-csp` — yes / no. Default yes.
+   - If yes: `django-csp` — yes / no. Default yes. See `references/django-csp.md`.
 2. Health checks (`/healthz`, `/readyz`): yes / no. Default yes.
 3. Error reporting: `bugsink` / `sentry-sdk` / `glitchtip` / none. Default none.
 4. GDPR helpers: yes / no. Default no.
