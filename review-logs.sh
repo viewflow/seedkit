@@ -93,12 +93,20 @@ The log has two phases — `════════ BUILD ═══════
 
 Workflow:
 
-1. Read the log. Identify items that point at a real **skill defect** — a reference snippet that was wrong, missing, or led the agent into a footgun. Skip:
+1. Read the log. Identify two categories of real **skill defects**:
+
+   a. **Error loops** — sequences where the agent generated code, hit an error (ImportError, ImproperlyConfigured, migration failure, server crash, curl returning non-200, etc.), then had to patch it. Each loop is a missing or wrong snippet in the skill. Extract the working fix.
+
+   b. **Wrong/missing snippets** — a reference snippet that was incorrect, incomplete, or absent, causing the agent to improvise or skip a required step.
+
+   Skip:
    - Agent improvisations against strict testcase assertions (e.g. agent put healthchecks in `api/views.py` when the skill allows any registered app).
    - Findings already covered by an existing reference or `SKILL.md` pitfall — grep before editing.
    - Cosmetic preferences and "consider adding X" nudges.
-2. For each real defect, make the smallest edit to the matching `skills/seedkit-slim/SKILL.md`, `skills/seedkit-slim/references/*.md`, or `testcases/*.md`. Follow `seedkit/CLAUDE.md` and these rules:
+
+2. For each real defect, make the smallest edit to the matching `skills/seedkit-slim/SKILL.md` or `skills/seedkit-slim/references/*.md`. **Create `skills/seedkit-slim/references/<tool>.md` if no file exists yet for the relevant package.** Follow `seedkit/CLAUDE.md` and these rules:
    - **Tool-specific guidance belongs in a reference file.** If an implementation detail is specific to a single package or tool (e.g. Celery broker config, WhiteNoise middleware order, allauth URL wiring), put it in `skills/seedkit-slim/references/<tool>.md` and cross-reference from `SKILL.md` — do not inline it in `SKILL.md`.
+   - **Error-loop fixes go into snippets, not prose.** When an error loop reveals the correct wiring, add the working code as a paste-ready snippet in the reference file. One short rationale comment inside the snippet if the reason isn't obvious; no surrounding explanation paragraph.
    - **No negative samples when a positive one exists.** If the correct approach is shown with a code sample, do not add a "Don't do X" / "Never use Y" counterexample alongside it. Add negative guidance only when there is no positive sample that already covers the behavior (e.g. a standalone rule with no code equivalent).
    - Show the correct sample. No significance inflation, no fake -ing analysis, no podium voice.
    - Cross-reference, don't duplicate.
