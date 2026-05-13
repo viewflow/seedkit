@@ -175,13 +175,13 @@ os.execvp(sys.argv[1], sys.argv[1:])
 link_skill() {
     # Project-scoped skill so claude -p in $WORKSPACE finds it.
     mkdir -p "$WORKSPACE/.claude/skills"
-    ln -snf "$REPO/skills/seedkit" "$WORKSPACE/.claude/skills/seedkit"
+    ln -snf "$REPO/skills/seedkit-slim" "$WORKSPACE/.claude/skills/seedkit-slim"
 
     # Gemini uses `gemini skills link` rather than a bare symlink — its
     # discovery mechanism reads the registry, not the directory. Idempotent;
     # re-linking the same path is a no-op.
     if [[ "$BUILD_CLI" == "gemini" ]]; then
-        (cd "$WORKSPACE" && gemini skills link "$REPO/skills/seedkit" \
+        (cd "$WORKSPACE" && gemini skills link "$REPO/skills/seedkit-slim" \
             --scope workspace --consent >/dev/null 2>&1) || true
     fi
 }
@@ -214,7 +214,7 @@ run_phase() {
     # gemini branch for the rationale.
     if [[ "$cli" == "gemini" ]]; then
         prompt=$(printf '%s' "$prompt" \
-            | sed 's|^/seedkit$|Use the seedkit skill to scaffold the project per the questionnaire below.|')
+            | sed 's|^/seedkit-slim$|Use the seedkit-slim skill to scaffold the project per the questionnaire below.|')
         prompt="Shell-tool note: your run_shell_command runs each call synchronously and does not preserve & backgrounding across calls. When the smoke / deploy snippet uses &, jobs -p, or wait, run the whole snippet inside a single \"timeout 60 bash -c '...'\" invocation so it executes in one child shell and self-terminates.
 
 $prompt"

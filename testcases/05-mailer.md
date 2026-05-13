@@ -5,7 +5,7 @@ Covers the django-orbit observability dashboard (with MCP) and the Mailpit dev m
 ## Prompt
 
 ```
-/seedkit
+/seedkit-slim
 
 Project name: 05-orbit-demo
 Purpose: scratch project to exercise django-orbit and verify outbound mail flows are captured.
