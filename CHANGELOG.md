@@ -7,11 +7,13 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ### Added
 - `skills/seedkit-slim/references/celery.md` — Redis broker / results / beat wiring with `django-redis`, per-subsystem `REDIS_URL` segmentation, `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True`, `config/celery.py` + `config/__init__.py` exports, and an autodiscovery probe. Slim runs were missing the dep, the retry flag, and packing every subsystem into db 0.
 - `skills/seedkit-slim/references/tailwind-cli.md`, `stripe.md`, `whitenoise.md` — `django-tailwind-cli` layout (vendored DaisyUI `.mjs`, `STATICFILES_DIRS = [BASE_DIR / "assets"]`, source outside the static dir, `tailwind build` after templates exist); Stripe raw-SDK checkout / portal / webhook views with `_stripe.api_key` module-scope wiring and `stripe_customer_id` on the custom user; WhiteNoise as production-only middleware right after `SecurityMiddleware`. Slim runs were inventing a custom tailwind shim, skipping Stripe entirely, and placing `WhiteNoiseMiddleware` in `base.py`.
+- `skills/seedkit-slim/references/structlog.md` — module-scope `LOGGING` with `ProcessorFormatter` as a formatter (not a handler class), `StreamHandler` picking `console`/`json` by `DEBUG`, and `wrap_for_formatter` as the terminal processor. Slim runs were crashing with `TypeError: Either processor or processors must be passed`.
 
 ### Fixed
 - `django-mail-auth.md` puts `mailauth.contrib.admin` BEFORE `django.contrib.admin` in `INSTALLED_APPS` — the override only takes effect when it precedes the stock admin.
 - `SKILL.md` §2.5 i18n step now spells out `USE_I18N`, `LANGUAGES`, `LOCALE_PATHS`, and `LocaleMiddleware` placement so slim runs stop omitting `LANGUAGES`.
 - `new-project.md` swaps `sed` before `uv python pin 3.12` — on a Python 3.14 host the pin failed against the stock `requires-python = ">=3.14"` before the relaxation ran.
+- `django-modern-rest.md` rewritten against the actual `dmr` package: `from dmr import Body, Controller`, `from dmr.routing import Router`, HTTP-verb method dispatch, and `Router(prefix, [path(...)])` mounting. The previous `from modern_rest import Router` / `.register()` snippet did not match any real API.
 
 ## 26.20.3 — 2026-05-13
 

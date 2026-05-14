@@ -42,7 +42,7 @@ See `references/new-project.md` for the verbatim snippets (settings, urls, `.env
 6. Debug toolbar: `django-orbit` / `django-silk` / none. Default none.
 7. DB safety (multi-select): `django-zeal` / `django-migration-linter` / `django-test-migrations` / none. Default none. Skip `django-test-migrations` if pytest not chosen.
 8. `django-extensions`: yes / no. Default no.
-9. Logging: `structlog` / none. Default none.
+9. Logging: `structlog` / none. Default none. See `references/structlog.md`.
 10. Task runner: `mise` / `just` / `make` / `poe` / none. Default `mise`.
 
 ### 2.2 Auth & Accounts
