@@ -4,6 +4,9 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 
 ## 26.20.4 — 2026-05-14
 
+### Added
+- `skills/seedkit-slim/references/tailwind-cli.md`, `stripe.md`, `whitenoise.md` — `django-tailwind-cli` layout (vendored DaisyUI `.mjs`, `STATICFILES_DIRS = [BASE_DIR / "assets"]`, source outside the static dir, `tailwind build` after templates exist); Stripe raw-SDK checkout / portal / webhook views with `_stripe.api_key` module-scope wiring and `stripe_customer_id` on the custom user; WhiteNoise as production-only middleware right after `SecurityMiddleware`. Slim runs were inventing a custom tailwind shim, skipping Stripe entirely, and placing `WhiteNoiseMiddleware` in `base.py`.
+
 ### Fixed
 - `new-project.md` swaps `sed` before `uv python pin 3.12` — on a Python 3.14 host the pin failed against the stock `requires-python = ">=3.14"` before the relaxation ran.
 

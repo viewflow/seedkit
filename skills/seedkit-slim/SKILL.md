@@ -54,7 +54,7 @@ See `references/new-project.md` for the verbatim snippets (settings, urls, `.env
 ### 2.3 Data & Storage
 
 1. Cache: `sqlite` / `django-redis` / `locmem` / none. Default `sqlite` when DB=sqlite, else `locmem`.
-2. Static + media: `whitenoise` / `django-storages[s3]` / none. Default none.
+2. Static + media: `whitenoise` / `django-storages[s3]` / none. Default none. See `references/whitenoise.md` for `whitenoise`.
 
 ### 2.4 Background & Email
 
@@ -63,7 +63,7 @@ See `references/new-project.md` for the verbatim snippets (settings, urls, `.env
 
 ### 2.5 Frontend & Site Basics
 
-1. Frontend: `tailwind` (standalone CLI) / none. Default none.
+1. Frontend: `django-tailwind-cli` / none. Default none. See `references/tailwind-cli.md`.
    - If tailwind: custom 404/403/500 templates — yes / no. Default no.
    - If tailwind: DaisyUI — yes / no. Always ask.
 2. i18n (gettext, LocaleMiddleware): yes / no. Default no.
@@ -73,7 +73,7 @@ See `references/new-project.md` for the verbatim snippets (settings, urls, `.env
 ### 2.6 SaaS / Product
 
 1. REST API: `django-modern-rest` / `django-bolt` / none. Default none.
-2. Billing: `stripe` (raw SDK) / `dj-stripe` / none. Default none.
+2. Billing: `stripe` (raw SDK) / `dj-stripe` / none. Default none. See `references/stripe.md` for `stripe`.
 3. Analytics: `goatcounter` / `umami` / `shynet` / `ga4` / none. Default none.
 
 ### 2.7 Real-time
