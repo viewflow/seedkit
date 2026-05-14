@@ -118,12 +118,14 @@ Append to the compose file from `references/docker.md`:
 services:
   minio:
     image: minio/minio:latest
-    command: server /data --console-address ":9001"
+    volumes: ["miniodata:/data"]
     environment:
       MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
       MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
-    ports: ["9000:9000", "9001:9001"]
-    volumes: ["miniodata:/data"]
+    ports:
+      - "127.0.0.1:9000:9000"   # S3 API — loopback only; production uses real S3
+      - "127.0.0.1:9001:9001"   # web console
+    command: server /data --console-address ":9001"
     healthcheck:
       # `wget` isn't in minio/minio:latest — use curl, which is.
       test: ["CMD", "curl", "-sf", "http://localhost:9000/minio/health/live"]

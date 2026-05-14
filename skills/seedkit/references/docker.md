@@ -45,15 +45,17 @@ node_modules/
 Only the services Django talks to over the network. The web process runs on the host via `uv run manage.py runserver`, so the compose file has no `web` service and nothing to bind-mount source into.
 
 ```yaml
+name: <project-slug>   # matches pyproject.toml [project].name; isolates volumes/networks per project
+
 services:
   db:
     image: postgres:17
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: postgres
     ports:
       - "127.0.0.1:5432:5432"   # host Django reaches it via localhost
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -63,6 +65,8 @@ services:
 volumes:
   pgdata:
 ```
+
+Key order inside each service follows dclint's expected sequence: `image` → `volumes` → `environment` → `ports` → `command` → `healthcheck` (full list in the dclint `service-keys-order` rule). Apply the same order in every service added to this file.
 
 `.env`: `DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres`.
 
