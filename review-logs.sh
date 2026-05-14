@@ -93,16 +93,51 @@ The log has two phases — `════════ BUILD ═══════
 
 Workflow:
 
-1. Read the log. Identify two categories of real **skill defects**:
+1. Read the log. Identify three categories of real **skill defects**:
 
    a. **Error loops** — sequences where the agent generated code, hit an error (ImportError, ImproperlyConfigured, migration failure, server crash, curl returning non-200, etc.), then had to patch it. Each loop is a missing or wrong snippet in the skill. Extract the working fix.
 
    b. **Wrong/missing snippets** — a reference snippet that was incorrect, incomplete, or absent, causing the agent to improvise or skip a required step.
 
+   c. **Silent omissions in the generated artefact.** Slim deliberately drops workflow guidance from `SKILL.md`. The boot smoke may pass while the project still ships a known footgun (breaks in prod, breaks on next deploy, breaks on next contributor's clone). Derive the case prefix `NN` from the log basename (e.g. `02-shop-20260510-173829.log` → `02`) and locate the project dir at `__WORKSPACE__/NN-*/`. From that dir, run the checklist below — each non-empty hit (or `MISSING:` line) is a defect to treat like (b):
+
+      ```sh
+      # uv inside Docker/compose/fly — must be `python manage.py`, not `uv run`
+      grep -nH 'uv run' Dockerfile docker-compose.yml docker-compose.prod.yml fly.toml 2>/dev/null
+
+      # Python version pin
+      grep -H '^requires-python' pyproject.toml || echo "MISSING: requires-python in pyproject.toml"
+
+      # Duplicate DATABASES block left behind by startproject
+      grep -rn '^DATABASES = {' . --include='*.py' 2>/dev/null | awk -F: '{print $1}' | sort | uniq -c | awk '$1>1'
+
+      # tasks.py at project root or under config/ — must live inside a registered app
+      find . -maxdepth 3 -name tasks.py -not -path './.venv/*' -not -path './.git/*' \
+        | grep -E '^\./tasks\.py$|/config/tasks\.py$' || true
+
+      # .env.example trailing comments after values (django-environ reads the comment as part of the URL)
+      grep -nE '^[A-Z_]+=[^#]*[[:space:]]+#' .env.example 2>/dev/null
+
+      # Canonical DJANGO_* env vars
+      for v in DJANGO_DEBUG DJANGO_SECRET_KEY DJANGO_ALLOWED_HOSTS; do
+        grep -q "^$v=" .env.example 2>/dev/null || echo "MISSING: $v in .env.example"
+      done
+
+      # Fail-fast idiom for prod secrets (settings should reference env.NOTSET when DEBUG=False)
+      grep -rn 'env.NOTSET\|NOTSET' --include='*.py' . 2>/dev/null | head -3 \
+        || echo "MISSING: env.NOTSET fail-fast in settings"
+
+      # If deploy=vps or github-ssh, README's ## Deploy block must run migrate before `compose up -d`
+      grep -A20 '^## Deploy' README.md 2>/dev/null | grep -qE 'migrate.*\n.*compose up' \
+        || grep -B2 'compose up -d' README.md | grep -q migrate \
+        || echo "CHECK: README ## Deploy may be missing pre-up migrate step (skip if deploy=none/managed)"
+      ```
+
    Skip:
    - Agent improvisations against strict testcase assertions (e.g. agent put healthchecks in `api/views.py` when the skill allows any registered app).
    - Findings already covered by an existing reference or `SKILL.md` pitfall — grep before editing.
    - Cosmetic preferences and "consider adding X" nudges.
+   - Checklist items that aren't applicable to this case's configuration (no Docker artefact when deploy=none; no `## Deploy` block when deploy=none/managed).
 
 2. For each real defect, make the smallest edit to the matching `skills/seedkit-slim/SKILL.md` or `skills/seedkit-slim/references/*.md`. **Create `skills/seedkit-slim/references/<tool>.md` if no file exists yet for the relevant package.** Follow `seedkit/CLAUDE.md` and these rules:
    - **Tool-specific guidance belongs in a reference file.** If an implementation detail is specific to a single package or tool (e.g. Celery broker config, WhiteNoise middleware order, allauth URL wiring), put it in `skills/seedkit-slim/references/<tool>.md` and cross-reference from `SKILL.md` — do not inline it in `SKILL.md`.
@@ -127,9 +162,12 @@ Hard constraints:
 - Keep every edit short.
 EOF
 TODAY_VER=$(date +%y.%V.%u)
+WORKSPACE_DEFAULT="$PARENT/seedkit-examples"
+WORKSPACE_DIR="${WORKSPACE:-$WORKSPACE_DEFAULT}"
 PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__TODAY__/$TODAY_VER}"
 PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__REPO__/$REPO}"
 PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__PARENT__/$PARENT}"
+PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__WORKSPACE__/$WORKSPACE_DIR}"
 PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__BRANCH__/$CURRENT_BRANCH}"
 
 total=${#LOGS[@]}
