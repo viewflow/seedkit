@@ -57,6 +57,9 @@ jobs:
       REDIS_URL: redis://localhost:6379       # only when redis / celery / django-tasks-rq is wired
       POSTMARK_SERVER_TOKEN: ci-placeholder   # only when django-anymail[postmark] is wired
       ANYMAIL_WEBHOOK_SECRET: ci-placeholder  # only when the Anymail webhook URL is wired
+      AWS_ACCESS_KEY_ID: ci-placeholder       # only when django-dbbackup is wired
+      AWS_SECRET_ACCESS_KEY: ci-placeholder   # only when django-dbbackup is wired
+      DBBACKUP_BUCKET: ci-placeholder         # only when django-dbbackup is wired
 
     steps:
       - uses: actions/checkout@v4

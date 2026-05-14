@@ -105,7 +105,7 @@ Verify these structural facts:
 - `.github/workflows/deploy.yml` uses `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`, `secrets.GHCR_TOKEN`. The SSH script `export GITHUB_REPOSITORY="${{ github.repository }}"` before `compose pull`. Every `docker compose` invocation passes `--env-file deploy/.env.prod`. `concurrency: group: deploy` set.
 - `docker/build-push-action` step has `target: prod` (matching the `prod` stage in `references/docker.md`).
 - The container healthcheck in `deploy/docker-compose.prod.yml` uses python urllib (no curl dependency).
-- `.github/workflows/test.yml` runs migrations + pytest. Env block ships `EMAIL_URL=consolemail://`, `REDIS_URL=redis://localhost:6379`, `DJANGO_SECRET_KEY` placeholder, `DJANGO_DEBUG=False`.
+- `.github/workflows/test.yml` runs migrations + pytest. Env block ships `REDIS_URL=redis://localhost:6379`, `DJANGO_SECRET_KEY` placeholder, `DJANGO_DEBUG=False`, and dbbackup placeholders (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `DBBACKUP_BUCKET`) so `check --deploy` against `production` settings loads.
 
 **Health**
 - `pages/views.py` (or equivalent — `config/views.py` is fine) defines `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.
