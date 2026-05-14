@@ -77,7 +77,7 @@ uv run pyright
 docker build --target prod -t 08-fly-app:test .
 docker run --rm 08-fly-app:test python --version | grep -q '3\.12'
 docker run --rm 08-fly-app:test which uv && echo "uv leaked into runtime image" && exit 1 || true
-kill "$RUNSERVER_PID" "$WORKER_PID" "$BOLT_PID"
+kill -- -"$RUNSERVER_PID" -"$WORKER_PID" -"$BOLT_PID" 2>/dev/null; wait
 docker compose down -v
 docker rmi 08-fly-app:test
 ```

@@ -46,6 +46,7 @@ createdb shop_db || true
 cd 02-shop
 uv run manage.py tailwind build
 uv run manage.py runserver &
+SERVER_PID=$!
 curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
 curl -sf http://127.0.0.1:8000/ | grep -q 'text-blue-600'
 CSS_URL=$(curl -sf http://127.0.0.1:8000/ | grep -oE 'href="[^"]*tailwind[^"]*\.css[^"]*"' | head -1 | sed 's/href="//;s/"//')
@@ -60,7 +61,7 @@ uv run ruff check .
 uv run pyright
 # Task runner sanity — mise.toml present.
 test -f mise.toml
-kill $(jobs -p) 2>/dev/null; wait
+kill -- -"$SERVER_PID" 2>/dev/null; wait
 dropdb shop_db
 ```
 

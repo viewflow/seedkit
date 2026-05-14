@@ -42,8 +42,9 @@ Run the foundation, the boot check (migrate + createsuperuser), and confirm /adm
 ```sh
 cd 01-minimal-blog
 uv run manage.py runserver &
+SERVER_PID=$!
 curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
-kill $(jobs -p) 2>/dev/null; wait
+kill -- -"$SERVER_PID" 2>/dev/null; wait
 ```
 
 ## Review

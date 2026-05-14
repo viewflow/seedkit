@@ -51,7 +51,9 @@ createdb silk_db || true
 cd 06-silk-lab
 uv run manage.py migrate
 uv run manage.py runserver &
+SERVER_PID=$!
 uv run manage.py db_worker &
+WORKER_PID=$!
 sleep 2
 curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null
 curl -sf http://127.0.0.1:8000/silk/ > /dev/null
@@ -61,7 +63,7 @@ uv run manage.py show_urls > /dev/null
 uv run manage.py lintmigrations
 uv run ruff check .
 uv run pytest; rc=$?; [ "$rc" -eq 0 ] || [ "$rc" -eq 5 ]   # exit 5 = no tests collected (empty scaffold)
-kill $(jobs -p) 2>/dev/null; wait
+kill -- -"$SERVER_PID" -"$WORKER_PID" 2>/dev/null; wait
 dropdb silk_db
 ```
 

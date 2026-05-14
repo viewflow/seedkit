@@ -60,7 +60,7 @@ for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null &
 curl -sf http://127.0.0.1:8000/accounts/login/ > /dev/null
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
-kill "$RUNSERVER_PID"
+kill -- -"$RUNSERVER_PID" 2>/dev/null; wait
 uv run pyright
 docker build --target prod -t 07-vps-sqlite-saas:test .
 docker run --rm 07-vps-sqlite-saas:test which gunicorn

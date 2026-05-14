@@ -336,7 +336,8 @@ for tc in "${FILES[@]}"; do
             printf 'Wait-for-services rules — observed pitfalls that have hung past runs:\n'
             printf -- '- Use `docker compose up -d --wait` (or `--wait-timeout 60`) when the smoke depends on services being up. It blocks on the compose-side healthchecks and exits non-zero on failure. Don'\''t hand-roll a polling loop.\n'
             printf -- '- Never pipe `docker compose ps --format json` into `json.load` — Compose v2.6+ emits newline-delimited JSON, not an array. `json.load` reads the whole stream and raises, your loop stays at exit 1, and the bash tool livelocks.\n'
-            printf -- '- If a service has no healthcheck declared, add one in `docker-compose.yml` rather than polling externally.\n\n'
+            printf -- '- If a service has no healthcheck declared, add one in `docker-compose.yml` rather than polling externally.\n'
+            printf -- '- Kill background servers with `kill -- -"$SERVER_PID" 2>/dev/null; wait` (negative PID = send to whole process group). Plain `kill $PID` or `kill $(jobs -p)` only terminates the launcher (`uv run`), leaving the Python grandchild alive; `wait` then blocks until it exits on its own.\n\n'
         fi
         if [[ -n "$deploy_section" ]]; then
             printf 'Then exercise the **production artifact** end-to-end. This catches what the dev-mode boot can'\''t: missing prod deps, DEBUG=False breakage, `migrate --check` drift, `collectstatic` failures, missing security headers. Auto-fix any failure:\n\n'

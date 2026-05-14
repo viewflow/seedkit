@@ -81,7 +81,7 @@ asyncio.run(main())
 "
 uv run ruff check .
 uv run pyright
-kill "$UVICORN_PID" "$WORKER_PID"
+kill -- -"$UVICORN_PID" -"$WORKER_PID" 2>/dev/null; wait
 docker compose down -v
 ```
 
