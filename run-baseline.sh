@@ -111,8 +111,6 @@ for tc in "${FILES[@]}"; do
     echo "    out:   $case_dir"
     echo "    log:   $log"
 
-    # Fresh dir every run — control group; we want what the unaided AI
-    # produces from scratch, not a patched-up previous attempt.
     rm -rf "$case_dir"
     mkdir -p "$case_dir"
     : > "$log"
@@ -125,6 +123,8 @@ for tc in "${FILES[@]}"; do
         | sed -E '/^\/seedkit(-slim)?$/d')
 
     prompt="Bootstrap a Django project per the answers below. Use whatever conventions you think are best — there is no skill loaded.
+
+Work strictly inside the current working directory. Do not read, list, or reference any path outside it (no \`ls ..\`, no \`Read ../...\`, no \`Glob ../**\`). This is a fresh control-group run — sibling directories may contain unrelated projects and looking at them would bias the output.
 
 $prompt_body"
 
