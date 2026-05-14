@@ -36,6 +36,6 @@ if settings.DEBUG:
 
 ```python
 if DEBUG:
-    LOGGING["handlers"]["orbit"] = {"class": "orbit.logging.OrbitHandler"}
+    LOGGING["handlers"]["orbit"] = {"class": "orbit.handlers.OrbitLogHandler"}
     LOGGING["root"]["handlers"].append("orbit")
 ```
