@@ -78,11 +78,13 @@ case_path = pathlib.Path(case_dir)
 EXCLUDE_DIRS = {
     ".git", ".venv", "venv", "__pycache__", "node_modules",
     "staticfiles", "media", ".mypy_cache", ".pytest_cache",
-    ".ruff_cache", "logs",
+    ".ruff_cache", "logs", ".django_tailwind_cli", ".devcontainer-data",
 }
 EXCLUDE_SUFFIX = (".pyc", ".pyo", ".sqlite3", ".sqlite3-journal", ".log")
+MAX_BYTES = 1_000_000  # baselines track config/source; skip downloaded binaries
 
 files = []
+skipped_large = []
 for root, dirs, fnames in os.walk(case_path):
     dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
     for fname in fnames:
@@ -92,6 +94,10 @@ for root, dirs, fnames in os.walk(case_path):
         if not full.is_file():
             continue
         rel = full.relative_to(case_path).as_posix()
+        size = full.stat().st_size
+        if size > MAX_BYTES:
+            skipped_large.append({"path": rel, "size": size})
+            continue
         data = full.read_bytes()
         files.append({
             "path": rel,
@@ -100,6 +106,7 @@ for root, dirs, fnames in os.walk(case_path):
         })
 
 files.sort(key=lambda f: f["path"])
+skipped_large.sort(key=lambda f: f["path"])
 
 manifest = {
     "case": case_name,
@@ -108,11 +115,13 @@ manifest = {
     "generated_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "file_count": len(files),
     "total_bytes": sum(f["size"] for f in files),
+    "skipped_large": skipped_large,
     "files": files,
 }
 
 pathlib.Path(out_file).write_text(json.dumps(manifest, indent=2) + "\n")
-print(f"    {len(files):4d} files, {manifest['total_bytes']:>9} bytes -> {out_file}")
+print(f"    {len(files):4d} files, {manifest['total_bytes']:>9} bytes -> {out_file}"
+      + (f"  (skipped {len(skipped_large)} >1MB)" if skipped_large else ""))
 PY
 done
 
