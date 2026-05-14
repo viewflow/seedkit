@@ -344,7 +344,8 @@ for tc in "${FILES[@]}"; do
             printf '%s\n\n' "$deploy_section"
             printf 'Deploy-smoke rules:\n'
             printf -- '- Run gunicorn from the built prod image — never `runserver` against production settings.\n'
-            printf -- '- Always tear down the smoke containers, network, and volumes at the end (even on failure) — orphaned `postgres:17` containers from a previous run will collide on the next.\n\n'
+            printf -- '- Always tear down the smoke containers, network, and volumes at the end (even on failure) — orphaned `postgres:17` containers from a previous run will collide on the next.\n'
+            printf -- '- Before tearing down, assert no anonymous volumes were created: `! docker compose ps -q | xargs docker inspect --format '"'"'{{range .Mounts}}{{if eq .Type "volume"}}{{println .Name}}{{end}}{{end}}'"'"' 2>/dev/null | grep -qE '"'"'^[0-9a-f]{64}$'"'"'`. Anonymous volumes (64-char hex names) mean a `VOLUME` declaration in the Dockerfile has no named counterpart in `docker-compose.yml` — they litter the host and survive `docker compose down`.\n\n'
         fi
         printf 'At the end, summarise: What worked out of the box / What broke / Fixes applied / Suggested skill changes.\n'
     } | run_phase "BUILD" "$BUILD_CLI" "$MODEL" "$WORKSPACE" "$log" ""

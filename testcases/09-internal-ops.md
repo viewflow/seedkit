@@ -63,6 +63,7 @@ for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null &
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 docker build --target prod -t 09-ssh-deploy:test .
+! docker compose ps -q | xargs docker inspect --format '{{range .Mounts}}{{if eq .Type "volume"}}{{println .Name}}{{end}}{{end}}' 2>/dev/null | grep -qE '^[0-9a-f]{64}$'
 kill -- -"$RUNSERVER_PID" -"$WORKER_PID" 2>/dev/null; wait
 docker compose down -v
 docker rmi 09-ssh-deploy:test

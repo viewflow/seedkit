@@ -81,6 +81,7 @@ asyncio.run(main())
 "
 uv run ruff check .
 uv run pyright
+! docker compose ps -q | xargs docker inspect --format '{{range .Mounts}}{{if eq .Type "volume"}}{{println .Name}}{{end}}{{end}}' 2>/dev/null | grep -qE '^[0-9a-f]{64}$'
 kill -- -"$UVICORN_PID" -"$WORKER_PID" 2>/dev/null; wait
 docker compose down -v
 ```

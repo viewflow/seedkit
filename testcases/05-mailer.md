@@ -60,6 +60,7 @@ TOTAL=$(curl -sf http://127.0.0.1:8025/api/v1/messages | python3 -c 'import json
 test "$TOTAL" -ge 1
 uv run ruff check .
 ! docker compose logs mailpit 2>&1 | grep -iE 'fatal|panic'
+! docker compose ps -q | xargs docker inspect --format '{{range .Mounts}}{{if eq .Type "volume"}}{{println .Name}}{{end}}{{end}}' 2>/dev/null | grep -qE '^[0-9a-f]{64}$'
 kill -- -"$SERVER_PID" 2>/dev/null; wait
 docker compose down -v --rmi local
 ```

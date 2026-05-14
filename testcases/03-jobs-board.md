@@ -60,6 +60,7 @@ test -f justfile
 uv run python -c "from config import celery_app; celery_app.loader.import_default_modules(); print(sorted(t for t in celery_app.tasks if not t.startswith('celery.')))"
 # docker logs must not contain fatal errors:
 ! docker compose logs db redis 2>&1 | grep -iE 'fatal|panic|traceback'
+! docker compose ps -q | xargs docker inspect --format '{{range .Mounts}}{{if eq .Type "volume"}}{{println .Name}}{{end}}{{end}}' 2>/dev/null | grep -qE '^[0-9a-f]{64}$'
 kill -- -"$SERVER_PID" 2>/dev/null; wait
 docker compose down -v --rmi local
 ```
