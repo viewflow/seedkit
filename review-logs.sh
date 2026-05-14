@@ -90,10 +90,40 @@ The log has two phases — `════════ BUILD ═══════
 
 Workflow:
 
-1. Read the log. Identify items that point at a real **skill defect** — a reference snippet that was wrong, missing, or led the agent into a footgun. Skip:
+1. Read the log. Identify items that point at a real **skill defect** — a reference snippet that was wrong, missing, or led the agent into a footgun. Then also **inspect the generated artefact** for silent-omission pitfalls (project boots, but ships a known footgun that breaks in prod or on next deploy). Derive the case prefix `NN` from the log basename (e.g. `02-shop-20260510-173829.log` → `02`) and locate the project dir at `__WORKSPACE__/NN-*/`. From that dir, run the checklist below — each non-empty hit (or `MISSING:` line) is a skill defect:
+
+   ```sh
+   # uv inside Docker/compose/fly — must be `python manage.py`, not `uv run`
+   grep -nH 'uv run' Dockerfile docker-compose.yml docker-compose.prod.yml fly.toml 2>/dev/null
+
+   # Python version pin
+   grep -H '^requires-python' pyproject.toml || echo "MISSING: requires-python in pyproject.toml"
+
+   # Duplicate DATABASES block left behind by startproject
+   grep -rn '^DATABASES = {' . --include='*.py' 2>/dev/null | awk -F: '{print $1}' | sort | uniq -c | awk '$1>1'
+
+   # tasks.py at project root or under config/ — must live inside a registered app
+   find . -maxdepth 3 -name tasks.py -not -path './.venv/*' -not -path './.git/*' \
+     | grep -E '^\./tasks\.py$|/config/tasks\.py$' || true
+
+   # .env.example trailing comments after values (django-environ reads the comment as part of the URL)
+   grep -nE '^[A-Z_]+=[^#]*[[:space:]]+#' .env.example 2>/dev/null
+
+   # Canonical DJANGO_* env vars
+   for v in DJANGO_DEBUG DJANGO_SECRET_KEY DJANGO_ALLOWED_HOSTS; do
+     grep -q "^$v=" .env.example 2>/dev/null || echo "MISSING: $v in .env.example"
+   done
+
+   # If deploy=vps or github-ssh, README's ## Deploy block must run migrate before `compose up -d`
+   grep -A20 '^## Deploy' README.md 2>/dev/null | grep -B2 'compose up -d' | grep -q migrate \
+     || echo "CHECK: README ## Deploy may be missing pre-up migrate step (skip if deploy=none/managed)"
+   ```
+
+   Skip:
    - Agent improvisations against strict testcase assertions (e.g. agent put healthchecks in `api/views.py` when the skill allows any registered app).
    - Findings already covered by an existing reference or `SKILL.md` pitfall — grep before editing.
    - Cosmetic preferences and "consider adding X" nudges.
+   - Checklist items that aren't applicable to this case's configuration (no Docker artefact when deploy=none; no `## Deploy` block when deploy=none/managed).
 2. For each real defect, make the smallest edit to the matching `skills/seedkit/SKILL.md`, `skills/seedkit/references/*.md`, or `testcases/*.md`. Follow `seedkit/CLAUDE.md`:
    - Show the correct sample. Drop redundant "don't" prose if the positive sample covers it.
    - No significance inflation, no fake -ing analysis, no podium voice.
@@ -115,9 +145,11 @@ Hard constraints:
 - Keep every edit short.
 EOF
 TODAY_VER=$(date +%y.%V.%u)
+WORKSPACE_DIR="${WORKSPACE:-$PARENT/seedkit-examples}"
 PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__TODAY__/$TODAY_VER}"
 PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__REPO__/$REPO}"
 PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__PARENT__/$PARENT}"
+PROMPT_TEMPLATE="${PROMPT_TEMPLATE//__WORKSPACE__/$WORKSPACE_DIR}"
 
 total=${#LOGS[@]}
 idx=0
