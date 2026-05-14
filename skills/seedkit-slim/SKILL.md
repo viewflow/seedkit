@@ -39,9 +39,9 @@ See `references/new-project.md` for the verbatim snippets (settings, urls, `.env
 3. Typecheck: `pyright+django-stubs` / none. Default none.
 4. Pre-commit: yes / no. Default no.
 5. Devcontainer: yes / no. Default no.
-6. Debug toolbar: `django-orbit` / `django-silk` / none. Default none.
-7. DB safety (multi-select): `django-zeal` / `django-migration-linter` / `django-test-migrations` / none. Default none. Skip `django-test-migrations` if pytest not chosen.
-8. `django-extensions`: yes / no. Default no.
+6. Debug toolbar: `django-orbit` / `django-silk` / none. Default none. See `references/django-silk.md` for `django-silk`.
+7. DB safety (multi-select): `django-zeal` / `django-migration-linter` / `django-test-migrations` / none. Default none. Skip `django-test-migrations` if pytest not chosen. See `references/django-migration-linter.md`.
+8. `django-extensions`: yes / no. Default no. Install with `uv add --group dev`; gate `INSTALLED_APPS += ["django_extensions"]` on `DEBUG` (split: in `local.py` only). Avoids leaking `shell_plus` / `show_urls` introspection into prod.
 9. Logging: `structlog` / none. Default none. See `references/structlog.md`.
 10. Task runner: `mise` / `just` / `make` / `poe` / none. Default `mise`.
 

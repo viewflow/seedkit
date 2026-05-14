@@ -11,6 +11,7 @@ sed -i.bak -E 's/^requires-python = .*/requires-python = ">=3.12"/' pyproject.to
 uv python pin 3.12
 printf '\n[tool.uv]\npackage = false\n' >> pyproject.toml  # Django apps aren't installable packages — without this, uv sync invokes hatchling and fails
 uv add 'django>=6.0,<7.0' django-environ
+# PostgreSQL only: `uv add 'psycopg[binary]'` — psycopg3. The legacy `psycopg2-binary` is end-of-life.
 uv run django-admin startproject config .
 ```
 

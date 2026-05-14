@@ -5,6 +5,13 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ## 26.20.4 — 2026-05-14
 
 ### Added
+- `skills/seedkit-slim/references/django-silk.md` — dev-only install, `if DEBUG:` gating for `INSTALLED_APPS` / `MIDDLEWARE` / `silk.urls`. Slim runs were placing silk in base settings and mounting `/silk/` unconditionally, exposing the profiler in prod. `SKILL.md` §2.1.8 now pins `django-extensions` as a dev-group install gated on `DEBUG` for the same reason.
+- `new-project.md` notes `psycopg[binary]` (psycopg3) for PostgreSQL projects so runs stop reaching for end-of-life `psycopg2-binary`.
+
+### Fixed
+- `django-migration-linter.md` moves `exclude_apps` into a `setup.cfg [django_migration_linter]` section, gates `django_migration_linter` in `INSTALLED_APPS` on `DEBUG`, and corrects the django-tasks-db app label to `django_tasks_database`.
+
+### Added
 - `skills/seedkit-slim/references/celery.md` — Redis broker / results / beat wiring with `django-redis`, per-subsystem `REDIS_URL` segmentation, `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True`, `config/celery.py` + `config/__init__.py` exports, and an autodiscovery probe. Slim runs were missing the dep, the retry flag, and packing every subsystem into db 0.
 - `skills/seedkit-slim/references/tailwind-cli.md`, `stripe.md`, `whitenoise.md` — `django-tailwind-cli` layout (vendored DaisyUI `.mjs`, `STATICFILES_DIRS = [BASE_DIR / "assets"]`, source outside the static dir, `tailwind build` after templates exist); Stripe raw-SDK checkout / portal / webhook views with `_stripe.api_key` module-scope wiring and `stripe_customer_id` on the custom user; WhiteNoise as production-only middleware right after `SecurityMiddleware`. Slim runs were inventing a custom tailwind shim, skipping Stripe entirely, and placing `WhiteNoiseMiddleware` in `base.py`.
 - `skills/seedkit-slim/references/structlog.md` — module-scope `LOGGING` with `ProcessorFormatter` as a formatter (not a handler class), `StreamHandler` picking `console`/`json` by `DEBUG`, and `wrap_for_formatter` as the terminal processor. Slim runs were crashing with `TypeError: Either processor or processors must be passed`.
