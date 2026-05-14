@@ -90,7 +90,7 @@ Only when Foundation §1.4 = `asgi+channels`.
 3. Error reporting: `bugsink` / `sentry-sdk` / `glitchtip` / none. Default none.
 4. GDPR helpers: yes / no. Default no.
 5. CI on GitHub Actions: yes / no. Default no.
-6. Deploy: `vps` (Docker + Caddy) / `managed` (Fly / Railway / Render) / `github-ssh` / none. Default none.
+6. Deploy: `vps` (Docker + Caddy) / `managed` (Fly / Railway / Render) / `github-ssh` / none. Default none. See `references/deploy-managed.md` for `managed`.
    - If `vps` or `github-ssh`: `django-dbbackup` — yes / no. Default yes.
 
 ## 4. Smoke + README

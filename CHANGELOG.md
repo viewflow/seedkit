@@ -5,6 +5,8 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ## 26.20.4 — 2026-05-14
 
 ### Added
+- `skills/seedkit-slim/references/deploy-managed.md` — Fly.io `fly.toml` with per-process `DJANGO_SETTINGS_MODULE=config.settings.bolt` override, `DJANGO_BEHIND_PROXY=True`, `/readyz` health check, `release_command` without `uv`, and `/opt/venv` runtime path convention. Slim runs were inheriting `production` settings on the bolt machine, hitting `/healthz` for readiness, and skipping `DJANGO_BEHIND_PROXY`.
+- `django-bolt.md` adds a paste-ready handler snippet — `Response(..., status_code=404)` (not `status=`), no return annotation (bolt validates and rejects union types), and a reminder that the `api` app must be in `INSTALLED_APPS` for auto-discovery.
 - `skills/seedkit-slim/references/django-silk.md` — dev-only install, `if DEBUG:` gating for `INSTALLED_APPS` / `MIDDLEWARE` / `silk.urls`. Slim runs were placing silk in base settings and mounting `/silk/` unconditionally, exposing the profiler in prod. `SKILL.md` §2.1.8 now pins `django-extensions` as a dev-group install gated on `DEBUG` for the same reason.
 - `new-project.md` notes `psycopg[binary]` (psycopg3) for PostgreSQL projects so runs stop reaching for end-of-life `psycopg2-binary`.
 

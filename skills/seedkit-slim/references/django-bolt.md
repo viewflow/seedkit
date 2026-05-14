@@ -25,4 +25,28 @@ The runtime stage stays on `python:3.12-slim-bookworm`.
 urlpatterns: list = []
 ```
 
-`INSTALLED_APPS += ['django_bolt']` — unlike `django-modern-rest`, this one is a Django app (ships `runbolt`).
+`INSTALLED_APPS += ['django_bolt']` — unlike `django-modern-rest`, this one is a Django app (ships `runbolt`). The app that holds `api.py` (e.g. `"api"`) must also be in `INSTALLED_APPS` — bolt auto-discovery scans installed apps for `api.py`.
+
+## Handler shape
+
+```python
+# api/api.py
+import msgspec
+from django_bolt import BoltAPI, Response
+from django.contrib.auth import get_user_model
+
+api = BoltAPI()
+User = get_user_model()
+
+class UserOut(msgspec.Struct):
+    id: int
+    username: str
+
+@api.get("/users/{user_id}")
+async def get_user(user_id: int):  # no return annotation — bolt validates return type and rejects union (`UserOut | Response`)
+    try:
+        user = await User.objects.aget(id=user_id)
+    except User.DoesNotExist:
+        return Response({"detail": "not found"}, status_code=404)  # status_code=, not status=
+    return UserOut(id=user.id, username=user.username)
+```
