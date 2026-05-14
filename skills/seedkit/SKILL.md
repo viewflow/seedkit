@@ -1,6 +1,6 @@
 ---
 name: seedkit
-version: 26.20.3
+version: 26.20.5
 description: Bootstrap a new Django project, or add components — auth (allauth, magic-link, axes, 2FA), payments (Stripe, dj-stripe), REST (django-modern-rest, django-bolt), Celery / django-tasks, async views & WebSockets (ASGI, uvicorn worker, django-channels, channels-redis), Tailwind+DaisyUI, S3 storage, structlog, healthchecks, Docker, CI, deploy (VPS / Fly / GitHub-SSH), dbbackup, Sentry/Bugsink — to an existing Django codebase. Use whenever the user wants to scaffold Django, integrate a Django package, set up async / WebSockets, set up production deploys, wire CI/CD, or extend an existing Django project.
 ---
 

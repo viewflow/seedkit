@@ -92,8 +92,8 @@ Read-only audit of the project in the current directory. Quote the file path and
 Verify these structural facts:
 
 **Foundation**
-- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production}.py`, `config/asgi.py`, `config/routing.py`, `docker-compose.yml`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`. No `Dockerfile.dev` (dev runs on the host).
-- `docker-compose.yml` defines local services only — `db`, `redis`, `minio`. No `web` and no `worker` service: Django + rqworker + uvicorn run on the host via `uv run …`. Named volumes for `pgdata` and `minio-data`.
+- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production}.py`, `config/asgi.py`, `config/routing.py`, `docker-compose.yml`, `.env`, `.env.example`, `.gitignore`. No `Dockerfile.dev` (dev runs on the host).
+- `docker-compose.yml` defines local services only — `db`, `redis`, `minio`. No `web` and no `worker` service: Django + rqworker + uvicorn run on the host via `uv run …`. Named volumes for `pgdata` and `miniodata`.
 - `pyproject.toml` runtime deps include `psycopg[binary]`, `django-tasks`, `django-tasks-rq`, `django-storages[s3]` (or `boto3`), `django-cors-headers`, `django-modern-rest[msgspec,openapi]`, `channels`, `channels-redis`, `daphne`, `uvicorn`, `gunicorn`, `pyjwt`, `structlog`, `django-structlog`. Dev deps include `ruff`, `pyright`, `django-stubs`, `django-stubs-ext`.
 
 **Settings**

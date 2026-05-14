@@ -2,6 +2,11 @@
 
 Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One section per day; all of a day's commits collapse into one block. Trim to ≤ 200 lines; git keeps the rest.
 
+## 26.20.5 — 2026-05-15
+
+### Fixed
+- `testcases/04-media-vault.md` — align assertions with the storage-s3 reference: drop the stale `.dockerignore` requirement (deploy=none has no Dockerfile) and rename the expected MinIO volume `minio-data` → `miniodata`.
+
 ## 26.20.3 — 2026-05-13
 
 ### Added
