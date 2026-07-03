@@ -79,7 +79,7 @@ If you run into issues, strange behavior, or have ideas for new integrations, pl
 
 ## Contributing
 
-- **The most valuable contribution right now:** run the testcase harness against other models (Opus, Haiku, GPT, Gemini) and send the logs back. The skill is only verified on Claude Sonnet today, so cross-model coverage is what the project needs most. Point `run-tests.sh` at the model you want to exercise and open an issue with the resulting `workspace/logs/` output attached.
+- **The most valuable contribution right now:** run the testcase harness against other models (Opus, Haiku, GPT, Gemini) and send the logs back. The skill is only verified on Claude Sonnet today, so cross-model coverage is what the project needs most. Point `train/run-tests.sh` at the model you want to exercise and open an issue with the resulting `workspace/logs/` output attached.
 - For proposing changes, please [open an issue](https://github.com/RobustaRush/seedkit/issues/new) first. Discuss proposed changes — even one-liners — before submitting a pull request to avoid wasted effort.
 - Expect long test cycles. Validating agent behavior requires multiple test-review-fix iterations. Each cycle runs all nine end-to-end test cases and takes 1.5–2 hours.
 

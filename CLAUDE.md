@@ -5,7 +5,7 @@ Claude Code skill for bootstrapping Django projects + the testcase harness that 
 Layout:
 - `skills/seedkit/SKILL.md` + `skills/seedkit/references/*.md` — the skill itself.
 - `testcases/0[1-9]-*.md` — scripted runs that exercise the skill end-to-end.
-- `run-tests.sh` — harness that pipes each testcase through `claude -p`, captures `REVIEW.md`, and writes per-run summaries to `workspace/logs/`.
+- `train/` — the testcase harness: `run-tests.sh` pipes each testcase through an agent CLI and writes per-run logs; `run-baseline.sh` generates the no-skill control group; `review-logs.sh` auto-patches the skill from those logs; `agents.sh` is the shared multi-CLI (claude/gemini/codex/agy) dispatch the three scripts source.
 - `workspace/` — gitignored scratch where generated projects live; wiped between runs.
 
 ## Writing reference files
@@ -26,7 +26,7 @@ Each reference is a paste-ready snippet plus the minimum prose needed to use it 
 
 ## Changelog
 
-`seedkit/CHANGELOG.md` tracks user-facing changes. Versions are dated `YY.WW.D` — `date +%y.%V.%u` — one section per day; all of a day's commits collapse into one block. After every skill edit, append (or extend) one short bullet under today's section using Keep-a-Changelog headings (`Added` / `Changed` / `Fixed` / `Removed`). Batch related fixes into a single bullet. Bump `version` to the same date string in both `.claude-plugin/plugin.json` and `skills/seedkit/SKILL.md` frontmatter. If `CHANGELOG.md` exceeds ~200 lines, trim the oldest sections — git keeps the rest. `review-logs.sh` does this inline per log iteration — version bump + changelog edit happen in the same commit as the reference fix.
+`seedkit/CHANGELOG.md` tracks user-facing changes. Versions are dated `YY.WW.D` — `date +%y.%V.%u` — one section per day; all of a day's commits collapse into one block. After every skill edit, append (or extend) one short bullet under today's section using Keep-a-Changelog headings (`Added` / `Changed` / `Fixed` / `Removed`). Batch related fixes into a single bullet. Bump `version` to the same date string in both `.claude-plugin/plugin.json` and `skills/seedkit/SKILL.md` frontmatter. If `CHANGELOG.md` exceeds ~200 lines, trim the oldest sections — git keeps the rest. `train/review-logs.sh` does this inline per log iteration — version bump + changelog edit happen in the same commit as the reference fix.
 
 ## Maintaining testcases
 
@@ -43,9 +43,9 @@ When a testcase log surfaces a real bug the agent had to fix in-flight, that fix
 
 The reviewer prompt at the bottom of every testcase is identical and short: report only boot-blockers / smoke-failures / security holes, quote the literal substring read, no nitpicks, "No issues found." is a valid report. Don't re-add per-case "INTENTIONAL design decisions (a)–(k)" exemption lists — the substring-quote rule and the boot-blocker filter cover it.
 
-## run-tests.sh contract
+## train/run-tests.sh contract
 
-Each case runs in its own session (portable `setsid_exec` Python shim) so the post-case sweep `kill -- -$pgid` reaches every descendant — orphaned celery workers, gunicorn, `runserver` autoreloader. A watchdog (default `TIMEOUT_PER_CASE=7200`) terminates the group if the case overruns. Cleanup is harness-side; the skill and testcase prompts must not invoke `pkill -f` (it matches the parent `claude` process).
+Each case runs in its own session (portable `setsid_exec` Python shim, `train/agents.sh`) so the post-case sweep `kill -- -$pgid` reaches every descendant — orphaned celery workers, gunicorn, `runserver` autoreloader. A watchdog (default `TIMEOUT_PER_CASE=7200`) terminates the group if the case overruns. Cleanup is harness-side; the skill and testcase prompts must not invoke `pkill -f` (it matches the parent agent-CLI process).
 
 Generated projects land in `../seedkit-examples/` (the sibling submodule). Per-run logs land in `../seedkit-examples/logs/` (gitignored inside that repo). The harness prepends each testcase's `## Prompt` block to the generated project's `README.md` and writes a top-level `seedkit-examples/README.md` index after every run.
 

@@ -6,7 +6,7 @@
 #               testcase. It scaffolds the project and runs runtime smokes
 #               (boots the server, hits an endpoint). Auto-fixes are
 #               expected when a smoke fails. Build CLI is pluggable
-#               (claude or gemini) via $BUILD_CLI.
+#               (claude, gemini, codex, or agy) via $BUILD_CLI.
 #   2. Review — always `claude -p`, regardless of which CLI built it.
 #               Reads the generated tree against the testcase's
 #               `## Review` section. Read-only tools, no skill access, no
@@ -17,19 +17,24 @@
 # Both phases stream into the same per-case log file. There is no separate
 # summary — the per-case logs are the record.
 #
-# Usage:
+# Usage (run from inside seedkit/train/):
 #   ./run-tests.sh                          # run all testcases (claude build)
 #   ./run-tests.sh 02 07                    # run specific ones
 #   MODEL=claude-opus-4-7 ./run-tests.sh    # override build model
 #   BUILD_CLI=gemini ./run-tests.sh         # build with gemini, review with claude
-#   BUILD_CLI=gemini MODEL=gemini-2.5-pro ./run-tests.sh
+#   BUILD_CLI=codex MODEL=gpt-5.2-codex ./run-tests.sh
+#   BUILD_CLI=agy ./run-tests.sh            # build with Antigravity
 #
-# Requires: claude CLI (always), gemini CLI (when BUILD_CLI=gemini), jq, python3.
+# Requires: claude CLI (always, for the review phase), jq, python3, and
+# whichever CLI $BUILD_CLI names.
 
 set -uo pipefail
 
-REPO="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 TESTCASES="$REPO/testcases"
+# shellcheck source=agents.sh
+source "$SCRIPT_DIR/agents.sh"
 # Generated projects land in the sibling `seedkit-examples` submodule of
 # the parent repo. Logs live under `seedkit-examples/logs/` (gitignored
 # inside the examples repo). Override via $WORKSPACE.
@@ -40,7 +45,8 @@ BUILD_CLI="${BUILD_CLI:-claude}"
 case "$BUILD_CLI" in
     claude) DEFAULT_BUILD_MODEL="claude-sonnet-4-6" ;;
     gemini) DEFAULT_BUILD_MODEL="gemini-2.5-flash" ;;
-    *) echo "BUILD_CLI must be 'claude' or 'gemini' (got: $BUILD_CLI)" >&2; exit 1 ;;
+    codex|agy) DEFAULT_BUILD_MODEL="" ;;  # let the CLI apply its own default
+    *) echo "BUILD_CLI must be one of: claude gemini codex agy (got: $BUILD_CLI)" >&2; exit 1 ;;
 esac
 MODEL="${MODEL:-$DEFAULT_BUILD_MODEL}"
 REVIEW_MODEL="${REVIEW_MODEL:-claude-opus-4-7}"
@@ -51,12 +57,10 @@ REVIEW_MODEL="${REVIEW_MODEL:-claude-opus-4-7}"
 TIMEOUT_PER_PHASE="${TIMEOUT_PER_PHASE:-7200}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
-command -v claude  >/dev/null || { echo "claude CLI not found in PATH"; exit 1; }
 command -v jq      >/dev/null || { echo "jq not found in PATH"; exit 1; }
 command -v python3 >/dev/null || { echo "python3 not found in PATH"; exit 1; }
-if [[ "$BUILD_CLI" == "gemini" ]]; then
-    command -v gemini >/dev/null || { echo "gemini CLI not found in PATH"; exit 1; }
-fi
+cli_require claude || exit 1       # review phase always runs claude
+cli_require "$BUILD_CLI" || exit 1
 
 # Keep the Mac awake while we run (macOS only; no-op elsewhere). The
 # `-w $$` ties caffeinate to this shell, so it exits with the script.
@@ -113,22 +117,6 @@ cleanup_testcase() {
     shopt -u nullglob
 }
 
-# Extract the body of a `## <name>` section from a testcase file. Stops
-# at the next `## ` heading or EOF. The heading line itself is dropped.
-extract_section() {
-    local file=$1 section=$2
-    awk -v want="$section" '
-        /^## / {
-            if (in_section) exit
-            sub(/^##[[:space:]]+/, "")
-            sub(/[[:space:]]+$/, "")
-            in_section = ($0 == want)
-            next
-        }
-        in_section { print }
-    ' "$file"
-}
-
 # Extract the fenced block under "## Prompt" — the literal /seedkit
 # invocation, used to prepend to the generated project's README.
 extract_prompt_block() {
@@ -163,38 +151,56 @@ prepend_prompt_to_readme() {
     } > "$readme"
 }
 
-# Portable setsid via Python — macOS ships no `setsid` binary.
-setsid_exec() {
-    exec python3 -c '
-import os, sys
-os.setsid()
-os.execvp(sys.argv[1], sys.argv[1:])
-' "$@"
+# Wires the seedkit skill into $WORKSPACE for the given CLI. Review
+# always runs claude, so its symlink is set up unconditionally; the
+# build CLI gets an extra branch if it's not claude.
+link_skill_for() {
+    local cli=$1
+    case "$cli" in
+        claude)
+            # Project-scoped skill so claude -p in $WORKSPACE finds it.
+            mkdir -p "$WORKSPACE/.claude/skills"
+            ln -snf "$REPO/skills/seedkit" "$WORKSPACE/.claude/skills/seedkit"
+            ;;
+        gemini)
+            # gemini uses `gemini skills link` rather than a bare symlink
+            # — its discovery mechanism reads the registry, not the
+            # directory. Idempotent; re-linking the same path is a no-op.
+            (cd "$WORKSPACE" && gemini skills link "$REPO/skills/seedkit" \
+                --scope workspace --consent >/dev/null 2>&1) || true
+            ;;
+        codex)
+            # codex auto-discovers a project-local `.codex/skills/<name>/
+            # SKILL.md` the same way claude discovers `.claude/skills` —
+            # confirmed by asking a codex session to list its skills with
+            # this symlinked in. No CLI subcommand needed.
+            mkdir -p "$WORKSPACE/.codex/skills"
+            ln -snf "$REPO/skills/seedkit" "$WORKSPACE/.codex/skills/seedkit"
+            ;;
+        agy)
+            # Antigravity has no project-scoped skill directory (a
+            # symlink under .gemini/skills/ is not picked up — checked).
+            # Its only hook is `agy plugin install <dir>`, which reads
+            # .claude-plugin/plugin.json + skills/ at the repo root and
+            # COPIES them into the real, global ~/.gemini/config/plugins/
+            # <name> — so this registers the dev skill in the user's own
+            # agy install (same tradeoff the gemini branch above already
+            # makes for the workspace scope). Re-run every time so a
+            # skill edit is picked up on the next build.
+            agy plugin install "$REPO" >/dev/null
+            ;;
+    esac
 }
 
 link_skill() {
-    # Project-scoped skill so claude -p in $WORKSPACE finds it.
-    mkdir -p "$WORKSPACE/.claude/skills"
-    ln -snf "$REPO/skills/seedkit" "$WORKSPACE/.claude/skills/seedkit"
-
-    # Gemini uses `gemini skills link` rather than a bare symlink — its
-    # discovery mechanism reads the registry, not the directory. Idempotent;
-    # re-linking the same path is a no-op.
-    if [[ "$BUILD_CLI" == "gemini" ]]; then
-        (cd "$WORKSPACE" && gemini skills link "$REPO/skills/seedkit" \
-            --scope workspace --consent >/dev/null 2>&1) || true
-    fi
+    link_skill_for claude
+    [[ "$BUILD_CLI" != "claude" ]] && link_skill_for "$BUILD_CLI"
 }
 
 # Run a single agent invocation in its own session, with a watchdog and
-# a post-phase pgrp sweep. Streams text deltas to $log_target, returns
-# the CLI's exit code. Caller passes the prompt on stdin.
-#
-# $cli selects the build agent: `claude` or `gemini`. Review phase
-# always passes `claude` since the read-only Bash() tool allowlist is
-# claude-specific. Stream-JSON schemas differ between the two — claude
-# emits `.event.delta.type == "text_delta"` envelopes; gemini emits flat
-# `{type:"message", role:"assistant", delta:true, content:"..."}` rows.
+# a post-phase pgrp sweep. Streams output to $log_target, returns the
+# CLI's exit code. Caller passes the prompt on stdin. The per-CLI
+# invocation + JSON parsing lives in agents.sh's cli_dispatch().
 run_phase() {
     local label=$1 cli=$2 model=$3 cwd=$4 log_target=$5 allowed_tools=$6
     local prompt
@@ -209,9 +215,9 @@ run_phase() {
 
     pushd "$cwd" >/dev/null
 
-    # Gemini-specific prompt rewrites, done out here so the quoting in
-    # the `bash -c` block below stays simple. See the comment above the
-    # gemini branch for the rationale.
+    # Gemini-specific prompt rewrites, done out here so cli_dispatch stays
+    # generic across callers (review-logs.sh/run-baseline.sh never send a
+    # `/seedkit` prompt, so this can't live in the shared dispatcher).
     if [[ "$cli" == "gemini" ]]; then
         prompt=$(printf '%s' "$prompt" \
             | sed 's|^/seedkit$|Use the seedkit skill to scaffold the project per the questionnaire below.|')
@@ -220,84 +226,11 @@ run_phase() {
 $prompt"
     fi
 
+    export -f cli_dispatch _cli_sink
     PROMPT="$prompt" CASE_LOG="$log_target" CASE_MODEL="$model" \
     CASE_TOOLS="$allowed_tools" CASE_CLI="$cli" \
-    setsid_exec bash -c '
-        case "$CASE_CLI" in
-            claude)
-                if [[ -n "$CASE_TOOLS" ]]; then
-                    claude -p "$PROMPT" \
-                        --dangerously-skip-permissions \
-                        --model="$CASE_MODEL" \
-                        --allowedTools "$CASE_TOOLS" \
-                        --output-format stream-json \
-                        --include-partial-messages \
-                        --print \
-                        --verbose
-                else
-                    claude -p "$PROMPT" \
-                        --dangerously-skip-permissions \
-                        --model="$CASE_MODEL" \
-                        --output-format stream-json \
-                        --include-partial-messages \
-                        --print \
-                        --verbose
-                fi \
-                | jq --unbuffered -j -r '\''select(.event.delta.type? == "text_delta") | .event.delta.text'\'' \
-                | tee -a "$CASE_LOG"
-                exit "${PIPESTATUS[0]}"
-                ;;
-            gemini)
-                # --skip-trust required for non-interactive headless runs
-                # outside trusted folders. --yolo is the gemini analogue
-                # of claude'\''s --dangerously-skip-permissions. Prompt was
-                # rewritten in the outer shell (slash-command + shell-tool
-                # note) before being placed in $PROMPT.
-                gemini -p "$PROMPT" \
-                    --yolo \
-                    --skip-trust \
-                    --model "$CASE_MODEL" \
-                    --output-format stream-json \
-                | jq --unbuffered -j -r '\''
-                    if .type == "message" and .role == "assistant" and (.delta // false) then .content
-                    elif .type == "tool_use" then "\n[tool:\(.tool_name)] \(.parameters.command // .parameters.file_path // (.parameters | tostring))\n"
-                    elif .type == "tool_result" then "[result:\(.status // "?")]\n"
-                    else empty end
-                  '\'' \
-                | tee -a "$CASE_LOG"
-                exit "${PIPESTATUS[0]}"
-                ;;
-            *)
-                echo "unknown CLI: $CASE_CLI" >&2
-                exit 2
-                ;;
-        esac
-    ' &
-    local phase_pid=$! phase_pgid
-    phase_pgid=$phase_pid
-
-    (
-        sleep "$TIMEOUT_PER_PHASE"
-        if kill -0 "$phase_pid" 2>/dev/null; then
-            echo >&2
-            echo "[run-tests] $label exceeded ${TIMEOUT_PER_PHASE}s — killing pgrp $phase_pgid" >&2
-            kill -TERM -- -"$phase_pgid" 2>/dev/null || true
-            sleep 5
-            kill -KILL -- -"$phase_pgid" 2>/dev/null || true
-        fi
-    ) &
-    local watchdog=$!
-
-    wait "$phase_pid"
-    local rc=$?
-
-    kill "$watchdog" 2>/dev/null || true
-    wait "$watchdog" 2>/dev/null || true
-
-    # Sweep orphans (celery, gunicorn, runserver autoreloader).
-    kill -TERM -- -"$phase_pgid" 2>/dev/null || true
-    sleep 1
-    kill -KILL -- -"$phase_pgid" 2>/dev/null || true
+    run_watched "$TIMEOUT_PER_PHASE" "$label" setsid_exec bash -c 'cli_dispatch'
+    local rc=$RUN_WATCHED_RC
 
     popd >/dev/null
     return "$rc"
@@ -352,7 +285,8 @@ for tc in "${FILES[@]}"; do
     # Locate the generated project: any subdir with files newer than the
     # marker, excluding the logs dir.
     project_dir=$(find "$WORKSPACE" -mindepth 1 -maxdepth 1 -type d \
-        -not -name 'logs' -not -name '.claude' -not -name '.git' \
+        -not -name 'logs' -not -name '.claude' -not -name '.codex' \
+        -not -name '.gemini' -not -name '.git' \
         -newer "$marker" 2>/dev/null | head -1)
     rm -f "$marker"
 
@@ -409,7 +343,7 @@ done
     echo "From the parent repo:"
     echo
     echo '```sh'
-    echo "cd seedkit"
+    echo "cd seedkit/train"
     echo "./run-tests.sh                  # all cases"
     echo "./run-tests.sh 02 07            # specific cases"
     echo '```'

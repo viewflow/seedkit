@@ -1,47 +1,50 @@
 #!/usr/bin/env bash
 #
-# Loop over seedkit-examples/logs/*.log, ask a fresh claude -p to review
+# Loop over seedkit-examples/logs/*.log, ask a fresh agent CLI to review
 # each one against the skill, apply short fixes where a real defect is
 # present, commit + push the submodule + parent pointer, then delete the
 # log. One log at a time, sequential.
 #
 # Same session + watchdog + pgrp sweep mechanics as run-tests.sh so a
-# stuck sub-claude can't livelock the loop.
+# stuck sub-agent can't livelock the loop.
 #
-# Usage:
+# Usage (run from inside seedkit/train/):
 #   ./review-logs.sh                    # review every *.log in the logs dir
 #   ./review-logs.sh 02-shop-20260510-173829.log    # single file (basename)
 #   MODEL=claude-sonnet-4-6 ./review-logs.sh
+#   AGENT_CLI=codex ./review-logs.sh    # or gemini, agy
 #   TIMEOUT_PER_LOG=1800 ./review-logs.sh
 #
-# Requires: claude CLI, python3, git.
+# Requires: jq, python3, git, and whichever CLI $AGENT_CLI names.
 
 set -uo pipefail
 
-REPO="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 PARENT="$(cd "$REPO/.." && pwd)"
+# shellcheck source=agents.sh
+source "$SCRIPT_DIR/agents.sh"
 LOGS_DIR="${LOGS_DIR:-$PARENT/seedkit-examples/logs}"
-MODEL="${MODEL:-claude-opus-4-7}"
+AGENT_CLI="${AGENT_CLI:-claude}"
+case "$AGENT_CLI" in
+    claude) DEFAULT_MODEL="claude-opus-4-7" ;;
+    gemini) DEFAULT_MODEL="gemini-2.5-pro" ;;
+    codex|agy) DEFAULT_MODEL="" ;;  # let the CLI apply its own default
+    *) echo "AGENT_CLI must be one of: claude gemini codex agy (got: $AGENT_CLI)" >&2; exit 1 ;;
+esac
+MODEL="${MODEL:-$DEFAULT_MODEL}"
 TIMEOUT_PER_LOG="${TIMEOUT_PER_LOG:-3600}"
 
-command -v claude  >/dev/null || { echo "claude CLI not found in PATH"; exit 1; }
 command -v jq      >/dev/null || { echo "jq not found in PATH"; exit 1; }
 command -v python3 >/dev/null || { echo "python3 not found in PATH"; exit 1; }
 command -v git     >/dev/null || { echo "git not found in PATH"; exit 1; }
+cli_require "$AGENT_CLI" || exit 1
 
 # Keep the Mac awake while we run (macOS only; no-op elsewhere). The
 # `-w $$` ties caffeinate to this shell, so it exits with the script.
 if command -v caffeinate >/dev/null; then
     caffeinate -i -w $$ &
 fi
-
-setsid_exec() {
-    exec python3 -c '
-import os, sys
-os.setsid()
-os.execvp(sys.argv[1], sys.argv[1:])
-' "$@"
-}
 
 # Resolve targets: explicit basenames as args, or all *.log files.
 shopt -s nullglob
@@ -77,8 +80,8 @@ if ! git -C "$PARENT" diff-index --quiet HEAD -- seedkit; then
 fi
 
 # The agent receives this as a single prompt. LOGPATH and TODAY are
-# substituted per iteration. The agent has full tool access via
-# --dangerously-skip-permissions.
+# substituted per iteration. The agent has full tool access — cli_dispatch
+# (agents.sh) always runs $AGENT_CLI in its permission-bypass mode.
 read -r -d '' PROMPT_TEMPLATE <<'EOF' || true
 Review the seedkit testcase log at:
 
@@ -161,7 +164,7 @@ for log in "${LOGS[@]}"; do
     echo
     echo "==> ($idx/$total) $name"
     echo "    log:   $log"
-    echo "    model: $MODEL"
+    echo "    agent: $AGENT_CLI / $MODEL"
 
     if [[ ! -f "$log" ]]; then
         echo "    skip: file vanished"
@@ -172,46 +175,13 @@ for log in "${LOGS[@]}"; do
     prompt="${PROMPT_TEMPLATE//LOGPATH/$log}"
     start=$(date +%s)
 
-    # stream-json + jq pulls text_delta events out token-by-token so the
-    # sub-claude's progress shows live; --output-format text would buffer
-    # until the run finishes.
-    PROMPT="$prompt" CASE_MODEL="$MODEL" \
-    setsid_exec bash -c '
-        claude -p "$PROMPT" \
-            --dangerously-skip-permissions \
-            --model="$CASE_MODEL" \
-            --output-format stream-json \
-            --include-partial-messages \
-            --print \
-            --verbose \
-        | jq --unbuffered -j -r '\''select(.event.delta.type? == "text_delta") | .event.delta.text'\''
-        exit "${PIPESTATUS[0]}"
-    ' &
-    pid=$!
-    pgid=$pid
-
-    (
-        sleep "$TIMEOUT_PER_LOG"
-        if kill -0 "$pid" 2>/dev/null; then
-            echo >&2
-            echo "[review-logs] $name exceeded ${TIMEOUT_PER_LOG}s — killing pgrp $pgid" >&2
-            kill -TERM -- -"$pgid" 2>/dev/null || true
-            sleep 5
-            kill -KILL -- -"$pgid" 2>/dev/null || true
-        fi
-    ) &
-    watchdog=$!
-
-    wait "$pid"
-    rc=$?
-
-    kill "$watchdog" 2>/dev/null || true
-    wait "$watchdog" 2>/dev/null || true
-
-    # Sweep stragglers — git push / claude spawn things.
-    kill -TERM -- -"$pgid" 2>/dev/null || true
-    sleep 1
-    kill -KILL -- -"$pgid" 2>/dev/null || true
+    # No CASE_LOG — output streams straight to this script's stdout so
+    # the sub-agent's progress shows live; the log being reviewed is
+    # $log itself, not something to append to.
+    export -f cli_dispatch _cli_sink
+    PROMPT="$prompt" CASE_MODEL="$MODEL" CASE_CLI="$AGENT_CLI" \
+    run_watched "$TIMEOUT_PER_LOG" "$name" setsid_exec bash -c 'cli_dispatch'
+    rc=$RUN_WATCHED_RC
 
     duration=$(( $(date +%s) - start ))
     printf '    done: exit=%s duration=%ss [%d/%d]\n' "$rc" "$duration" "$idx" "$total"

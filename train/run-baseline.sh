@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Generate the "no-skill" baseline for each testcase: a fresh claude -p
+# Generate the "no-skill" baseline for each testcase: a fresh agent CLI
 # with no /seedkit skill loaded, given just the ## Prompt section, into
 # seedkit-examples/baselines/<case>/. No boot smoke, no deploy smoke,
 # no review — just the raw output of an unaided AI.
@@ -10,29 +10,40 @@
 # skill adds.
 #
 # Manual invocation — run once, refresh by hand when the testcases
-# change or the model changes.
+# change or the model changes. Run from inside seedkit/train/.
 #
-#   ./run-baseline.sh                       # all testcases
+#   ./run-baseline.sh                       # all testcases (claude)
 #   ./run-baseline.sh 02 07                 # specific ones (matched by NN prefix)
 #   MODEL=claude-opus-4-7 ./run-baseline.sh
+#   BASELINE_CLI=codex ./run-baseline.sh    # or gemini, agy
 #
-# Requires: claude CLI, jq, python3.
+# Requires: jq, python3, and whichever CLI $BASELINE_CLI names.
 
 set -uo pipefail
 
-REPO="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 TESTCASES="$REPO/testcases"
+# shellcheck source=agents.sh
+source "$SCRIPT_DIR/agents.sh"
 WORKSPACE="${WORKSPACE:-$REPO/../seedkit-examples}"
 WORKSPACE="$(cd "$WORKSPACE" && pwd)"
 BASELINE_ROOT="$WORKSPACE/baselines"
 LOGS="$WORKSPACE/logs"
-MODEL="${MODEL:-claude-sonnet-4-6}"
+BASELINE_CLI="${BASELINE_CLI:-claude}"
+case "$BASELINE_CLI" in
+    claude) DEFAULT_MODEL="claude-sonnet-4-6" ;;
+    gemini) DEFAULT_MODEL="gemini-2.5-flash" ;;
+    codex|agy) DEFAULT_MODEL="" ;;  # let the CLI apply its own default
+    *) echo "BASELINE_CLI must be one of: claude gemini codex agy (got: $BASELINE_CLI)" >&2; exit 1 ;;
+esac
+MODEL="${MODEL:-$DEFAULT_MODEL}"
 TIMEOUT_PER_CASE="${TIMEOUT_PER_CASE:-3600}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
-command -v claude  >/dev/null || { echo "claude CLI not found in PATH"; exit 1; }
 command -v jq      >/dev/null || { echo "jq not found in PATH"; exit 1; }
 command -v python3 >/dev/null || { echo "python3 not found in PATH"; exit 1; }
+cli_require "$BASELINE_CLI" || exit 1
 
 if command -v caffeinate >/dev/null; then
     caffeinate -i -w $$ &
@@ -68,22 +79,6 @@ if [[ ${#FILES[@]} -eq 0 ]]; then
     echo "no testcases to run" >&2
     exit 1
 fi
-
-extract_section() {
-    local file=$1 section=$2
-    awk -v want="$section" '
-        /^## / { capture = ($0 == "## " want); next }
-        capture { print }
-    ' "$file"
-}
-
-setsid_exec() {
-    exec python3 -c '
-import os, sys
-os.setsid()
-os.execvp(sys.argv[1], sys.argv[1:])
-' "$@"
-}
 
 declare -a RESULTS=()
 
@@ -129,7 +124,7 @@ Work strictly inside the current working directory. Do not read, list, or refere
 $prompt_body"
 
     {
-        echo "════════ BASELINE ($MODEL) ════════"
+        echo "════════ BASELINE ($BASELINE_CLI / $MODEL) ════════"
         echo "testcase: $tc"
         echo "out:      $case_dir"
         echo
@@ -139,43 +134,10 @@ $prompt_body"
 
     pushd "$case_dir" >/dev/null
 
-    PROMPT="$prompt" CASE_LOG="$log" CASE_MODEL="$MODEL" \
-    setsid_exec bash -c '
-        claude -p "$PROMPT" \
-            --dangerously-skip-permissions \
-            --model="$CASE_MODEL" \
-            --output-format stream-json \
-            --include-partial-messages \
-            --print \
-            --verbose \
-        | jq --unbuffered -j -r '\''select(.event.delta.type? == "text_delta") | .event.delta.text'\'' \
-        | tee -a "$CASE_LOG"
-        exit "${PIPESTATUS[0]}"
-    ' &
-    pid=$!
-    pgid=$pid
-
-    (
-        sleep "$TIMEOUT_PER_CASE"
-        if kill -0 "$pid" 2>/dev/null; then
-            echo >&2
-            echo "[run-baseline] $name exceeded ${TIMEOUT_PER_CASE}s — killing pgrp $pgid" >&2
-            kill -TERM -- -"$pgid" 2>/dev/null || true
-            sleep 5
-            kill -KILL -- -"$pgid" 2>/dev/null || true
-        fi
-    ) &
-    watchdog=$!
-
-    wait "$pid"
-    rc=$?
-
-    kill "$watchdog" 2>/dev/null || true
-    wait "$watchdog" 2>/dev/null || true
-
-    kill -TERM -- -"$pgid" 2>/dev/null || true
-    sleep 1
-    kill -KILL -- -"$pgid" 2>/dev/null || true
+    export -f cli_dispatch _cli_sink
+    PROMPT="$prompt" CASE_LOG="$log" CASE_MODEL="$MODEL" CASE_CLI="$BASELINE_CLI" \
+    run_watched "$TIMEOUT_PER_CASE" "$name" setsid_exec bash -c 'cli_dispatch'
+    rc=$RUN_WATCHED_RC
 
     popd >/dev/null
 
