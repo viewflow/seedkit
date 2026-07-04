@@ -24,6 +24,20 @@ python_files = tests.py test_*.py *_tests.py
 
 For a single-settings layout, point at `config.settings`. The split layout already ships `config/settings/test.py` — see `references/new-project.md`.
 
+## Seed a smoke test
+
+`pytest` exits 5 ("no tests collected") when a project ships only empty `startapp` stub `tests.py` files — that turns CI (`references/ci.md`) red on the first push. Ship at least one real test per app you touched:
+
+```python
+# users/tests.py
+import pytest
+
+
+@pytest.mark.django_db
+def test_smoke(client):
+    assert client.get("/health/").status_code in (200, 302, 404)
+```
+
 ## Run
 
 ```sh

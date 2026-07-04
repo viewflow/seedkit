@@ -40,6 +40,7 @@ Generate one task per command the README would otherwise spell out. Include only
 
 Deploy tasks: only generate when §6.6 deploy target was picked.
 - `vps` / `github-ssh`: `deploy` depends on `deploy-migrate` so the one-shot migrate always precedes `up -d` — that's the gap a bare `docker compose up -d --build` hits on first boot against an empty DB.
+  - Exception: the SQLite + Litestream pattern (`references/database.md`) runs `migrate --noinput` inside `entrypoint.sh` on every boot, so skip `deploy-migrate` — `deploy` is a bare `up -d`.
 - `managed` (Fly.io): single `deploy = fly deploy` task — Fly's release command runs migrations, no separate `deploy-migrate` needed.
 - `managed` (Railway / Render): skip — those platforms deploy on `git push`, no task to alias.
 
