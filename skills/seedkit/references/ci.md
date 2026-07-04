@@ -46,7 +46,9 @@ jobs:
       # at the first `manage.py` / `pytest` step without it.
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       # DATABASE_URL: sqlite:////tmp/ci.sqlite3
-      DJANGO_SECRET_KEY: test-key
+      # 50+ chars, 5+ unique — a short key trips security.W009 at the
+      # `check --deploy --fail-level WARNING` step below.
+      DJANGO_SECRET_KEY: django-insecure-ci-placeholder-not-a-real-secret-key-000
       DJANGO_DEBUG: "False"
       DJANGO_ALLOWED_HOSTS: "*"
       # `DEBUG=False` triggers the gated `env.NOTSET` branch on every

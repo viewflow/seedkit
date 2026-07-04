@@ -5,6 +5,7 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ## 26.27.7 — 2026-07-05
 
 ### Fixed
+- `ci.md`'s placeholder `DJANGO_SECRET_KEY` is now 50+ chars — the old `test-key` tripped `security.W009` at the workflow's own `check --deploy --fail-level WARNING` step.
 - `pytest.md` seeds a smoke test per touched app — a project shipping only empty `startapp` stubs makes `pytest` exit 5 ("no tests collected"), turning CI red on first push. `dev-tasks.md` skips `deploy-migrate` for the SQLite + Litestream deploy (migrate runs in `entrypoint.sh`), so `deploy` is a bare `up -d`.
 - Testcase 01 boot check no longer races: `runserver --noreload` + a `curl` poll loop, matching SKILL.md §4 (bare `runserver &` + one immediate `curl` fired before the WSGI listener was up).
 - `dev-tools.md` drops the `silk_profile`-inside-a-`@task`-body example — Silk only records within a request-scoped `DataCollector`, so it silently no-ops in a worker; profile from a request-scoped view instead.
