@@ -6,7 +6,7 @@
 #               testcase. It scaffolds the project and runs runtime smokes
 #               (boots the server, hits an endpoint). Auto-fixes are
 #               expected when a smoke fails. Build CLI is pluggable
-#               (claude, gemini, codex, or agy) via $BUILD_CLI.
+#               (claude, codex, or agy) via $BUILD_CLI.
 #   2. Review — always `claude -p`, regardless of which CLI built it.
 #               Reads the generated tree against the testcase's
 #               `## Review` section. Read-only tools, no skill access, no
@@ -21,9 +21,8 @@
 #   ./run-tests.sh                          # run all testcases (claude build)
 #   ./run-tests.sh 02 07                    # run specific ones
 #   MODEL=claude-opus-4-7 ./run-tests.sh    # override build model
-#   BUILD_CLI=gemini ./run-tests.sh         # build with gemini, review with claude
 #   BUILD_CLI=codex MODEL=gpt-5.2-codex ./run-tests.sh
-#   BUILD_CLI=agy ./run-tests.sh            # build with Antigravity
+#   BUILD_CLI=agy ./run-tests.sh            # build with Antigravity (gemini-3.5-flash)
 #
 # Requires: claude CLI (always, for the review phase), jq, python3, and
 # whichever CLI $BUILD_CLI names.
@@ -43,10 +42,10 @@ WORKSPACE="$(cd "$WORKSPACE" && pwd)"
 LOGS="$WORKSPACE/logs"
 BUILD_CLI="${BUILD_CLI:-claude}"
 case "$BUILD_CLI" in
-    claude) DEFAULT_BUILD_MODEL="claude-sonnet-4-6" ;;
-    gemini) DEFAULT_BUILD_MODEL="gemini-2.5-flash" ;;
-    codex|agy) DEFAULT_BUILD_MODEL="" ;;  # let the CLI apply its own default
-    *) echo "BUILD_CLI must be one of: claude gemini codex agy (got: $BUILD_CLI)" >&2; exit 1 ;;
+    claude) DEFAULT_BUILD_MODEL="claude-sonnet-5" ;;
+    agy) DEFAULT_BUILD_MODEL="gemini-3.5-flash" ;;
+    codex) DEFAULT_BUILD_MODEL="" ;;  # let the CLI apply its own default
+    *) echo "BUILD_CLI must be one of: claude codex agy (got: $BUILD_CLI)" >&2; exit 1 ;;
 esac
 MODEL="${MODEL:-$DEFAULT_BUILD_MODEL}"
 REVIEW_MODEL="${REVIEW_MODEL:-claude-opus-4-7}"
@@ -162,13 +161,6 @@ link_skill_for() {
             mkdir -p "$WORKSPACE/.claude/skills"
             ln -snf "$REPO/skills/seedkit" "$WORKSPACE/.claude/skills/seedkit"
             ;;
-        gemini)
-            # gemini uses `gemini skills link` rather than a bare symlink
-            # — its discovery mechanism reads the registry, not the
-            # directory. Idempotent; re-linking the same path is a no-op.
-            (cd "$WORKSPACE" && gemini skills link "$REPO/skills/seedkit" \
-                --scope workspace --consent >/dev/null 2>&1) || true
-            ;;
         codex)
             # codex auto-discovers a project-local `.codex/skills/<name>/
             # SKILL.md` the same way claude discovers `.claude/skills` —
@@ -184,9 +176,8 @@ link_skill_for() {
             # .claude-plugin/plugin.json + skills/ at the repo root and
             # COPIES them into the real, global ~/.gemini/config/plugins/
             # <name> — so this registers the dev skill in the user's own
-            # agy install (same tradeoff the gemini branch above already
-            # makes for the workspace scope). Re-run every time so a
-            # skill edit is picked up on the next build.
+            # agy install rather than scoping it to $WORKSPACE. Re-run
+            # every time so a skill edit is picked up on the next build.
             agy plugin install "$REPO" >/dev/null
             ;;
     esac
@@ -215,10 +206,10 @@ run_phase() {
 
     pushd "$cwd" >/dev/null
 
-    # Gemini-specific prompt rewrites, done out here so cli_dispatch stays
+    # Agy-specific prompt rewrites, done out here so cli_dispatch stays
     # generic across callers (review-logs.sh/run-baseline.sh never send a
     # `/seedkit` prompt, so this can't live in the shared dispatcher).
-    if [[ "$cli" == "gemini" ]]; then
+    if [[ "$cli" == "agy" ]]; then
         prompt=$(printf '%s' "$prompt" \
             | sed 's|^/seedkit$|Use the seedkit skill to scaffold the project per the questionnaire below.|')
         prompt="Shell-tool note: your run_shell_command runs each call synchronously and does not preserve & backgrounding across calls. When the smoke / deploy snippet uses &, jobs -p, or wait, run the whole snippet inside a single \"timeout 60 bash -c '...'\" invocation so it executes in one child shell and self-terminates.

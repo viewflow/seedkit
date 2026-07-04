@@ -12,7 +12,7 @@
 #   ./review-logs.sh                    # review every *.log in the logs dir
 #   ./review-logs.sh 02-shop-20260510-173829.log    # single file (basename)
 #   MODEL=claude-sonnet-4-6 ./review-logs.sh
-#   AGENT_CLI=codex ./review-logs.sh    # or gemini, agy
+#   AGENT_CLI=codex ./review-logs.sh    # or agy
 #   TIMEOUT_PER_LOG=1800 ./review-logs.sh
 #
 # Requires: jq, python3, git, and whichever CLI $AGENT_CLI names.
@@ -28,9 +28,9 @@ LOGS_DIR="${LOGS_DIR:-$PARENT/seedkit-examples/logs}"
 AGENT_CLI="${AGENT_CLI:-claude}"
 case "$AGENT_CLI" in
     claude) DEFAULT_MODEL="claude-opus-4-7" ;;
-    gemini) DEFAULT_MODEL="gemini-2.5-pro" ;;
-    codex|agy) DEFAULT_MODEL="" ;;  # let the CLI apply its own default
-    *) echo "AGENT_CLI must be one of: claude gemini codex agy (got: $AGENT_CLI)" >&2; exit 1 ;;
+    agy) DEFAULT_MODEL="gemini-3.5-flash" ;;
+    codex) DEFAULT_MODEL="" ;;  # let the CLI apply its own default
+    *) echo "AGENT_CLI must be one of: claude codex agy (got: $AGENT_CLI)" >&2; exit 1 ;;
 esac
 MODEL="${MODEL:-$DEFAULT_MODEL}"
 TIMEOUT_PER_LOG="${TIMEOUT_PER_LOG:-3600}"

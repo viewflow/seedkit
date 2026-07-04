@@ -15,7 +15,7 @@
 #   ./run-baseline.sh                       # all testcases (claude)
 #   ./run-baseline.sh 02 07                 # specific ones (matched by NN prefix)
 #   MODEL=claude-opus-4-7 ./run-baseline.sh
-#   BASELINE_CLI=codex ./run-baseline.sh    # or gemini, agy
+#   BASELINE_CLI=codex ./run-baseline.sh    # or agy
 #
 # Requires: jq, python3, and whichever CLI $BASELINE_CLI names.
 
@@ -33,9 +33,9 @@ LOGS="$WORKSPACE/logs"
 BASELINE_CLI="${BASELINE_CLI:-claude}"
 case "$BASELINE_CLI" in
     claude) DEFAULT_MODEL="claude-sonnet-4-6" ;;
-    gemini) DEFAULT_MODEL="gemini-2.5-flash" ;;
-    codex|agy) DEFAULT_MODEL="" ;;  # let the CLI apply its own default
-    *) echo "BASELINE_CLI must be one of: claude gemini codex agy (got: $BASELINE_CLI)" >&2; exit 1 ;;
+    agy) DEFAULT_MODEL="gemini-3.5-flash" ;;
+    codex) DEFAULT_MODEL="" ;;  # let the CLI apply its own default
+    *) echo "BASELINE_CLI must be one of: claude codex agy (got: $BASELINE_CLI)" >&2; exit 1 ;;
 esac
 MODEL="${MODEL:-$DEFAULT_MODEL}"
 TIMEOUT_PER_CASE="${TIMEOUT_PER_CASE:-3600}"

@@ -4,16 +4,14 @@
 # run-baseline.sh, review-logs.sh). Source this file — it defines
 # functions only, no top-level side effects.
 #
-# Supported CLIs: claude, gemini, codex, agy (Google Antigravity).
+# Supported CLIs: claude, codex, agy (Google Antigravity).
 # Each has its own non-interactive invocation, permission-bypass flag,
 # and JSON event schema; cli_dispatch() is the one place that knows
-# about all four so the calling scripts don't have to.
+# about all three so the calling scripts don't have to.
 #
 # What each CLI needed, confirmed by hand against the installed binaries:
 #   claude — `-p PROMPT --output-format stream-json`, events are
 #            `.event.delta.type == "text_delta"` envelopes.
-#   gemini — `-p PROMPT --output-format stream-json`, flat
-#            `{type:"message"|"tool_use"|"tool_result", ...}` rows.
 #   codex  — `exec --json PROMPT`, items arrive whole (not token deltas):
 #            `{"type":"item.completed","item":{"type":"agent_message","text":...}}`,
 #            `{"type":"item.completed","item":{"type":"command_execution",...}}`.
@@ -34,10 +32,10 @@ os.execvp(sys.argv[1], sys.argv[1:])
 # cli_require <cli> — checks the CLI binary is on PATH.
 cli_require() {
     case "$1" in
-        claude|gemini|codex|agy)
+        claude|codex|agy)
             command -v "$1" >/dev/null || { echo "$1 CLI not found in PATH" >&2; return 1; } ;;
         *)
-            echo "unknown CLI: $1 (want: claude, gemini, codex, agy)" >&2; return 1 ;;
+            echo "unknown CLI: $1 (want: claude, codex, agy)" >&2; return 1 ;;
     esac
 }
 
@@ -104,7 +102,7 @@ extract_section() {
 # call site). Reads its config from env vars rather than arguments for
 # that reason:
 #
-#   CASE_CLI    claude | gemini | codex | agy
+#   CASE_CLI    claude | codex | agy
 #   CASE_MODEL  model id/name; empty means "let the CLI pick its default"
 #   PROMPT      the full prompt text
 #   CASE_TOOLS  claude-only: --allowedTools value. When set, claude runs
@@ -130,23 +128,6 @@ cli_dispatch() {
                     --print --verbose
             fi \
             | jq --unbuffered -j -r 'select(.event.delta.type? == "text_delta") | .event.delta.text' \
-            | _cli_sink
-            exit "${PIPESTATUS[0]}"
-            ;;
-        gemini)
-            local -a margs=()
-            [[ -n "${CASE_MODEL:-}" ]] && margs=(--model "$CASE_MODEL")
-            # --skip-trust required for non-interactive headless runs
-            # outside trusted folders. --yolo is gemini's analogue of
-            # claude's --dangerously-skip-permissions.
-            gemini -p "$PROMPT" --yolo --skip-trust "${margs[@]}" \
-                --output-format stream-json \
-            | jq --unbuffered -j -r '
-                if .type == "message" and .role == "assistant" and (.delta // false) then .content
-                elif .type == "tool_use" then "\n[tool:\(.tool_name)] \(.parameters.command // .parameters.file_path // (.parameters | tostring))\n"
-                elif .type == "tool_result" then "[result:\(.status // "?")]\n"
-                else empty end
-              ' \
             | _cli_sink
             exit "${PIPESTATUS[0]}"
             ;;
