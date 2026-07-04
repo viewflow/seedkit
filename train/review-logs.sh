@@ -27,7 +27,7 @@ source "$SCRIPT_DIR/agents.sh"
 LOGS_DIR="${LOGS_DIR:-$PARENT/seedkit-examples/logs}"
 AGENT_CLI="${AGENT_CLI:-claude}"
 case "$AGENT_CLI" in
-    claude) DEFAULT_MODEL="claude-opus-4-7" ;;
+    claude) DEFAULT_MODEL="claude-opus-4-8" ;;
     agy) DEFAULT_MODEL="gemini-3.5-flash" ;;
     codex) DEFAULT_MODEL="" ;;  # let the CLI apply its own default
     *) echo "AGENT_CLI must be one of: claude codex agy (got: $AGENT_CLI)" >&2; exit 1 ;;
