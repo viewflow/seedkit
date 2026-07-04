@@ -60,7 +60,7 @@ A user who accepts every default gets: no security settings (`Default no` — pr
 - Defensible as-is: test-runner default (stock), typecheck no, debug toolbar none, i18n no.
 
 ### 2.3 Confidently-wrong claims — worst failure class for an agent-executed skill
-Agents follow "Snippet integrity" and copy these verbatim: `Model.objects.afilter(...)` doesn't exist (`async.md`); daphne "needed for management commands and signal hooks" is false, and with daphne in `INSTALLED_APPS` `runserver` *does* serve WebSockets, contradicting line 117 (`realtime.md`); `ZEAL_RAISE_ON_VIOLATION` and `ZEAL_SILENCED_WARNINGS` are hallucinated names (real: `ZEAL_RAISE`, `ZEAL_ALLOWLIST`), and "zeal works automatically in pytest" is false — as wired, zeal never runs in tests at all (`dev-tools.md`); the `UserChangeForm` `field_classes` comment misstates Django source and ships dead config (`custom-user.md`); pytest-django "builds once, then reuses" is backwards — default is create+destroy every run; the snippet lacks `--reuse-db` (`pytest.md`); "Caddy default read_timeout 60s" — no such default (`realtime.md`); `WHITENOISE_USE_FINDERS` "doesn't exist" — it does (`storage-whitenoise.md`); "pyjwt is an unpinned transitive dep" — it's an optional extra; the install ships a dead auth lib into every project (`rest-modern-rest.md`); axes pitfall implies proxy wiring makes IP detection work — plain `django-axes` has no ipware (`auth-hardening.md`).
+Agents follow "Snippet integrity" and copy these verbatim: `Model.objects.afilter(...)` doesn't exist (`async.md`); daphne "needed for management commands and signal hooks" is false, and with daphne in `INSTALLED_APPS` `runserver` *does* serve WebSockets, contradicting line 117 (`realtime.md`); `ZEAL_RAISE_ON_VIOLATION` and `ZEAL_SILENCED_WARNINGS` are hallucinated names (real: `ZEAL_RAISE`, `ZEAL_ALLOWLIST`), and "zeal works automatically in pytest" is false — as wired, zeal never runs in tests at all (`dev-tools.md`); the `UserChangeForm` `field_classes` comment misstates Django source and ships dead config (`custom-user.md`); pytest-django "builds once, then reuses" is backwards — default is create+destroy every run; the snippet lacks `--reuse-db` (`pytest.md`); "Caddy default read_timeout 60s" — no such default (`realtime.md`); `WHITENOISE_USE_FINDERS` "doesn't exist" — it does (`storage-whitenoise.md`); "pyjwt is an unpinned transitive dep" — wrong reason, right instruction: pyjwt sits under the optional `[jwt]` extra, but `import dmr` unconditionally reaches `dmr.security.jwt` via `dmr.throttling` and crashes without it (verified against 0.11.0 in a clean venv — upstream packaging bug), so the install must keep pyjwt and only the rationale needs fixing (`rest-modern-rest.md`); axes pitfall implies proxy wiring makes IP detection work — plain `django-axes` has no ipware (`auth-hardening.md`).
 
 Consider adding a review gate to the maintenance workflow: every factual claim in a reference ("X requires Y", "default is Z") must be verifiable against upstream docs, same standard the wiki research rules already apply.
 
@@ -158,3 +158,46 @@ Verified sound against current upstream: allauth 65.x settings names (`ACCOUNT_L
 4. **Version-rot sweep (2.1)** — one pass over every pin + the "check latest at generation time" rule in SKILL.md, so it doesn't rot again.
 5. **REST strategy (2.5)** — decide the django-ninja/DRF question deliberately; it's a positioning choice, not a bug fix.
 6. Majors (§3), then minors (§4) opportunistically per file touched.
+
+---
+
+# Part II — seedkit-slim (reviewed 2026-07-04)
+
+**Design premise reviewed against:** the skill deliberately stays short and assumes the LLM's own Django knowledge; references exist only to correct what LLMs reliably get wrong (renamed packages, post-cutoff API changes, empirically-hit traps). Verification: every disputed claim checked against installed packages in a clean venv or upstream source, not docs alone.
+
+## Verdict
+
+The selection principle is right and mostly well executed: 15 references, 620 lines total, and almost every file targets a genuine anti-prior (django-tasks split packages, zeal 2.x middleware rename, axes v8 removal, allauth 0.65 settings keys, csp 4.0 format, mail-auth's missing templates, `uv init --bare` + `package = false`). Established tools correctly get no reference at all. But this skill type has an unforgiving failure mode: a **wrong corrective is worse than no reference**, because it overrides the model's (possibly correct) prior with confident nonsense — and there are three of those, one of them a boot-blocker. Second theme: several questionnaire options have no reference precisely where Part I *proved* the LLM prior is wrong (dj-stripe webhooks, deploy env-file/pg_dump, core CSP) — those are the highest-value additions, each worth ~10 lines.
+
+## II.1 Wrong correctives (fix first — worst class for this skill type)
+
+1. **`django-modern-rest.md` — hallucinated API, boot-blocker.** Verified against 0.11.0 in a clean venv: the import name is `dmr`, not `modern_rest` (`INSTALLED_APPS = ["modern_rest"]` → `ModuleNotFoundError`); it is not a Django app at all (no INSTALLED_APPS entry needed — `rest-bolt.md` in the fat skill even states this contrast); and the package exposes no `Router` — `from modern_rest import Router`, `router.register(...)`, `router.urls` are all invented. Real surface: `dmr.Controller` subclasses wired as views in `urlpatterns` (see fat `rest-modern-rest.md`). The only correct line is the pyjwt one — confirmed: plain `import dmr` reaches `dmr.security.jwt` through `dmr.throttling` and crashes without pyjwt (upstream packaging bug). Rewrite the file around `dmr`; keep the pyjwt line.
+2. **`django-zeal.md` — `ZEAL_RAISE_ON_VIOLATION = True` doesn't exist.** Real setting is `ZEAL_RAISE`, and raising is already the default — delete the line (the file shrinks to pure delta: app, lowercase middleware function, DEBUG gate). Already shipped into `06-silk-lab`.
+3. **`django-allauth.md` — `path("accounts/", include("allauth.mfa.urls"))` double-registers.** Verified in upstream `allauth/urls.py`: when `allauth.mfa` is installed, `include("allauth.urls")` already mounts MFA at `accounts/2fa/`. Drop the extra line.
+4. **`new-project.md` — "`pin away from any 3.14 prerelease`"** — stale (3.14 is stable); and `uv python pin 3.12` diverges from the fat skill's 26.27.6 sweep (3.13). Same file: `ALLOWED_HOSTS = env.list(..., default=[])` boots fine in prod then 400s every request — gate with `default=[] if DEBUG else env.NOTSET` like its neighbours (Part I major).
+
+## II.2 Missing anti-prior references — each earned by a Part-I-verified wrong prior
+
+Additions only where the LLM prior is *proven* wrong; everything else stays LLM-knowledge:
+
+- **dj-stripe** (§2.6 option, no ref): the LLM prior *is* the removed pre-2.9 API — `DJSTRIPE_WEBHOOK_SECRET` + `/stripe/webhook/` (the fat skill itself shipped it until 26.27.6). Add ~10 lines (admin-created `WebhookEndpoint` rows, UUID URL, `djstripe_receiver`, `stripe.api_key = djstripe_settings.STRIPE_SECRET_KEY`) or drop the dj-stripe option from slim.
+- **`django-csp.md` reinforces the wrong prior instead of correcting it**: slim pins `django>=6.0`, which ships CSP in core (`SECURE_CSP`, `django.middleware.csp.ContentSecurityPolicyMiddleware`, `{{ csp_nonce }}`) — post-cutoff knowledge most models lack. The genuinely slim reference is "Django 6 has core CSP; don't install django-csp", the opposite of the current file.
+- **asgi mode** (§1.4): LLM prior is `uvicorn.workers.UvicornWorker` — deprecated, removal pending. One line: `uv add uvicorn-worker`, `-k uvicorn_worker.UvicornWorker`.
+- **`django-axes.md`**: two verified traps worth two lines — `['ip_address', 'username']` is OR-semantics (anyone can lock out a known username; the AND form is `[['ip_address', 'username']]`), and with allauth the username dimension silently never fires (allauth posts the identifier as `login`).
+- **deploy** (§3.6, no refs): Part I verified three traps invisible to LLM priors and present in generated examples — compose never auto-loads `deploy/.env.prod` (first boot fails without `--env-file`), pg_dump client major must be ≥ the `postgres:` image major, json-file docker logs never rotate. One compact `deploy-pitfalls.md` (~10 lines) is evidence-justified.
+
+## II.3 Cut candidates — lines duplicating LLM knowledge (the skill's own standard)
+
+- `django-axes.md`: `AXES_FAILURE_LIMIT = 5` / `AXES_COOLOFF_TIME = 1` / "ships models — run migrate" are LLM-known; the deltas are the ordering rules, the v8 `AXES_LOCKOUT_CALLABLE` removal, and the cache-handler line.
+- `django-allauth.md`: `django.contrib.sites` + `SITE_ID` — current allauth quickstart doesn't require sites (Part I, verified); drop or keep with the accurate one-line reason. (`django-mail-auth.md` genuinely needs sites — keep there.)
+- `new-project.md` Root URL section: the snippet is LLM-writable; the delta is one sentence ("`startproject` routes only `/admin/`, add a `/` redirect so the smoke curl doesn't 404").
+- `healthcheck.md`: view bodies are LLM-writable; the value is the three rules (skip `django-health-check`, no trailing slash, `SECURE_REDIRECT_EXEMPT`). Optional compression.
+- `pyright.md`: add the single-file variant note (`django_settings_module = "config.settings"`) — currently hardcodes the split layout.
+
+## II.4 Version pins (align with the 26.27.6 sweep)
+
+`django-bolt.md` still shows `ghcr.io/astral-sh/uv:python3.12-bookworm` / `python:3.12-slim-bookworm` → trixie/3.13; `new-project.md` python pin → 3.13. The SKILL.md "Version pins" generation-time rule added to the fat skill applies here too (slim's SKILL.md has no pitfalls section — one line suffices).
+
+## Correction fed back into Part I
+
+Part I §2.3 originally called `rest-modern-rest.md`'s pyjwt install a dead dependency with a false rationale. Empirical check reversed the fix: the rationale is wrong but the install is required (unconditional import chain). Part I text updated 2026-07-04. Second instance of the review pattern this repo already learned from the typecheck finding: verify against the installed package before "fixing" an empirically-derived reference.
