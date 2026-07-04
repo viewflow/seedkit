@@ -34,7 +34,7 @@ mkdir -p assets
 Pin the CLI version (always — not just in prod) so a Tailwind 4.x point release can't change the build out from under CI. Set in `base.py` or single-file settings:
 
 ```python
-TAILWIND_CLI_VERSION = "4.1.3"
+TAILWIND_CLI_VERSION = "4.3.2"  # check the latest tag on github.com/tailwindlabs/tailwindcss/releases
 TAILWIND_CLI_SRC_CSS = "tailwind-src/css/source.css"   # custom source — outside STATICFILES_DIRS
 ```
 
@@ -131,9 +131,9 @@ DaisyUI ships single-file `.mjs` plugin bundles per release. Place them under `t
 ```sh
 mkdir -p tailwind-src/css
 curl -fsSL -o tailwind-src/css/daisyui.mjs \
-    https://github.com/saadeghi/daisyui/releases/latest/download/daisyui.mjs
+    https://github.com/saadeghi/daisyui/releases/download/v5.6.13/daisyui.mjs
 curl -fsSL -o tailwind-src/css/daisyui-theme.mjs \
-    https://github.com/saadeghi/daisyui/releases/latest/download/daisyui-theme.mjs
+    https://github.com/saadeghi/daisyui/releases/download/v5.6.13/daisyui-theme.mjs
 ```
 
 Commit both files — they're vendored assets, not build artefacts. Reproducible builds depend on the exact bundle that was committed.

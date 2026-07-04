@@ -14,7 +14,7 @@ Ask the user. Default: **mise** (recommended). If unsure what's installed, detec
 | poe | `[tool.poe.tasks]` in `pyproject.toml` | `uv add --dev poethepoet` |
 | none | — | skip the whole reference |
 
-Mise is the recommended pick because it also pins the Python toolchain (`[tools] python = "3.12"`), so the project gets one tool instead of `pyenv` + `just`.
+Mise is the recommended pick because it also pins the Python toolchain (`[tools] python = "3.13"`), so the project gets one tool instead of `pyenv` + `just`.
 
 ## Task list
 
@@ -47,7 +47,7 @@ Deploy tasks: only generate when §6.6 deploy target was picked.
 
 ```toml
 [tools]
-python = "3.12"
+python = "3.13"
 
 [tasks.install]
 run = "uv sync"

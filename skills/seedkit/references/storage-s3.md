@@ -167,7 +167,7 @@ docker compose -f deploy/docker-compose.prod.yml up -d
 
 ```toml
 [deploy]
-  # `python` not `uv run`: the multi-stage runtime image (python:3.X-slim-bookworm)
+  # `python` not `uv run`: the multi-stage runtime image (python:3.X-slim-trixie)
   # has no uv binary — only the venv at /opt/venv with /opt/venv/bin on PATH.
   release_command = "python manage.py migrate && python manage.py collectstatic --noinput"
 ```

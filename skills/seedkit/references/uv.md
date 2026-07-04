@@ -34,8 +34,8 @@ uv run pytest
 ## Python
 
 ```sh
-uv python install 3.12
-uv python pin 3.12
+uv python install 3.13
+uv python pin 3.13
 ```
 
 ## Tools

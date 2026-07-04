@@ -30,8 +30,8 @@ primary_region = "iad"
 
 [deploy]
   # `python` not `uv run`: the multi-stage Dockerfile's runtime stage
-  # (python:3.X-slim-bookworm) has no uv binary — only the venv. /app/.venv/bin
-  # is on PATH per the Dockerfile so `python` resolves there.
+  # (python:3.X-slim-trixie) has no uv binary — only the venv at /opt/venv
+  # with /opt/venv/bin on PATH per the Dockerfile, so `python` resolves there.
   release_command = "python manage.py migrate"
 
 [[services]]

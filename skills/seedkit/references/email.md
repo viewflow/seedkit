@@ -106,7 +106,11 @@ uv add 'django-anymail[postmark]'      # or [amazon-ses], [sendgrid], [mailgun],
 
 ### Settings
 
-Anymail's `EMAIL_BACKEND` overrides whatever `EMAIL_URL` parsed, so the `globals().update(env.email_url(...))` line above is fine to keep — it remains the dev fallback when `EMAIL_BACKEND` isn't set.
+Anymail's `EMAIL_BACKEND` overrides whatever `EMAIL_URL` parsed. Keep the `globals().update(env.email_url(...))` line as the dev fallback, but relax its gate to an unconditional default — the `.env.prod` for this setup no longer carries `EMAIL_URL`, and the `env.NOTSET` branch would crash the prod boot with `ImproperlyConfigured`:
+
+```python
+globals().update(env.email_url("EMAIL_URL", default="consolemail://"))
+```
 
 ```python
 INSTALLED_APPS += ["anymail"]
@@ -133,7 +137,7 @@ DEFAULT_FROM_EMAIL=no-reply@example.com
 SERVER_EMAIL=django@example.com
 ```
 
-`EMAIL_URL` is no longer needed in prod with this setup — `EMAIL_BACKEND` wins.
+`EMAIL_URL` is no longer needed in prod with this setup — `EMAIL_BACKEND` wins, and the relaxed gate above makes the missing var safe.
 
 ### Webhooks (optional)
 

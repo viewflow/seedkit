@@ -1,6 +1,6 @@
 ---
 name: seedkit
-version: 26.21.1
+version: 26.27.6
 description: Bootstrap a new Django project, or add components — auth (allauth, magic-link, axes, 2FA), payments (Stripe, dj-stripe), REST (django-modern-rest, django-bolt), Celery / django-tasks, async views & WebSockets (ASGI, uvicorn worker, django-channels, channels-redis), Tailwind+DaisyUI, S3 storage, structlog, healthchecks, Docker, CI, deploy (VPS / Fly / GitHub-SSH), dbbackup, Sentry/Bugsink — to an existing Django codebase. Use whenever the user wants to scaffold Django, integrate a Django package, set up async / WebSockets, set up production deploys, wire CI/CD, or extend an existing Django project.
 ---
 
@@ -236,7 +236,11 @@ Each rule has a *why* so you can judge edge cases.
 **`uv run` vs `python` invocation**
 
 - On the **host** (dev, local commands, smoke checks): `uv run manage.py …`. uv resolves the project venv.
-- **Inside any Docker container** (dev compose `exec`, prod `compose run`, Fly `release_command`, devcontainer `postAttach`): `python manage.py …`. `/opt/venv/bin` is on `PATH`; the multi-stage runtime image (`python:3.X-slim-bookworm`) has no `uv` binary, so `uv run` breaks there.
+- **Inside any Docker container** (dev compose `exec`, prod `compose run`, Fly `release_command`, devcontainer `postAttach`): `python manage.py …`. `/opt/venv/bin` is on `PATH`; the multi-stage runtime image (`python:3.X-slim-trixie`) has no `uv` binary, so `uv run` breaks there.
+
+**Version pins**
+
+- Pinned artifacts in references age between skill releases: GitHub Actions tags, `.pre-commit-config.yaml` revs, base-image tags, downloaded binaries (Litestream, Tailwind CLI, DaisyUI). Before writing one into the project, resolve the current release — `uv run pre-commit autoupdate` after writing the pre-commit config; `gh api repos/<owner>/<repo>/releases/latest --jq .tag_name` (or the releases page) for actions and binaries. Keep the major version the reference states unless it no longer exists.
 
 **Add-on scope**
 

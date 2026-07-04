@@ -11,9 +11,9 @@ Two artefacts:
 
 | Tier | Image | Use it for |
 |---|---|---|
-| **Slim uv builder** *(default)* | `ghcr.io/astral-sh/uv:python3.12-bookworm-slim` | Builder stage. Handles every wheels-based Django dep (`psycopg[binary]`, `pillow`, `cffi`). |
-| **Slim runtime** | `python:3.12-slim-bookworm` | Final stage. No uv, no build tools — just the copied venv and the app. |
-| **Full uv (escape hatch)** | `ghcr.io/astral-sh/uv:python3.12-bookworm` + `apt-get install -y --no-install-recommends build-essential libpq-dev` | Use as the builder when a dep has no manylinux wheel (`mysqlclient`, source-built `lxml`, hand-rolled `cffi`, `django-bolt` on linux/arm64). |
+| **Slim uv builder** *(default)* | `ghcr.io/astral-sh/uv:python3.13-trixie-slim` | Builder stage. Handles every wheels-based Django dep (`psycopg[binary]`, `pillow`, `cffi`). |
+| **Slim runtime** | `python:3.13-slim-trixie` | Final stage. No uv, no build tools — just the copied venv and the app. |
+| **Full uv (escape hatch)** | `ghcr.io/astral-sh/uv:python3.13-trixie` + `apt-get install -y --no-install-recommends build-essential libpq-dev` | Use as the builder when a dep has no manylinux wheel (`mysqlclient`, source-built `lxml`, hand-rolled `cffi`, `django-bolt` on linux/arm64). |
 
 Skip Alpine (musl breaks manylinux wheels), distroless (no shell blocks debug), and full Debian (slim covers every wheels-based project).
 
@@ -86,7 +86,7 @@ uv run manage.py runserver
 
 ## Production Dockerfile
 
-Multi-stage by default. Builder stage installs deps with uv; runtime stage copies the venv into `python:3.12-slim-bookworm`. The runtime image has no `uv` binary — `/opt/venv/bin` is on `PATH` so `python manage.py …` and `gunicorn` run directly.
+Multi-stage by default. Builder stage installs deps with uv; runtime stage copies the venv into `python:3.13-slim-trixie`. The runtime image has no `uv` binary — `/opt/venv/bin` is on `PATH` so `python manage.py …` and `gunicorn` run directly.
 
 **Add the production server before building:**
 
@@ -98,7 +98,7 @@ The Dockerfile's `CMD` calls `gunicorn` directly. Without it the image build ski
 
 ```dockerfile
 # syntax=docker/dockerfile:1
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.13-trixie-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
@@ -123,15 +123,16 @@ RUN DJANGO_SETTINGS_MODULE=config.settings.production DJANGO_DEBUG=True \
     /opt/venv/bin/python manage.py collectstatic --noinput
 
 
-FROM python:3.12-slim-bookworm AS prod
+FROM python:3.13-slim-trixie AS prod
 ENV PATH="/opt/venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 # postgresql-client ships pg_dump / pg_isready for django-dbbackup and
-# ad-hoc shell debugging. Drop the line when DB=SQLite — Postgres tools
-# add ~25 MB for nothing.
+# ad-hoc shell debugging. Trixie's client is major 17 — keep it ≥ the
+# `postgres:` image major or pg_dump aborts on "server version mismatch".
+# Drop the line when DB=SQLite — Postgres tools add ~25 MB for nothing.
 
 RUN groupadd --system django && useradd --system --gid django django
 
@@ -158,6 +159,6 @@ docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py m
 
 ### Pitfalls
 
-- **Image tag mismatch.** Builder and runtime must share the same `python3.X` tag, and both must match `requires-python`. `uv sync --frozen` refuses to install otherwise.
+- **Image tag mismatch.** Builder and runtime must share the same `python3.X` tag **and the same Debian suite** (both `trixie`, or both `bookworm`). The Python tag must match `requires-python` — `uv sync --frozen` refuses to install otherwise. A newer-suite builder with an older-suite runtime fails later, at import time, with `GLIBC_x.xx not found` on any compiled wheel.
 - **`uv sync` hardlink warnings.** `UV_LINK_MODE=copy` (set in the Dockerfile) silences them.
 - **`Ignoring existing virtual environment linked to non-existent Python interpreter`.** A host `.venv` slipped into the image build (missing `.dockerignore` entry). Add `.venv` to `.dockerignore` and `docker build --no-cache`.

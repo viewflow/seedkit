@@ -108,13 +108,15 @@ uv run manage.py createcachetable --database cache
 Production `Dockerfile`:
 
 ```dockerfile
+# v0.5.13 — check the latest tag on github.com/benbjohnson/litestream/releases.
 RUN apt-get update && apt-get install -y --no-install-recommends wget \
- && ARCH=$(dpkg --print-architecture) \
- && wget -q "https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-v0.3.13-linux-${ARCH}.deb" \
- && dpkg -i "litestream-v0.3.13-linux-${ARCH}.deb" \
- && rm "litestream-v0.3.13-linux-${ARCH}.deb" \
+ && ARCH=$(dpkg --print-architecture | sed 's/amd64/x86_64/') \
+ && wget -q "https://github.com/benbjohnson/litestream/releases/download/v0.5.13/litestream-0.5.13-linux-${ARCH}.deb" \
+ && dpkg -i "litestream-0.5.13-linux-${ARCH}.deb" \
+ && rm "litestream-0.5.13-linux-${ARCH}.deb" \
  && rm -rf /var/lib/apt/lists/*
-# dpkg --print-architecture resolves amd64 / arm64 so the image builds on M-series Macs too.
+# Release assets name amd64 as x86_64 while arm64 keeps dpkg's name — the sed
+# keeps the image building on M-series Macs too.
 
 # Pre-create /data before `USER django` — the named volume mounts as root:root,
 # so the django user can't write site.sqlite3 / cache.sqlite3 / WAL files otherwise.
@@ -135,13 +137,13 @@ CMD []
 ```yaml
 dbs:
   - path: /data/site.sqlite3
-    replicas:
-      - type: s3
-        endpoint: ${S3_ENDPOINT}
-        bucket: ${S3_BUCKET}
-        path: site/site.sqlite3
-        access-key-id: ${S3_ACCESS_KEY_ID}
-        secret-access-key: ${S3_SECRET_ACCESS_KEY}
+    replica:
+      type: s3
+      endpoint: ${S3_ENDPOINT}
+      bucket: ${S3_BUCKET}
+      path: site/site.sqlite3
+      access-key-id: ${S3_ACCESS_KEY_ID}
+      secret-access-key: ${S3_SECRET_ACCESS_KEY}
 ```
 
 `entrypoint.sh`:

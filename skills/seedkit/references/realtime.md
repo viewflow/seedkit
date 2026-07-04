@@ -125,11 +125,11 @@ In dev, one process handles both. In production, run a **dedicated ASGI worker p
 services:
   web:
     # ... existing web definition (HTTP gunicorn) ...
-    command: gunicorn -k uvicorn.workers.UvicornWorker config.asgi:application --bind 0.0.0.0:8000
+    command: gunicorn -k uvicorn_worker.UvicornWorker config.asgi:application --bind 0.0.0.0:8000
 
   ws:
     image: ${WEB_IMAGE}
-    command: gunicorn -k uvicorn.workers.UvicornWorker config.asgi:application --bind 0.0.0.0:8001 --workers ${WS_CONCURRENCY:-2}
+    command: gunicorn -k uvicorn_worker.UvicornWorker config.asgi:application --bind 0.0.0.0:8001 --workers ${WS_CONCURRENCY:-2}
     env_file: .env
     depends_on:
       redis:
@@ -174,7 +174,13 @@ from config.asgi import application
 
 @pytest.mark.asyncio
 async def test_chat_round_trip(authenticated_user):
-    communicator = WebsocketCommunicator(application, "/ws/chat/lobby/")
+    # AllowedHostsOriginValidator in config/asgi.py denies handshakes without
+    # an Origin header; the test environment allows "testserver".
+    communicator = WebsocketCommunicator(
+        application,
+        "/ws/chat/lobby/",
+        headers=[(b"origin", b"http://testserver")],
+    )
     communicator.scope["user"] = authenticated_user
     connected, _ = await communicator.connect()
     assert connected

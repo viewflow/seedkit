@@ -22,7 +22,7 @@ uv run pre-commit install
 ```yaml
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -32,18 +32,20 @@ repos:
       - id: check-toml
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.0
+    rev: v0.15.20
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix]
       - id: ruff-format
 
   # Only if references/typecheck.md is applied:
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.380
+    rev: v1.1.411
     hooks:
       - id: pyright
 ```
+
+Immediately after writing the file, run `uv run pre-commit autoupdate` and commit the bumped `rev:` values — the pins above age. A `rev:` older than the project's `ruff` dev dependency makes the hook and `uv run ruff format` fight over formatting.
 
 ## Run all hooks once
 
@@ -64,7 +66,7 @@ Mirror the local hook in CI so a developer who didn't `pre-commit install` can't
 ## Skipping a hook
 
 - Single commit: `git commit --no-verify` — use sparingly; CI will catch you anyway.
-- Specific hook: `SKIP=ruff git commit -m "..."`.
+- Specific hook: `SKIP=ruff-check git commit -m "..."`.
 - Permanently exclude a path: `exclude:` regex in the hook config.
 
 ## Updating versions

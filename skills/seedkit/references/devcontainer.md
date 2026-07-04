@@ -11,7 +11,7 @@ Skip this when the user works in a plain shell — there's nothing else to set u
 ```json
 {
   "name": "{{project_name}}",
-  "image": "mcr.microsoft.com/devcontainers/python:3.12-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/python:3.13-trixie",
   "features": {
     "ghcr.io/va-h/devcontainers-features/uv:1": {}
   },

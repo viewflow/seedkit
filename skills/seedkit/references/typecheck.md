@@ -2,9 +2,7 @@
 
 Docs: <https://microsoft.github.io/pyright/> · <https://github.com/typeddjango/django-stubs>
 
-Stock Django runs without static types. Pyright (the type checker that powers VS Code's Pylance) plus `django-stubs` adds inferred types to the ORM, querysets, request/response cycle, and common third-party packages. Same `[tool.pyright]` block in `pyproject.toml` is read by both CI and the editor.
-
-Pick pyright over mypy because it's roughly 10× faster on a typical Django project and has stricter inference defaults; the trade is a less mature plugin ecosystem and slightly different rules around descriptors.
+Pyright plus `django-stubs` add static types for the ORM, querysets, and request/response cycle. The same `[tool.pyright]` block in `pyproject.toml` is read by CI and the editor.
 
 Skip this if your project doesn't use type hints — checking untyped code only produces noise.
 
@@ -51,12 +49,8 @@ pythonVersion = "3.12"               # match `requires-python`
 typeCheckingMode = "basic"           # "standard" once code is typed; "strict" is noisy on Django
 useLibraryCodeForTypes = true        # read source for packages without stubs (allauth, axes, …)
 reportMissingTypeStubs = "none"      # third-party stubs are optional
-reportGeneralTypeIssues = "warning"
-reportOptionalMemberAccess = "warning"
 strictListInference = true
 ```
-
-Pyright resolves Django types from the static stubs shipped inside the `django-stubs` package; no extra wiring needed.
 
 ## Run
 
@@ -81,7 +75,7 @@ If `references/pre-commit.md` is applied, add:
 
 ```yaml
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.380
+    rev: v1.1.411
     hooks:
       - id: pyright
 ```

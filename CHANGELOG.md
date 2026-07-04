@@ -2,6 +2,15 @@
 
 Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One section per day; all of a day's commits collapse into one block. Trim to ≤ 200 lines; git keeps the rest.
 
+## 26.27.6 — 2026-07-04
+
+### Fixed
+- REVIEW.md blockers: `email.md` anymail path relaxes the `EMAIL_URL` gate to an unconditional default (prod no longer sets the var — the `env.NOTSET` branch crashed boot); `billing.md` dj-stripe rewritten for 2.9+ (webhook endpoints are admin-created DB rows with UUID URLs — `DJSTRIPE_WEBHOOK_SECRET` and `DJSTRIPE_FOREIGN_KEY_TO_FIELD` dropped, `djstripe_receiver` replaces `WEBHOOK_SIGNALS`, checkout view sets `stripe.api_key` from `djstripe_settings`); `deploy-vps.md` deploy commands carry `--env-file deploy/.env.prod`; `dbbackup.md` cron lines get cwd + compose flags + a real host user + log redirect, restore commands get the same flags, pitfall notes pg_dump client ≥ server major; `i18n.md` installs `gettext` in the builder stage (`msgfmt` missing broke the image build) and on the dev host; `realtime.md` WS test sends an `Origin` header so `AllowedHostsOriginValidator` accepts the handshake; `async.md` pitfall drops the nonexistent `Model.objects.afilter(...)`.
+- `typecheck.md` — `reportGeneralTypeIssues` / `reportOptionalMemberAccess` no longer downgraded to warnings (warnings never fail pyright's exit code, so CI passed on type errors). Verified 0 errors at error level across four generated example projects; django-stubs kept over django-types (whose stubs lack `UserChangeForm.Meta` and `django.tasks`).
+
+### Changed
+- Version refresh (all pins verified current 2026-07-04): base images `bookworm`/3.12 → `trixie`/3.13 across docker / rest-bolt / devcontainer / prose (trixie's `postgresql-client` 17 also fixes the pg_dump mismatch against `postgres:17`); `redis:7` → `redis:8`; Litestream 0.3.13 → 0.5.13 (new asset naming `linux-x86_64`, singular `replica:` config); `uvicorn.workers.UvicornWorker` (deprecated) → `uvicorn-worker` package; `checkout@v7`, `setup-uv@v8.2.0` (immutable — pin exact), `build-push-action@v7`, `codecov-action@v7`, `appleboy/ssh-action` SHA-pin placeholder; pre-commit revs bumped + `ruff` hook id → `ruff-check` + "run `pre-commit autoupdate` after writing the config"; DaisyUI downloads pinned to a versioned release URL; Tailwind CLI example 4.3.2; python pins 3.12 → 3.13 (mise, uv examples). New SKILL.md "Version pins" pitfall: resolve current releases at generation time instead of trusting reference pins.
+
 ## 26.21.1 — 2026-05-18
 
 ### Fixed

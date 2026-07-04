@@ -31,7 +31,7 @@ jobs:
           --health-retries 5
       # Add this block only when redis is wired (cache / celery / django-tasks-rq).
       redis:
-        image: redis:7
+        image: redis:8
         ports:
           - 6379:6379
         options: >-
@@ -62,9 +62,11 @@ jobs:
       DBBACKUP_BUCKET: ci-placeholder         # only when django-dbbackup is wired
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v3
+      # setup-uv releases are immutable — no moving major tag. Pin the
+      # latest release from github.com/astral-sh/setup-uv/releases.
+      - uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
 

@@ -209,9 +209,9 @@ INSTALLED_APPS = [
 STRIPE_LIVE_MODE = env.bool("STRIPE_LIVE_MODE", default=False)
 STRIPE_TEST_SECRET_KEY = env("STRIPE_TEST_SECRET_KEY", default="")
 STRIPE_LIVE_SECRET_KEY = env("STRIPE_LIVE_SECRET_KEY", default="")
-DJSTRIPE_WEBHOOK_SECRET = env("DJSTRIPE_WEBHOOK_SECRET", default="")
-DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"   # use Stripe IDs as FK targets, not Django PKs
 ```
+
+Webhook secrets live in the database per endpoint (see the webhook section below) — there is no `DJSTRIPE_WEBHOOK_SECRET` setting on current dj-stripe (2.9+).
 
 ### .env.example
 
@@ -219,7 +219,6 @@ DJSTRIPE_FOREIGN_KEY_TO_FIELD = "id"   # use Stripe IDs as FK targets, not Djang
 STRIPE_LIVE_MODE=False
 STRIPE_TEST_SECRET_KEY=sk_test_...
 STRIPE_LIVE_SECRET_KEY=sk_live_...
-DJSTRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ### Migrate
@@ -249,7 +248,7 @@ urlpatterns += [
 ]
 ```
 
-dj-stripe handles `POST /stripe/webhook/` automatically. Register `https://yourdomain.com/stripe/webhook/` in the Stripe Dashboard.
+Webhook endpoints are database rows, created via the Django admin: dj-stripe → Webhook endpoints → Add webhook endpoint (`/admin/djstripe/webhookendpoint/add/`). Set the base URL to the public site URL; saving registers the endpoint on Stripe itself and stores the signing secret in the row. The endpoint URL gets a UUID suffix (`/stripe/webhook/<uuid>/`) so it can't be guessed. No Stripe-Dashboard registration step.
 
 ### Querying subscription state
 
@@ -282,17 +281,19 @@ def subscription_required(view_func):
 
 ```python
 import stripe
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 from djstripe.models import Customer
+from djstripe.settings import djstripe_settings
 
 @login_required
 def create_checkout_session(request):
+    # dj-stripe passes API keys per call internally and never sets the
+    # SDK global — set it before calling the raw SDK yourself.
+    stripe.api_key = djstripe_settings.STRIPE_SECRET_KEY
     customer, _ = Customer.get_or_create(subscriber=request.user)
     session = stripe.checkout.Session.create(
         customer=customer.id,
-        payment_method_types=["card"],
         line_items=[{"price": request.POST["price_id"], "quantity": 1}],
         mode="subscription",
         success_url=request.build_absolute_uri("/billing/success/"),
@@ -308,9 +309,9 @@ dj-stripe fires Django signals after syncing incoming webhook events:
 
 ```python
 # billing/signals.py
-from djstripe.signals import WEBHOOK_SIGNALS
+from djstripe.event_handlers import djstripe_receiver
 
-@WEBHOOK_SIGNALS["customer.subscription.created"].connect
+@djstripe_receiver("customer.subscription.created")
 def on_subscription_created(sender, event, **kwargs):
     subscription = event.data["object"]
     # subscription is a Stripe dict; also available as djstripe.models.Subscription
@@ -331,8 +332,10 @@ class BillingConfig(AppConfig):
 
 ### Local dev
 
+Create a test-mode webhook endpoint in the admin first, then forward to its UUID URL:
+
 ```sh
-stripe listen --forward-to localhost:8000/stripe/webhook/
+stripe listen --forward-to localhost:8000/stripe/webhook/<uuid>/
 ```
 
-Use the printed `whsec_...` as `DJSTRIPE_WEBHOOK_SECRET` in `.env`.
+`stripe listen` prints its own `whsec_...` — paste it into that endpoint row's secret field in the admin, otherwise signature validation rejects every CLI-forwarded event.

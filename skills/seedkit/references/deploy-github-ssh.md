@@ -69,7 +69,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/login-action@v3
         with:
@@ -77,15 +77,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v7
         with:
           push: true
           tags: ghcr.io/${{ github.repository }}:latest
           target: prod                              # matches the `prod` stage in references/docker.md
 
-      # Pin third-party deploy actions to a SHA, not a major tag — this step
-      # runs arbitrary shell on prod. Replace <SHA> with a recent commit.
-      - uses: appleboy/ssh-action@v1
+      # Pin third-party deploy actions to a commit SHA, not a tag — this step
+      # runs arbitrary shell on prod. Resolve the SHA of the latest release:
+      #   gh api repos/appleboy/ssh-action/git/ref/tags/<latest-tag> --jq .object.sha
+      - uses: appleboy/ssh-action@<SHA>  # v1.2.5
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}

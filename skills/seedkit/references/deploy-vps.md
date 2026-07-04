@@ -93,9 +93,10 @@ Mount the same `media` named volume into the `caddy` service in `docker-compose.
 ssh user@vps
 cd /srv/{project_slug}
 git pull
-docker compose -f deploy/docker-compose.prod.yml pull
-docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate
-docker compose -f deploy/docker-compose.prod.yml up -d
+# --env-file is required on every compose call — compose auto-loads only ./.env, not deploy/.env.prod
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml pull
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d
 ```
 
 Migrations run as a one-shot `docker compose run` *before* `up -d`. Compose's `depends_on: condition: service_healthy` (wired in `references/docker.md`) gates `web` on Postgres being ready — no `entrypoint.sh`, no `pg_isready` loop, no `migrate --noinput` baked into container start. The container's job is `gunicorn`, full stop. (Exception: the SQLite + Litestream pattern in `references/database.md` legitimately uses an entrypoint to restore the DB from S3 before launching gunicorn under `litestream replicate`.)

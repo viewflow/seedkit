@@ -17,13 +17,13 @@ uv add django-bolt msgspec
 The wheel includes a precompiled Rust extension. uv pulls the wheel on x86_64 / arm64 macOS and x86_64 Linux without a toolchain. **No aarch64-linux wheel** is published — Docker builds on Apple Silicon (linux/arm64 platform) compile from source. The builder stage in `references/docker.md` must switch to the full uv image plus build tools:
 
 ```dockerfile
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm AS builder
+FROM ghcr.io/astral-sh/uv:python3.13-trixie AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential pkg-config \
     && rm -rf /var/lib/apt/lists/*
 ```
 
-The slim runtime stage stays on `python:3.12-slim-bookworm` — only the builder needs the toolchain.
+The slim runtime stage stays on `python:3.13-slim-trixie` — only the builder needs the toolchain.
 
 ## settings.py / base.py
 

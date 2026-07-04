@@ -50,13 +50,15 @@ DBBACKUP_BUCKET=
 
 ## Schedule
 
-A cron line on the VPS host running inside the web container:
+A cron line on the VPS host running inside the web container. Cron starts in `/` with a bare environment, and the sixth field must name an existing host user — use the user that owns `/srv/{project_slug}` (`root` on a stock VPS setup, or the deploy user):
 
 ```cron
 # /etc/cron.d/dbbackup — runs daily at 03:17 UTC
-17 3 * * * django docker compose exec -T web python manage.py dbbackup --clean
-27 3 * * * django docker compose exec -T web python manage.py mediabackup --clean
+17 3 * * * root cd /srv/{project_slug} && docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T web python manage.py dbbackup --clean >> /var/log/dbbackup.log 2>&1
+27 3 * * * root cd /srv/{project_slug} && docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T web python manage.py mediabackup --clean >> /var/log/dbbackup.log 2>&1
 ```
+
+After the first scheduled run, check `/var/log/dbbackup.log` and `manage.py listbackups` — a broken cron line fails silently otherwise.
 
 `--clean` honours `DBBACKUP_CLEANUP_KEEP*`. Don't rely on bucket lifecycle alone — the dbbackup-side cleanup keeps the *latest N*, while bucket lifecycle keeps *anything younger than X*. Different guarantees.
 
@@ -65,8 +67,9 @@ If the project uses `tasks-celery.md` Beat, you can move the schedule there inst
 ## Restore
 
 ```sh
-docker compose exec -T web python manage.py dbrestore --database=default
-docker compose exec -T web python manage.py mediarestore
+cd /srv/{project_slug}
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T web python manage.py dbrestore --database=default
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T web python manage.py mediarestore
 ```
 
 `dbrestore` is destructive — it drops and recreates the target database. Confirm the target before running on a non-staging host.
@@ -83,6 +86,6 @@ And run `dbbackup --encrypt`. Document key rotation in `README.md` — losing th
 
 ## Pitfalls
 
-- Postgres dumps require `pg_dump` in the container `PATH`. The production Dockerfiles in `references/docker.md` already install `postgresql-client` — don't drop that line.
+- Postgres dumps require `pg_dump` in the container `PATH`. The production Dockerfiles in `references/docker.md` already install `postgresql-client` — don't drop that line. The client major must be ≥ the `postgres:` image major or `pg_dump` aborts with "server version mismatch"; Debian trixie ships client 17, matching `postgres:17`.
 - Don't share the media bucket with the backup bucket. One is hot-served, the other is cold and private; mixing them complicates ACLs and lifecycle.
 - Run a *real* restore drill at least once before declaring backups working. Untested backups are not backups.

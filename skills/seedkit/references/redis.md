@@ -38,7 +38,7 @@ Add to the same compose file as the `db` service (`references/docker.md`):
 ```yaml
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     ports:
       - "127.0.0.1:6379:6379"   # host Django / workers reach it via localhost
     healthcheck:
@@ -66,7 +66,7 @@ services:
         condition: service_healthy
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

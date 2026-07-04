@@ -73,7 +73,7 @@ In CI, emit Cobertura XML for upload to a coverage service (Codecov / Coveralls)
 
 ```yaml
       - run: uv run pytest --cov --cov-report=xml
-      - uses: codecov/codecov-action@v4    # optional
+      - uses: codecov/codecov-action@v7    # optional
 ```
 
 Add `htmlcov/` and `.coverage` to `.gitignore`.

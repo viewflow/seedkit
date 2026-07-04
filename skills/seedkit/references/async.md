@@ -7,7 +7,7 @@ Three modes the skill supports. Decide at Foundation §2.4 — switching later m
 | Mode | Why pick it | What it ships |
 |---|---|---|
 | **wsgi** *(default)* | Stock Django, no async views, no WebSockets. | `gunicorn config.wsgi`. `manage.py` → `local`, `wsgi.py` → `production`, `asgi.py` left at the `startproject` default. |
-| **asgi** | `async def` views, async middleware, `StreamingHttpResponse` over a long-running upstream. No WebSockets. | `gunicorn -k uvicorn.workers.UvicornWorker config.asgi:application`. `asgi.py` → `production`; `wsgi.py` left at the `startproject` default. |
+| **asgi** | `async def` views, async middleware, `StreamingHttpResponse` over a long-running upstream. No WebSockets. | `gunicorn -k uvicorn_worker.UvicornWorker config.asgi:application`. `asgi.py` → `production`; `wsgi.py` left at the `startproject` default. |
 | **asgi+channels** | Real WebSockets / long-lived connections / chat / live notifications. See `references/realtime.md`. | Same gunicorn invocation as `asgi`; channels routing wraps the ASGI app. |
 
 ## When to prefer stock ASGI over channels
@@ -18,10 +18,10 @@ Three modes the skill supports. Decide at Foundation §2.4 — switching later m
 
 ```sh
 # asgi or asgi+channels
-uv add 'uvicorn[standard]' gunicorn
+uv add 'uvicorn[standard]' uvicorn-worker gunicorn
 ```
 
-`uvicorn[standard]` pulls `httptools` + `uvloop` for the fast loop; `gunicorn` stays the process manager so `--workers` / signal handling / preload behave the same as the WSGI path.
+`uvicorn[standard]` pulls `httptools` + `uvloop` for the fast loop; `uvicorn-worker` provides the `uvicorn_worker.UvicornWorker` class for gunicorn; `gunicorn` stays the process manager so `--workers` / signal handling / preload behave the same as the WSGI path.
 
 ## Settings module defaults
 
@@ -40,7 +40,7 @@ Only one of `wsgi.py` / `asgi.py` gets the production pointer — whichever the 
 CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]
 
 # asgi or asgi+channels
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "config.asgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "-k", "uvicorn_worker.UvicornWorker", "config.asgi:application", "--bind", "0.0.0.0:8000"]
 ```
 
 Replace the `gunicorn config.wsgi …` line in `references/docker.md` and `references/deploy-vps.md` with the ASGI variant when the mode is `asgi` or `asgi+channels`.
@@ -75,6 +75,6 @@ asyncio_mode = "auto"
 
 ## Pitfalls
 
-- Mixing sync ORM calls in an `async def` view: Django raises `SynchronousOnlyOperation`. Wrap with `sync_to_async(...)` or use the async ORM (`await Model.objects.aget(...)`, `Model.objects.afilter(...)`).
+- Mixing sync ORM calls in an `async def` view: Django raises `SynchronousOnlyOperation`. Wrap with `sync_to_async(...)` or use the async ORM (`await Model.objects.aget(...)`, `async for obj in Model.objects.filter(...)`).
 - `manage.py runserver` uses the WSGI handler regardless of `asgi.py` settings. For local ASGI behaviour parity (WebSocket upgrades, long-lived requests), run `uvicorn config.asgi:application --reload` directly.
 - `gunicorn --preload` plus `UvicornWorker` shares the event loop across forks in surprising ways. Don't use `--preload` with the uvicorn worker class unless you've measured the win.
