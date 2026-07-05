@@ -8,6 +8,7 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 - `tasks-django-rq.md` / `tasks-django-db.md`: both 0.12.0 adapters are built against the standalone `django-tasks` backport (import `django_tasks`), not Django 6's stdlib `django.tasks` — register `django_tasks`, import `from django_tasks import task`, and use `django_tasks.backends.immediate.ImmediateBackend` as the test eager backend.
 - `dev-tools.md`: `lintmigrations` `exclude_apps` used the wrong label `django_tasks_database`; the app label is `django_tasks_db`, so its migrations weren't skipped.
 - `SKILL.md`: `startapp` ordering pitfall now also covers packages a settings block references (e.g. `orbit.handlers.OrbitLogHandler`) — `uv add` them before the next `startapp` imports settings.
+- `ci.md`: CI `DJANGO_SECRET_KEY` placeholder dropped the `django-insecure-` prefix — that prefix trips `security.W009` at the `check --deploy` step regardless of length.
 
 ## 26.27.7 — 2026-07-05
 
