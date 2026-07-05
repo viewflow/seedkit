@@ -1,6 +1,6 @@
 # Robusta Seedkit 🌱
 
-An agent skill to start new Django projects or extend existing ones.
+An agent skill to start new Django projects or extend existing ones. One sentence in, a running project out: packages wired together, dev/prod settings split, CI included.
 
 ```
 /seedkit SaaS landing + waitlist, GDPR-friendly stack (mail, analytics, error reporting), VPS deploy
@@ -15,6 +15,17 @@ An agent skill to start new Django projects or extend existing ones.
 ```
 
 [![View Outputs](https://img.shields.io/badge/View%20Outputs-00C853?style=for-the-badge)](https://github.com/RobustaRush/seedkit-examples)
+
+LLMs write Django from memory, and that memory is a year or two old: deprecated auth settings, last version's Stripe webhooks, database ports open to the local network. seedkit keeps the knowledge in reference files instead — built from package docs, tested end-to-end, fixed after every failure. The model just types.
+
+|                      | boilerplate generator | raw LLM         | seedkit                 |
+|----------------------|-----------------------|-----------------|-------------------------|
+| Your exact stack     | fixed menu            | yes             | yes                     |
+| Current package APIs | age with the template | training cutoff | looked up at generation |
+| Output verified      | template's own CI     | no              | 9 end-to-end scenarios, audited by a second LLM |
+| Deterministic        | yes                   | no              | no                      |
+
+The whole test suite runs on Claude Sonnet: a mid-tier model does the scaffolding, and the frontier-model hours from your subscription go to the code only you can write.
 
 Helps you with: [Python deps & venvs](https://docs.astral.sh/uv/), [settings for dev vs prod](https://django-environ.readthedocs.io/), [custom user model](https://docs.djangoproject.com/en/stable/topics/auth/customizing/#substituting-a-custom-user-model), [social & password login](https://docs.allauth.org/), [passwordless magic-link login](https://django-mail-auth.readthedocs.io/), [brute-force protection](https://django-axes.readthedocs.io/), [background jobs](https://docs.celeryq.dev/), [async views](https://docs.djangoproject.com/en/stable/topics/async/), [WebSockets](https://channels.readthedocs.io/), [Redis caching](https://github.com/jazzband/django-redis), [S3 for static & media](https://django-storages.readthedocs.io/), [outbound email](https://anymail.dev/), [Tailwind without Node](https://django-tailwind-cli.readthedocs.io/), [GDPR-safe analytics](https://www.goatcounter.com/help/start), [security headers](https://docs.djangoproject.com/en/stable/topics/security/), [CSP headers](https://django-csp.readthedocs.io/), [production error tracking](https://docs.sentry.io/platforms/python/integrations/django/), [structured logs](https://www.structlog.org/), [N+1 query detection](https://github.com/PedroBern/django-zeal), [safe migrations](https://github.com/3YOURMIND/django-migration-linter), [linting & formatting](https://docs.astral.sh/ruff/), [type checking](https://microsoft.github.io/pyright/), [scheduled DB backups](https://django-dbbackup.readthedocs.io/), [Docker for local dev](https://docs.docker.com/compose/), [auto-HTTPS reverse proxy](https://caddyserver.com/docs/), [CI pipeline](https://docs.github.com/en/actions) — and more.
 
@@ -61,11 +72,10 @@ It also saves you the prompt-writing: the instructions that would otherwise need
 
 ## What you get
 
-- Ready-to-run Django project.
-- Pick your stack — real alternatives at every step.
-- Smart additions: `/seedkit add [feature]` safely appends code without overwriting.
-- No unused boilerplate.
-- Sane defaults out of the box.
+- A Django project that boots, smoke-checked before hand-off.
+- Real alternatives at every step: Celery or RQ, allauth or magic links, VPS or Fly.
+- `/seedkit add [feature]` extends an existing project without rewriting it.
+- Only the code for options you picked — no dead boilerplate.
 
 ## Project Status
 
