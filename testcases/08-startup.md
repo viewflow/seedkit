@@ -113,7 +113,7 @@ Verify these structural facts:
 - GDPR scaffolding present: `data_export` / `data_delete` views or management commands.
 
 **Deploy artefacts**
-- `Dockerfile` is multi-stage: `builder` runs `uv sync` on `ghcr.io/astral-sh/uv:python3.12-bookworm` with `build-essential pkg-config` installed (django-bolt has no aarch64-linux wheel; the Rust extension compiles from source). Final `prod` stage uses `python:3.12-slim-bookworm` with `/opt/venv/bin` on PATH and no uv binary.
+- `Dockerfile` is multi-stage and pins `--platform=linux/amd64` on both stages so uv installs django-bolt's published `manylinux2014_x86_64` wheel (no `build-essential`, no source compile — there is no aarch64-linux wheel). `builder` runs `uv sync` on a `ghcr.io/astral-sh/uv:python3.12-*` image; final `prod` stage uses `python:3.12-slim-bookworm` with `/opt/venv/bin` on PATH and no uv binary.
 - `fly.toml` has `[processes]` with `web`, `worker`, `bolt`. The `bolt` process sets `DJANGO_SETTINGS_MODULE=config.settings.bolt`. `[env]` sets `PORT` and `DJANGO_BEHIND_PROXY=True`. `DJANGO_ALLOWED_HOSTS` / `DJANGO_SECRET_KEY` / `DATABASE_URL` go via `fly secrets set` per `deploy-managed.md` — do not hardcode in `[env]`. `[deploy] release_command = "python manage.py migrate"` (not `uv run` — the slim runtime has no uv). `[[checks]]` (or service health) hits `/readyz`.
 - `[checks]` / `[services.checks]` block in `fly.toml` references `/readyz`.
 

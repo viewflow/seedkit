@@ -2,6 +2,14 @@
 
 Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One section per day; all of a day's commits collapse into one block. Trim to ≤ 200 lines; git keeps the rest.
 
+## 26.28.2 — 2026-07-07
+
+### Changed
+- `rest-bolt.md` / `docker.md`: django-bolt Docker builds now pin `--platform=linux/amd64` on both stages so uv installs the published `manylinux2014_x86_64` wheel — no `build-essential`, no from-source Rust compile, and the image matches Fly's default amd64 machines. Replaces the old arm64-native compile-from-source guidance.
+
+### Fixed
+- `deploy-managed.md`: `fly.toml` example gained a `[[services.http_checks]]` block hitting `/readyz` (so Fly gates rollouts on readiness) and a note to bind the HTTP service to the `web` process (`processes = ["web"]`) when `[processes]` is set — the previous example was single-process with no health check.
+
 ## 26.28.1 — 2026-07-06
 
 ### Fixed

@@ -37,6 +37,8 @@ primary_region = "iad"
 [[services]]
   internal_port = 8000
   protocol = "tcp"
+  # With [processes] below, bind this service to the web process:
+  #   processes = ["web"]
 
   [[services.ports]]
     port = 80
@@ -46,6 +48,12 @@ primary_region = "iad"
   [[services.ports]]
     port = 443
     handlers = ["tls", "http"]
+
+  # Gate rollouts on readiness when health endpoints exist (references/health.md):
+  [[services.http_checks]]
+    interval = "15s"
+    timeout  = "2s"
+    path     = "/readyz"
 ```
 
 ### Per-process env (multi-process apps)

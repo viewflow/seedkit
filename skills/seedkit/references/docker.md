@@ -13,7 +13,7 @@ Two artefacts:
 |---|---|---|
 | **Slim uv builder** *(default)* | `ghcr.io/astral-sh/uv:python3.13-trixie-slim` | Builder stage. Handles every wheels-based Django dep (`psycopg[binary]`, `pillow`, `cffi`). |
 | **Slim runtime** | `python:3.13-slim-trixie` | Final stage. No uv, no build tools — just the copied venv and the app. |
-| **Full uv (escape hatch)** | `ghcr.io/astral-sh/uv:python3.13-trixie` + `apt-get install -y --no-install-recommends build-essential libpq-dev` | Use as the builder when a dep has no manylinux wheel (`mysqlclient`, source-built `lxml`, hand-rolled `cffi`, `django-bolt` on linux/arm64). |
+| **Full uv (escape hatch)** | `ghcr.io/astral-sh/uv:python3.13-trixie` + `apt-get install -y --no-install-recommends build-essential libpq-dev` | Use as the builder when a dep has no manylinux wheel (`mysqlclient`, source-built `lxml`, hand-rolled `cffi`). For `django-bolt` pin the build to `linux/amd64` instead — see `references/rest-bolt.md`. |
 
 Skip Alpine (musl breaks manylinux wheels), distroless (no shell blocks debug), and full Debian (slim covers every wheels-based project).
 
