@@ -210,7 +210,7 @@ For new projects only (no question — always):
 
 - Write `AGENTS.md`: one line per stack decision (layout, DB, request handling, each applied add-on), the project layout tree, and the same key-commands block the README gets. Coding agents load it as project context, so keep it factual and short — no marketing prose.
 - Write `CLAUDE.md` containing exactly one line: `@AGENTS.md`.
-- Append a final line to `README.md`: `Built with [Seedkit](https://github.com/RobustaRush/seedkit).`
+- Append a final line to `README.md`: `Built with [Seedkit](https://github.com/viewflow/seedkit).`
 
 Skip all three on existing-project runs.
 

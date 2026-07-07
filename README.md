@@ -1,4 +1,4 @@
-# Robusta Seedkit 🌱
+# Viewflow Seedkit 🌱
 
 An agent skill to start new Django projects or extend existing ones. One sentence in, a running project out: packages wired together, dev/prod settings split, CI included.
 
@@ -34,8 +34,8 @@ Helps you with: [Python deps & venvs](https://docs.astral.sh/uv/), [settings for
 ### Claude Code (plugin)
 
 ```sh
-/plugin marketplace add RobustaRush/seedkit
-/plugin install seedkit@robusta
+/plugin marketplace add viewflow/seedkit
+/plugin install seedkit@viewflow
 ```
 
 ### Other agents (Cursor, Codex, OpenCode, Gemini CLI, …)
@@ -43,9 +43,9 @@ Helps you with: [Python deps & venvs](https://docs.astral.sh/uv/), [settings for
 Via the [skills](https://github.com/vercel-labs/skills) CLI — installs into whichever agent dirs it detects:
 
 ```sh
-npx skills add RobustaRush/seedkit            # project scope
-npx skills add RobustaRush/seedkit -g         # global (all your projects)
-npx skills add RobustaRush/seedkit -a cursor  # pin to one agent
+npx skills add viewflow/seedkit            # project scope
+npx skills add viewflow/seedkit -g         # global (all your projects)
+npx skills add viewflow/seedkit -a cursor  # pin to one agent
 ```
 
 Then, in whatever empty directory you'd like to populate:
@@ -91,7 +91,7 @@ If you run into issues, strange behavior, or have ideas for new integrations, pl
 
 This is AI-generated code, and any human attention is valuable — a person reading it catches what the harness can't.
 
-- **Hit a bug or something odd?** [Open an issue](https://github.com/RobustaRush/seedkit/issues/new) — even a one-line "this broke" helps.
+- **Hit a bug or something odd?** [Open an issue](https://github.com/viewflow/seedkit/issues/new) — even a one-line "this broke" helps.
 - **Run it on another model.** We only verify on Claude Sonnet. Point `train/run-tests.sh` at Opus, Haiku, GPT, or Gemini and share the logs; cross-model coverage is what we need most.
 - **Read the output before you trust it.** It boots and passes smoke checks, but hasn't seen production — your review is part of the loop.
 

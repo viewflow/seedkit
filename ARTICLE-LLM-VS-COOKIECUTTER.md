@@ -26,7 +26,7 @@ I spent several weeks finding out. I set up a test: a model generated the projec
 
 In my experiments, even the newest models still made these mistakes. Left on their own, they lean on stale knowledge instead of checking current docs, and debugging the result often took me longer than writing the setup by hand. Plus, I don't want to burn my expensive AI usage limits on standard setup. I just need the knowledge to sit outside the model.
 
-That's exactly why I built [seedkit](https://github.com/RobustaRush/seedkit), a plugin for coding assistants like Cursor and Claude Code.
+That's exactly why I built [seedkit](https://github.com/viewflow/seedkit), a plugin for coding assistants like Cursor and Claude Code.
 
 Instead of relying on guesswork, the plugin injects focused cheat sheets, installs dependencies with uv so package versions resolve to the current release instead of a hardcoded stale one, and runs a secondary audit prompt to verify the output. 
 
@@ -48,7 +48,7 @@ Then, to check the improvements were real, I ran a 'control group': the same pro
 
 One big lesson I learned: prompting a model isn't free. With too much text to read, it loses context and output quality drops. Every single line of instruction had to fight for its place. In the end, the shorter my reference files got, the better the final output became.
 
-**Try it:** `/plugin marketplace add RobustaRush/seedkit`, then `/seedkit` in an empty directory. Generated examples with audit logs live in [seedkit-examples](https://github.com/RobustaRush/seedkit-examples). There's also a `/seedkit-slim` variant with no reference files (raw model knowledge) if you want to compare the two approaches yourself.
+**Try it:** `/plugin marketplace add viewflow/seedkit`, then `/seedkit` in an empty directory. Generated examples with audit logs live in [seedkit-examples](https://github.com/RobustaRush/seedkit-examples). There's also a `/seedkit-slim` variant with no reference files (raw model knowledge) if you want to compare the two approaches yourself.
 
 ---
 
@@ -70,6 +70,6 @@ But these days, the internet is flooded with untested AI skills, and I wanted to
 I even ran it against a control group, starting completely fresh with zero 'agent memory', to prove the improvements are real and that it works for everyone, not just on my machine.
 
 Full story: [link to the article]
-The tool (open source): github.com/RobustaRush/seedkit
+The tool (open source): github.com/viewflow/seedkit
 
 #django #python #llm

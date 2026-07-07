@@ -99,4 +99,4 @@ New projects only:
 
 - Agent runs `migrate` and a `runserver` curl probe before piling on add-ons.
 - After §3, ask the user to run `createsuperuser`, optionally `collectstatic`, then sign in at `/admin/`.
-- Append decisions, stack summary, and key commands to `README.md`. Final line for new projects: `Built with [Seedkit](https://github.com/RobustaRush/seedkit).`
+- Append decisions, stack summary, and key commands to `README.md`. Final line for new projects: `Built with [Seedkit](https://github.com/viewflow/seedkit).`
