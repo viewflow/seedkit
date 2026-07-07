@@ -14,7 +14,7 @@ An agent skill to start new Django projects or extend existing ones. One sentenc
 /seedkit look at our repo and tell us what's worth adding next
 ```
 
-[![View Outputs](https://img.shields.io/badge/View%20Outputs-00C853?style=for-the-badge)](https://github.com/RobustaRush/seedkit-examples)
+[![View Outputs](https://img.shields.io/badge/View%20Outputs-00C853?style=for-the-badge)](https://github.com/viewflow/seedkit-examples)
 
 LLMs write Django from memory, and that memory is a year or two old: deprecated auth settings, last version's Stripe webhooks, database ports open to the local network. seedkit keeps the knowledge in reference files instead — built from package docs, tested end-to-end, fixed after every failure. The model just types.
 
@@ -74,7 +74,7 @@ It also saves you the prompt-writing: the instructions that would otherwise need
 
 ## Project Status
 
-This is a fresh project under active development. While the skill is verified against the nine core scenarios in [seedkit-examples](https://github.com/RobustaRush/seedkit-examples), we are still mapping out how the agent behaves outside that set.
+This is a fresh project under active development. While the skill is verified against the nine core scenarios in [seedkit-examples](https://github.com/viewflow/seedkit-examples), we are still mapping out how the agent behaves outside that set.
 
 The testcase harness currently runs only against Claude Sonnet. Other models (Opus, Haiku, GPT, Gemini) are not yet covered — they may work, but skill quality on those models is not verified.
 

@@ -309,7 +309,7 @@ done
 {
     echo "# seedkit-examples"
     echo
-    echo "Reference Django projects scaffolded by the [seedkit](https://github.com/RobustaRush/seedkit) skill, paired with the prompts that produced them."
+    echo "Reference Django projects scaffolded by the [seedkit](https://github.com/viewflow/seedkit) skill, paired with the prompts that produced them."
     echo
     echo "Each subdirectory is a fresh project generated end-to-end by \`claude -p\` running the matching testcase from \`seedkit/testcases/\`. The first section of every project's \`README.md\` is the verbatim \`/seedkit\` prompt — answers to every Foundation / add-on / production question — so the exact configuration is reproducible."
     echo
