@@ -2,7 +2,7 @@
 
 Date: 2026-07-18. Scope: `skills/seedkit/SKILL.md` + all 47 references. Method: manual pass over the production-critical path plus three parallel deep-read reviews (auth/billing/compliance, APIs/tasks/storage, CI/deploy/frontend).
 
-**Status update 2026-07-18:** §1, §2, and §3 fixed in the references (CHANGELOG 26.29.6) — except the staging tier, which stays out of scaffold scope as a product decision. §4 (missing pieces) and §5 (cross-file drift / conventions reference) remain open.
+**Status update 2026-07-18:** §1–§4 fixed in the references (CHANGELOG 26.29.6), with two scope notes: the staging tier (§3) stays out of scaffold scope as a product decision, and §4's "background-task errors invisible" finding was narrowed on verification — sentry-sdk's auto-enabled integrations and default logging integration already capture Celery/RQ/django-tasks failures, so the fix is a documentation note plus a post-deploy check. §5 (cross-file drift / conventions reference) remains open.
 
 **Verdict up front:** a well-above-average scaffold. The bones are right — fail-fast env handling (`env.NOTSET`), migrate-before-`up`, non-root multi-stage image, gated `SECURE_PROXY_SSL_HEADER`, honest SQLite/Litestream trade-off documentation, axes-on-by-default. But it is **not "ship blind" prod-ready yet**: 6 references contain bugs that break every project generated from them, the default WSGI path wastes the box it's supposed to vertically scale on, and the deploy pipeline has no test gate and no rollback path.
 

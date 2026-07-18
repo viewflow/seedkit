@@ -59,6 +59,9 @@ STATIC_URL = "/static/"
 # generated URLs are reachable from the browser — `https://minio:9000/...`
 # is fine inside Docker but a host-side dev browser can't resolve it; set
 # AWS_S3_CUSTOM_DOMAIN=localhost:9000 + AWS_S3_URL_PROTOCOL=http: for that.
+# Browsers re-download every media object on every view without this.
+AWS_S3_OBJECT_PARAMETERS = {"CacheControl": "max-age=86400"}
+
 AWS_S3_URL_PROTOCOL = env("AWS_S3_URL_PROTOCOL", default="https:")
 if AWS_S3_CUSTOM_DOMAIN:
     MEDIA_URL = f"{AWS_S3_URL_PROTOCOL}//{AWS_S3_CUSTOM_DOMAIN}/media/"
@@ -157,11 +160,14 @@ Run `collectstatic` at deploy with real env vars. Patterns below.
 ssh user@vps
 cd /srv/{project_slug}
 git pull
-docker compose -f deploy/docker-compose.prod.yml pull
-docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py collectstatic --noinput
-docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate
-docker compose -f deploy/docker-compose.prod.yml up -d
+# --env-file is required on every compose call — see references/deploy-vps.md
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml pull
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml run --rm web python manage.py collectstatic --noinput
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d
 ```
+
+Enable versioning on the media bucket (provider console or `aws s3api put-bucket-versioning`) — it's the undo button for accidental overwrites and deletes, and the reason `dbbackup`'s `mediabackup` is skipped on this path.
 
 ## Managed — fly.toml
 

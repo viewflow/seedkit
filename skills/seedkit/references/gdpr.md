@@ -84,9 +84,15 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("user_id", type=int)
 
+    # The export goes to the data subject — internal auth state stays out,
+    # and the password hash above all.
+    EXCLUDE = {"password", "is_staff", "is_superuser", "groups", "user_permissions"}
+
     def handle(self, *args, user_id, **opts):
         user = get_user_model().objects.get(pk=user_id)
         data = json.loads(serializers.serialize("json", [user]))
+        for obj in data:
+            obj["fields"] = {k: v for k, v in obj["fields"].items() if k not in self.EXCLUDE}
         self.stdout.write(json.dumps(data, indent=2))
 ```
 
@@ -107,3 +113,5 @@ class Command(BaseCommand):
 ```
 
 Extend `export_user_data` to dump user-owned rows from project apps. Deletion relies on `on_delete=CASCADE` for related models; add an immutable audit log entry if regulators require proof of erasure.
+
+With `references/billing.md` wired, deletion must also call `stripe.Customer.delete(user.stripe_customer_id)` — erasing the DB row leaves the person's PII at Stripe.

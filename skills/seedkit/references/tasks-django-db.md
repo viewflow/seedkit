@@ -50,6 +50,14 @@ uv run manage.py migrate
 uv run manage.py db_worker
 ```
 
+## Prune finished results
+
+Finished and failed task rows stay in the table forever. Schedule the bundled command — host cron on a VPS (next to the `dbbackup` lines if present), or the task runner:
+
+```sh
+python manage.py prune_db_task_results --min-age-days 14
+```
+
 ## Local — run on the host
 
 ```sh

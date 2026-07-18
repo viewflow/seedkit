@@ -99,3 +99,13 @@ services:
     worker = "python manage.py rqworker default"
   ```
 - **Railway / Render** — second service on the same image, command `python manage.py rqworker default`.
+
+## Failed jobs
+
+Failed tasks land in RQ's failed registry and sit there — nothing retries or surfaces them on its own. Inspect from the project venv (`rq` ships as a dependency):
+
+```sh
+uv run rq info --url "$REDIS_URL/3"
+```
+
+Requeue or clear from the same CLI (`rq requeue`) once the cause is fixed.

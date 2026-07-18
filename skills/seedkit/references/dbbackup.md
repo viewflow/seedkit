@@ -58,6 +58,8 @@ A cron line on the VPS host running inside the web container. Cron starts in `/`
 27 3 * * * root cd /srv/{project_slug} && docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml exec -T web python manage.py mediabackup --clean >> /var/log/dbbackup.log 2>&1
 ```
 
+Drop the `mediabackup` line when media already lives on S3 (`references/storage-s3.md`) — copying one bucket into another duplicates provider-side durability; enable bucket versioning on the media bucket instead.
+
 After the first scheduled run, check `/var/log/dbbackup.log` and `manage.py listbackups` — a broken cron line fails silently otherwise.
 
 `--clean` honours `DBBACKUP_CLEANUP_KEEP*`. Don't rely on bucket lifecycle alone — the dbbackup-side cleanup keeps the *latest N*, while bucket lifecycle keeps *anything younger than X*. Different guarantees.

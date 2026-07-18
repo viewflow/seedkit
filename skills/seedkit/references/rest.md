@@ -27,6 +27,10 @@ Then load the matching file:
 - `rest-modern-rest.md` for `django-modern-rest`
 - `rest-bolt.md` for `django-bolt`
 
+## Before a public deploy
+
+Neither library enables auth, rate limiting, or pagination by default — wire all three from the chosen library's docs before exposing an endpoint to the internet.
+
 ## CORS + REST
 
 If `cors=yes` (`references/cors.md`), `corsheaders.middleware.CorsMiddleware` must sit **above** any REST middleware in `MIDDLEWARE`.
