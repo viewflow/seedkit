@@ -35,6 +35,7 @@ Add-ons:
   - Health check endpoints: yes.
   - `robots.txt`: yes.
   - `django-extensions`: no.
+  - Browser auto-reload: yes (`django-browser-reload`).
 
 Production setup: VPS (Docker + Caddy). Use a multi-stage `Dockerfile` (uv builder → `python:3.12-slim-bookworm` runtime).
 
@@ -55,6 +56,8 @@ test -n "$CSS_URL"
 curl -sf "http://127.0.0.1:8000${CSS_URL}" | grep -q '\.text-blue-600'
 curl -sf "http://127.0.0.1:8000${CSS_URL}" | grep -q '\.btn'
 curl -sf http://127.0.0.1:8000/ | grep -q 'data-theme='
+# django-browser-reload middleware injects its script into DEBUG HTML responses.
+curl -sf http://127.0.0.1:8000/ | grep -q '__reload__'
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 curl -sf http://127.0.0.1:8000/robots.txt | grep -q 'User-agent: \*'
@@ -146,7 +149,7 @@ Verify these structural facts:
 **Foundation**
 - Files present: `pyproject.toml`, `uv.lock`, `manage.py`, `config/settings/{base,local,production}.py`, `.env`, `.gitignore`.
 - `manage.py` defaults `DJANGO_SETTINGS_MODULE` to `config.settings.local`; `wsgi.py` to `config.settings.production`.
-- `pyproject.toml` runtime deps include `psycopg[binary]`, `django-tailwind-cli`, `django-allauth`, `django-axes`, `stripe`, `whitenoise`. Dev deps include `ruff`, `pytest`, `pytest-django`, `pyright`, `django-stubs`, `django-stubs-ext`.
+- `pyproject.toml` runtime deps include `psycopg[binary]`, `django-tailwind-cli`, `django-allauth`, `django-axes`, `stripe`, `whitenoise`. Dev deps include `ruff`, `pytest`, `pytest-django`, `pyright`, `django-stubs`, `django-stubs-ext`, `django-browser-reload`.
 - `pyproject.toml` has a `[tool.ruff]` block and a `[tool.pyright]` block.
 - `mise.toml` present at project root with `[tools]` and at least one `[tasks.*]` block.
 
@@ -155,6 +158,7 @@ Verify these structural facts:
 - `whitenoise.middleware.WhiteNoiseMiddleware` is present in `config/settings/production.py`'s `MIDDLEWARE` and absent from `base.py`.
 - `base.py` calls `globals().update(env.email_url("EMAIL_URL", default="consolemail://" if DEBUG else env.NOTSET))` so local resolves to the console backend and prod reads SMTP from env.
 - `_stripe.api_key = STRIPE_SECRET_KEY` is set at module scope in `base.py`.
+- `django_browser_reload` app + `django_browser_reload.middleware.BrowserReloadMiddleware` live in `config/settings/local.py` (appended last), absent from `base.py` and `production.py`. `config/urls.py` includes `django_browser_reload.urls` at `__reload__/` gated on `settings.DEBUG`.
 
 **Custom user + auth**
 - `users/models.py` defines a `User` extending `AbstractUser`. `AUTH_USER_MODEL = "users.User"` in `base.py`.
@@ -178,10 +182,11 @@ Verify these structural facts:
 
 **Production artifacts**
 - Files present at project root: `Dockerfile` (multi-stage `builder` + `prod` targets), `.dockerignore`. Under `deploy/`: `docker-compose.prod.yml`, `Caddyfile`. No root `docker-compose.yml` (Postgres is on the host; no local services to compose).
-- `Dockerfile` uses `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`, runs `uv sync --frozen --no-dev`, contains a `collectstatic --noinput` step under `DJANGO_SETTINGS_MODULE=config.settings.production`, switches to a non-root `django` user, and ends with `CMD ["gunicorn", "config.wsgi", "--bind", "0.0.0.0:8000"]`.
+- `Dockerfile` uses `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`, runs `uv sync --frozen --no-dev`, contains a `collectstatic --noinput` step under `DJANGO_SETTINGS_MODULE=config.settings.production`, switches to a non-root `django` user, and ends with a `CMD` invoking `gunicorn config.wsgi` with `--bind 0.0.0.0:8000`, `--max-requests`, `--max-requests-jitter`, and `--access-logfile -` (worker count comes from `WEB_CONCURRENCY`, not a `--workers` flag).
 - `pyproject.toml` runtime deps include `gunicorn`.
 - `.dockerignore` lists `.venv`.
-- `deploy/docker-compose.prod.yml` defines a `web` healthcheck using `python -c 'import urllib.request...'` (not curl) and a `db` healthcheck using `pg_isready`.
+- `deploy/docker-compose.prod.yml` defines a `web` healthcheck using `python -c 'import urllib.request...'` (not curl), a `db` healthcheck using `pg_isready`, and an `x-logging` anchor with `max-size` applied as `logging:` on every service.
+- `deploy/Caddyfile` contains `encode zstd gzip` and a `request_body` block with `max_size`.
 
 **Pages + billing**
 - `pages/` app with `IndexView(TemplateView)` wired at `/`. `liveness`, `readiness`, `robots_txt` views live in `config/views.py` (per `healthcheck.md` / `robots.md`); `config/urls.py` wires `path('healthz', ...)`, `path('readyz', ...)` (no trailing slash), and `path('robots.txt', ...)`.

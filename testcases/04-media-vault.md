@@ -102,7 +102,7 @@ Verify these structural facts:
 - `[tool.pyright]` block in `pyproject.toml`. `django_stubs_ext.monkeypatch()` called from `config/settings/base.py` inside an `except ImportError: pass` guard.
 - `STORAGES["default"]` resolves to `S3Boto3Storage` when `AWS_STORAGE_BUCKET_NAME` is set; falls back to `FileSystemStorage` when empty.
 - `LOGGING` is at module scope (not inside `if DEBUG:`), with `json` and `console` formatters, `console` chosen when `DEBUG`.
-- `INSTALLED_APPS` includes `daphne` and `channels`. `ASGI_APPLICATION = "config.asgi.application"`. `CHANNEL_LAYERS["default"]["BACKEND"]` = `"channels_redis.core.RedisChannelLayer"` with `CONFIG` reading `hosts` from `REDIS_URL`.
+- `INSTALLED_APPS` includes `daphne` and `channels`. `ASGI_APPLICATION = "config.asgi.application"`. `CHANNEL_LAYERS["default"]["BACKEND"]` = `"channels_redis.core.RedisChannelLayer"` with `CONFIG` `hosts` built from `REDIS_URL` + the `/4` database (the channel layer's slot — cache is `/0`, RQ is `/3`).
 - `manage.py` defaults `DJANGO_SETTINGS_MODULE` to `config.settings.local`. `config/asgi.py` defaults to `config.settings.production`. `config/wsgi.py` remains at the `startproject` default (unchanged) — the deploy loads `asgi.py`, not `wsgi.py`.
 
 **ASGI + channels**

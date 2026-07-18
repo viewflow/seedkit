@@ -76,7 +76,7 @@ Verify these structural facts:
 
 **Foundation**
 - Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,test}.py`, `Dockerfile` (multi-stage), `docker-compose.yml` (local services only — `db`, `redis`; no `web` / `worker`), `deploy/docker-compose.prod.yml`, `deploy/.env.prod.example`, `mise.toml`, `.github/workflows/{test.yml,deploy.yml}`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`. No `Dockerfile.dev`, no `docker-compose.override.yml`.
-- `mise.toml` has `[tasks.deploy-migrate]` and `[tasks.deploy]` (with `depends = ["deploy-migrate"]`) targeting `deploy/docker-compose.prod.yml`.
+- `mise.toml` has `[tasks.deploy-migrate]` and `[tasks.deploy]` (with `depends = ["deploy-migrate"]`) targeting `deploy/docker-compose.prod.yml`, both passing `--env-file deploy/.env.prod`.
 - `pyproject.toml` runtime deps include `psycopg[binary]`, `django-tasks-rq`, `django-rq`, `django-csp`, `django-dbbackup`, `django-storages[s3]` (or `boto3`), `sentry-sdk`, `structlog`, `django-structlog`, `gunicorn`. (`django.tasks` is built into Django 6 — no separate `django-tasks` package.) Dev deps include `pytest`, `pytest-django`, `ruff`.
 - `pyproject.toml` does NOT list `django-axes`, `django-allauth`, `django-mail-auth`, or anymail/email packages — auth = none, email = none.
 
@@ -102,10 +102,11 @@ Verify these structural facts:
 
 **Deploy artefacts**
 - `deploy/.env.prod.example` ships every var the prod compose references, including `DJANGO_SETTINGS_MODULE=config.settings.production`, `DJANGO_ALLOWED_HOSTS=example.com,localhost,127.0.0.1` (localhost+127.0.0.1 for the in-container healthcheck), `DJANGO_BEHIND_PROXY=True`, `POSTGRES_PASSWORD`, `GITHUB_REPOSITORY`.
-- `.github/workflows/deploy.yml` uses `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`, `secrets.GHCR_TOKEN`. The SSH script `export GITHUB_REPOSITORY="${{ github.repository }}"` before `compose pull`. Every `docker compose` invocation passes `--env-file deploy/.env.prod`. `concurrency: group: deploy` set.
+- `.github/workflows/deploy.yml` uses `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`, `secrets.GHCR_TOKEN`. A `test` job runs `./.github/workflows/test.yml` (`uses:`) and the `deploy` job has `needs: test`. `docker/build-push-action` tags both `:latest` and `:${{ github.sha }}`. The SSH script exports `GITHUB_REPOSITORY="${{ github.repository }}"` and `IMAGE_TAG="${{ github.sha }}"` before `compose pull`, and runs `docker image prune -f` only after the health-wait passes. Every `docker compose` invocation passes `--env-file deploy/.env.prod`. `concurrency: group: deploy` set.
+- Inherited `deploy/docker-compose.prod.yml` `web` image is `ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG:-latest}`.
 - `docker/build-push-action` step has `target: prod` (matching the `prod` stage in `references/docker.md`).
 - The container healthcheck in `deploy/docker-compose.prod.yml` uses python urllib (no curl dependency).
-- `.github/workflows/test.yml` runs migrations + pytest. Env block ships `REDIS_URL=redis://localhost:6379`, `DJANGO_SECRET_KEY` placeholder, `DJANGO_DEBUG=False`, and dbbackup placeholders (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `DBBACKUP_BUCKET`) so `check --deploy` against `production` settings loads.
+- `.github/workflows/test.yml` has a `workflow_call:` trigger (the deploy gate calls it) and runs `check --deploy`, `makemigrations --check --dry-run`, and pytest — no standalone `migrate` step. Env block ships `REDIS_URL=redis://localhost:6379`, `DJANGO_SECRET_KEY` placeholder, `DJANGO_DEBUG=False`, and dbbackup placeholders (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `DBBACKUP_BUCKET`) so `check --deploy` against `production` settings loads.
 
 **Health**
 - `pages/views.py` (or equivalent — `config/views.py` is fine) defines `liveness` / `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py`.

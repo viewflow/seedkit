@@ -79,7 +79,8 @@ Verify these structural facts:
 **Settings**
 - `config/settings.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.
 - `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True` set.
-- `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` derived from `REDIS_URL`.
+- `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` derived from `REDIS_URL` (broker on `/1`, results on `/2`).
+- `CELERY_TASK_TIME_LIMIT` and `CELERY_TASK_SOFT_TIME_LIMIT` set (soft < hard).
 - `LANGUAGES`, `LOCALE_PATHS`, `LocaleMiddleware` configured (i18n=yes).
 
 **Celery**

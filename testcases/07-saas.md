@@ -78,7 +78,7 @@ Verify these structural facts:
 
 **Foundation**
 - Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,test}.py`, `config/routers.py`, `Dockerfile` (multi-stage), `deploy/docker-compose.prod.yml`, `deploy/Caddyfile`, `litestream.yml`, `entrypoint.sh`, `mise.toml`, `.github/workflows/test.yml`, `.pre-commit-config.yaml`, `.env`, `.env.example`, `.dockerignore`, `.gitignore`. No `Dockerfile.dev`, no root `docker-compose.yml` (dev runs on the host; SQLite needs no local services).
-- `mise.toml` has `[tasks.deploy-migrate]` running `docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate` and `[tasks.deploy]` with `depends = ["deploy-migrate"]` running `docker compose -f deploy/docker-compose.prod.yml up -d`.
+- `mise.toml` has `[tasks.deploy]` running `docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d` and **no** `deploy-migrate` task — the SQLite + Litestream `entrypoint.sh` runs `migrate --noinput` on every boot (`dev-tasks.md` exception).
 - `pyproject.toml` runtime deps include `django-environ`, `django-tasks`, `django-tasks-db`, `whitenoise`, `django-allauth[mfa]`, `django-axes`, `django-csp`, `sentry-sdk`, `structlog`, `django-structlog`, `gunicorn`. **No** `psycopg`, `celery`, `redis`, `django-dbbackup`. Dev deps include `pytest`, `pytest-django`, `pyright`, `django-stubs`, `django-stubs-ext`, `ruff`, `pre-commit`.
 
 **Settings split + SQLite mini-prod**
@@ -103,9 +103,10 @@ Verify these structural facts:
 
 **Deploy artefacts**
 - `Dockerfile` is multi-stage: `builder` on `ghcr.io/astral-sh/uv:python3.12-bookworm-slim` (with `UV_COMPILE_BYTECODE=1`, `UV_LINK_MODE=copy`, `UV_PROJECT_ENVIRONMENT=/opt/venv`, two-step `uv sync`) and `prod` on `python:3.12-slim-bookworm` (`/opt/venv/bin` on PATH, runs as `django` user, installs the Litestream `.deb` via `wget` + `dpkg -i litestream-v0.3.13-linux-${ARCH}.deb`).
-- `entrypoint.sh` runs `litestream restore -if-db-not-exists -if-replica-exists /data/site.sqlite3`, then `python manage.py migrate --noinput`, then `createcachetable --database cache`, then `exec litestream replicate -exec "gunicorn config.wsgi --bind 0.0.0.0:8000"`. `Dockerfile` `CMD` invokes `entrypoint.sh`.
+- `entrypoint.sh` runs `litestream restore -if-db-not-exists -if-replica-exists /data/site.sqlite3`, then `python manage.py migrate --noinput`, then `createcachetable --database cache`, then `exec litestream replicate -exec "gunicorn config.wsgi --bind 0.0.0.0:8000 --max-requests 1000 --max-requests-jitter 100 --access-logfile -"`. `Dockerfile` `CMD` invokes `entrypoint.sh`.
 - `litestream.yml` declares `dbs: [{path: /data/site.sqlite3, replicas: [{type: s3, ...}]}]` reading bucket/endpoint/keys from env.
-- `Caddyfile` upstream block uses `health_uri /healthz` (liveness, not `/readyz`).
+- `Caddyfile` upstream block uses `health_uri /healthz` (liveness, not `/readyz`), and contains `encode zstd gzip` plus a `request_body` block with `max_size`.
+- `deploy/docker-compose.prod.yml` defines an `x-logging` anchor (`max-size`) applied as `logging:` on every service.
 - `deploy/docker-compose.prod.yml` defines a single `web` service with `restart: unless-stopped`, mounts a named `sqlite_data:/data` volume, and a container-level healthcheck (python urllib, no curl). **No** `db`, `redis`, or `celery` services. Top-level `volumes:` declares `sqlite_data`.
 - `deploy/.env.prod.example` sets `DATABASE_URL=sqlite:////data/site.sqlite3` and lists the Litestream S3 env vars (`S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`). Dev `.env` keeps the SQLite default (`BASE_DIR/db.sqlite3`).
 - `.github/workflows/test.yml` runs `uv run pytest` against SQLite (no `manage.py migrate` step — `pytest-django` builds the test DB from migrations; no Postgres/Redis services in the workflow). Env block ships `EMAIL_URL=consolemail://`, a `DATABASE_URL` pointing at a SQLite file, `DJANGO_SECRET_KEY` placeholder, `DJANGO_DEBUG=False`.

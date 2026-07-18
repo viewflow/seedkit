@@ -5,6 +5,7 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 ## 26.29.6 — 2026-07-18
 
 ### Added
+- Testcases follow the day's reference changes: case 02 opts into `django-browser-reload` (boot-check grep for the injected `__reload__` script + review assertions on dev-gated wiring) and asserts the new gunicorn CMD flags, Caddy `encode`/`request_body`, and the `x-logging` anchor; case 03 asserts Celery time limits; case 04 asserts the channel layer on Redis `/4`; case 07 asserts the new Litestream gunicorn flags and drops its stale `deploy-migrate` expectation (the Litestream exception skips it); case 09 asserts the test-gated deploy (`needs: test`, `workflow_call`), `:sha` tags + `IMAGE_TAG`, prune-on-healthy, and the `makemigrations --check` CI step; README gains the browser-reload dimension.
 - `dev-tools.md` gains `django-browser-reload` — browser tab auto-reloads on code / template / static changes under `runserver`; dev-gated app + middleware (appended last, after response-encoding middleware) + `__reload__/` URLs. New §5.1 question, default no.
 - `conventions.md` — the cross-file contract (env var names, Redis DB map `/0`–`/5`, prod compose service shape with key order, SameSite rule, Python pins, test settings module). Registered in SKILL.md's reference list with a pitfall rule: when two references disagree, conventions.md wins.
 
