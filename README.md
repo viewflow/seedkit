@@ -15,12 +15,17 @@ An agent skill to start new Django projects or extend existing ones. One sentenc
 ```
 
 [![View Outputs](https://img.shields.io/badge/View%20Outputs-00C853?style=for-the-badge)](https://github.com/viewflow/seedkit-examples)
+[![Fable 5 Audited](https://img.shields.io/badge/Fable%205-Audited-6A0DAD?style=for-the-badge)](./REVIEW.md)
 
 LLMs write Django from memory, and that memory is a year or two old: deprecated auth settings, last version's Stripe webhooks, database ports open to the local network. seedkit keeps the knowledge in reference files instead — built from package docs, tested end-to-end, fixed after every failure. The model just types.
 
-A boilerplate generator only offers a fixed menu, frozen at the template's last update; a raw LLM writes any stack you ask for, but from year-old memory. seedkit gives you your exact stack with each package's current API looked up at generation, and the output checked against 9 end-to-end scenarios and audited by a second LLM.
+What that buys you:
 
-The whole test suite runs on Claude Sonnet: a mid-tier model does the scaffolding, and the frontier-model hours from your subscription go to the code only you can write.
+- **Current APIs, not model memory.** References come from package docs, with version pins re-resolved at generation time.
+- **Tested output.** Nine end-to-end scenarios: generate, boot, smoke-check, audit by a second LLM ([see the outputs](https://github.com/viewflow/seedkit-examples)). Every failure gets fixed back into the skill.
+- **100+ hours of AI work, already spent.** The references distill the accumulated generate–boot–fix cycles, so scaffolding runs clean on mid-tier Sonnet — the frontier-model hours from your subscription go to the code only you can write.
+- **Fable 5 audited.** Claude Fable 5 reviewed every reference file as a senior Django / systems engineer and the findings were fixed: gunicorn sized to the box, durable Redis broker, log rotation, test-gated deploys with SHA rollback. The full review, including what's still open, is in [REVIEW.md](./REVIEW.md).
+- **Your exact stack.** Real alternatives at every step (Celery or RQ, allauth or magic links, VPS or Fly), `/seedkit add [feature]` for existing repos, and only the code for options you picked.
 
 Helps you with: [Python deps & venvs](https://docs.astral.sh/uv/), [settings for dev vs prod](https://django-environ.readthedocs.io/), [custom user model](https://docs.djangoproject.com/en/stable/topics/auth/customizing/#substituting-a-custom-user-model), [social & password login](https://docs.allauth.org/), [passwordless magic-link login](https://django-mail-auth.readthedocs.io/), [brute-force protection](https://django-axes.readthedocs.io/), [background jobs](https://docs.celeryq.dev/), [async views](https://docs.djangoproject.com/en/stable/topics/async/), [WebSockets](https://channels.readthedocs.io/), [Redis caching](https://github.com/jazzband/django-redis), [S3 for static & media](https://django-storages.readthedocs.io/), [outbound email](https://anymail.dev/), [Tailwind without Node](https://django-tailwind-cli.readthedocs.io/), [GDPR-safe analytics](https://www.goatcounter.com/help/start), [security headers](https://docs.djangoproject.com/en/stable/topics/security/), [CSP headers](https://django-csp.readthedocs.io/), [production error tracking](https://docs.sentry.io/platforms/python/integrations/django/), [structured logs](https://www.structlog.org/), [N+1 query detection](https://github.com/PedroBern/django-zeal), [safe migrations](https://github.com/3YOURMIND/django-migration-linter), [linting & formatting](https://docs.astral.sh/ruff/), [type checking](https://microsoft.github.io/pyright/), [scheduled DB backups](https://django-dbbackup.readthedocs.io/), [Docker for local dev](https://docs.docker.com/compose/), [auto-HTTPS reverse proxy](https://caddyserver.com/docs/), [CI pipeline](https://docs.github.com/en/actions) — and more.
 
@@ -58,19 +63,6 @@ Two skills ship in this repo.
 **`/seedkit-slim`** relies only on what the model already knows — no reference files.
 
 Both go through the same test cycle: generate code, boot it, check it. Failures get fixed in the skill text.
-
-## What's in the skill
-
-The skill targets the problems that show up in LLM-generated Django code that doesn't run out of the box: stale package versions, outdated patterns, wrong async defaults, missing production wiring. The testcase loop's job is to find those failures and fix them in the instructions, so the next generation doesn't repeat them.
-
-It also saves you the prompt-writing: the instructions that would otherwise need a paragraph per project are baked in.
-
-## What you get
-
-- A Django project that boots, smoke-checked before hand-off.
-- Real alternatives at every step: Celery or RQ, allauth or magic links, VPS or Fly.
-- `/seedkit add [feature]` extends an existing project without rewriting it.
-- Only the code for options you picked — no dead boilerplate.
 
 ## Project Status
 
