@@ -23,6 +23,7 @@ For every question that involves a third-party package: 1–2 sentences from the
 
 ### Project Foundation
 
+- `references/conventions.md` — cross-file contract: env var names, Redis DB map, prod compose service shape, SameSite rule, Python pins
 - `references/uv.md` — uv installation and commands
 - `references/new-project.md` — Two Scoops layout, django-environ, uv
 - `references/database.md` — SQLite vs PostgreSQL (host or Docker)
@@ -224,6 +225,10 @@ Each rule has a *why* so you can judge edge cases.
 - The fail-fast idiom for env vars is `default=<dev-value> if DEBUG else env.NOTSET`. `env.NOTSET` raises `ImproperlyConfigured` naming the variable when the env var is missing in prod.
 - Don't restate values in `local.py` / `production.py` that `base.py` already sets.
 - Don't reimplement `django-environ` (no manual `.split(",")`, no leftover `import os`).
+
+**Cross-file consistency**
+
+- Shared names and shapes (env vars, Redis DBs, compose service fragments) follow `references/conventions.md`. If two references seem to disagree, conventions.md wins.
 
 **Env vars and `.env.example`**
 

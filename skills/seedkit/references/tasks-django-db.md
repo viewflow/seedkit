@@ -77,6 +77,7 @@ services:
     restart: unless-stopped
     command: python manage.py db_worker
     env_file: .env.prod
+    logging: *logging
     depends_on:
       db:
         condition: service_healthy

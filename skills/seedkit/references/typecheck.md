@@ -45,7 +45,7 @@ exclude = [
 ]
 venvPath = "."
 venv = ".venv"
-pythonVersion = "3.12"               # match `requires-python`
+pythonVersion = "3.13"               # the concrete runtime pin — see references/conventions.md
 typeCheckingMode = "basic"           # "standard" once code is typed; "strict" is noisy on Django
 useLibraryCodeForTypes = true        # read source for packages without stubs (allauth, axes, …)
 reportMissingTypeStubs = "none"      # third-party stubs are optional

@@ -37,8 +37,8 @@ TASKS = {
 }
 
 # django-rq reads RQ_QUEUES separately from TASKS. URL form so host/port
-# come from REDIS_URL. /3 keeps it isolated from cache (/0) and Celery
-# broker / results (/1, /2).
+# come from REDIS_URL. /3 is django-tasks-rq's slot in the Redis DB map
+# (references/conventions.md).
 RQ_QUEUES = {
     "default": {"URL": f"{REDIS_URL}/3"},
 }
@@ -83,6 +83,7 @@ services:
     restart: unless-stopped
     command: python manage.py rqworker default
     env_file: .env.prod
+    logging: *logging
     depends_on:
       db:
         condition: service_healthy

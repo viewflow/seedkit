@@ -44,6 +44,7 @@ In `config/settings.py` (or `config/settings/base.py`). If `redis.md` set `REDIS
 ```python
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379")
 
+# /1 and /2 — Celery's slots in the Redis DB map (references/conventions.md).
 CELERY_BROKER_URL = f"{REDIS_URL}/1"
 CELERY_RESULT_BACKEND = f"{REDIS_URL}/2"
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # silence Celery 5+ deprecation

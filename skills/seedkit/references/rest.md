@@ -1,6 +1,6 @@
 # REST API
 
-Docs: <https://django-modern-rest.readthedocs.io/> · <https://django-bolt.readthedocs.io/>
+Docs: <https://django-modern-rest.readthedocs.io/> · <https://bolt.farhana.li/>
 
 Stock Django doesn't ship a REST framework. The seedkit offers two opt-in options. Both are typed, schema-validated, and async-aware — they differ on how they run and how invasive they are.
 

@@ -63,7 +63,7 @@ gtag('consent', 'default', {
 
 `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` — `references/security.md`.
 
-Add `SESSION_COOKIE_SAMESITE = "Lax"` if not using cross-site auth.
+Add `SESSION_COOKIE_SAMESITE = "Lax"` if not using cross-site auth. When `references/cors.md` is applied for a cookie-authenticated cross-origin frontend, its `"None"` wins.
 
 ## Logging
 

@@ -20,7 +20,7 @@ In `config/settings.py` (or `config/settings/base.py`):
 # trailing slash from a managed platform doesn't produce redis://host//0.
 REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379").rstrip("/")
 
-# /0 cache, /1 Celery broker, /2 Celery results, /3 django-tasks-rq.
+# Consumers append /<db> — full map in references/conventions.md.
 # `cache.clear()` only touches /0 — brokers / queues stay intact.
 CACHES = {
     "default": {
@@ -51,7 +51,7 @@ services:
 `.env`:
 
 ```sh
-REDIS_URL=redis://localhost:6379   # cache /0, Celery broker /1, results /2, RQ /3
+REDIS_URL=redis://localhost:6379   # bare — consumers append /<db>, map in references/conventions.md
 ```
 
 ## VPS — docker-compose.prod.yml

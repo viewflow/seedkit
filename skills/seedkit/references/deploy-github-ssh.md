@@ -171,10 +171,8 @@ shipped a destructive migration, reverse it explicitly (`manage.py migrate <app>
 
 ## Test workflow — also pin `DJANGO_SETTINGS_MODULE`
 
-`pyproject.toml`'s `[tool.pytest.ini_options]` typically defaults to
-`config.settings.local`. With `DJANGO_DEBUG=False` in CI the local module
-re-exports base, which requires a real `SECRET_KEY` — fragile chain.
-Set `DJANGO_SETTINGS_MODULE` explicitly in the test job env, and add a
-`manage.py check --deploy` step against `config.settings.production` so
-regressions in security settings (SSL_REDIRECT without proxy, missing
-HSTS, etc.) fail CI rather than first-deploy.
+`references/pytest.md` pins `DJANGO_SETTINGS_MODULE = config.settings.test`
+in the pytest config — CI inherits it, no test-job override needed. Keep the
+`manage.py check --deploy` step against `config.settings.production`
+(`references/ci.md`) so regressions in security settings (SSL_REDIRECT
+without proxy, missing HSTS, etc.) fail CI rather than first-deploy.

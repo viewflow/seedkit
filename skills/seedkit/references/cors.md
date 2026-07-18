@@ -42,7 +42,9 @@ CSRF_TRUSTED_ORIGINS = env.list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
     default=["http://localhost:3000"] if DEBUG else [],
 )
-SESSION_COOKIE_SAMESITE = "None"     # required for cross-origin cookies
+# "None" only because the cross-origin frontend authenticates with session
+# cookies — projects without that keep the "Lax" from references/gdpr.md.
+SESSION_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_SECURE = not DEBUG    # SameSite=None requires Secure (HTTPS) in browsers
 CSRF_COOKIE_SAMESITE = "None"
 CSRF_COOKIE_SECURE = not DEBUG

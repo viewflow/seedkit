@@ -73,7 +73,7 @@ AXES_HANDLER = 'axes.handlers.cache.AxesCacheHandler'
 
 Pick the matching package for the chosen Auth flow:
 
-- **`django-allauth`** → use the built-in **`allauth.mfa`** (`uv add 'django-allauth[mfa]'`). MFA is shipped inside django-allauth itself since 0.56; the third-party `allauth-2fa` package is unmaintained and incompatible with django-allauth ≥ 0.58 — do **not** install it. Add `allauth.mfa` to `INSTALLED_APPS`, include `allauth.mfa.urls` in the `accounts/` include, and run migrations. Users opt in from the account page; templates ship with allauth.
+- **`django-allauth`** → use the built-in **`allauth.mfa`** (`uv add 'django-allauth[mfa]'`). MFA ships inside django-allauth itself; the third-party `allauth-2fa` package is unmaintained — do **not** install it. Add `allauth.mfa` to `INSTALLED_APPS`, include `allauth.mfa.urls` in the `accounts/` include, and run migrations. Users opt in from the account page; templates ship with allauth.
 - **`django-mail-auth` or stock auth** → use **`django-otp`** + `django-otp-totp` (`uv add 'django-otp[qrcode]'`). Adds `django_otp`, `django_otp.plugins.otp_totp` to `INSTALLED_APPS`, `django_otp.middleware.OTPMiddleware` to `MIDDLEWARE` (after `AuthenticationMiddleware`). Wire admin login through `django_otp.admin.OTPAdminSite` if 2FA on `/admin/` is wanted.
 
 For both: run migrations, then ship a UI flow for the user to enrol a TOTP secret (`allauth.mfa` includes templates; `django-otp` does not — wire your own).
@@ -92,6 +92,6 @@ ACCOUNT_REAUTHENTICATION_REQUIRED = True
 ### Pitfalls
 
 - 2FA + axes together: failed 2FA codes count as auth failures in axes. That's usually correct — verify the `AXES_LOCKOUT_PARAMETERS` aren't so aggressive that legitimate users get locked out for one mistyped code.
-- Pin `django-allauth >= 0.58` so `allauth.mfa` is available; never co-install `allauth-2fa`.
+- Pin `django-allauth >= 65.0` — the settings `references/auth.md` writes (`ACCOUNT_LOGIN_METHODS`, `ACCOUNT_SIGNUP_FIELDS`) need it; never co-install `allauth-2fa`.
 - `MFA_TOTP_ISSUER` should be the human-readable site name / domain, not the project slug — that string is what shows up in the user's authenticator app.
 - TOTP requires accurate server time. Clock skew > 30s on the host = users fail to authenticate. Document NTP requirement in `README.md`.

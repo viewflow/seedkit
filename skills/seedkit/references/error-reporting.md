@@ -86,7 +86,7 @@ services:
     environment:
       DATABASE_URL: postgres://glitchtip:${GLITCHTIP_DB_PASSWORD}@glitchtip-db:5432/glitchtip
       SECRET_KEY: ${GLITCHTIP_SECRET_KEY}
-      REDIS_URL: redis://redis:6379/1
+      REDIS_URL: redis://redis:6379/5   # /5 — GlitchTip's slot in the Redis DB map (references/conventions.md)
     depends_on: [glitchtip-db, redis]
 
   glitchtip-worker:

@@ -28,10 +28,14 @@ INSTALLED_APPS = [
 
 ASGI_APPLICATION = "config.asgi.application"
 
+# Reuse the REDIS_URL line from references/redis.md if it's already in settings.
+REDIS_URL = env("REDIS_URL", default="redis://127.0.0.1:6379").rstrip("/")
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {"hosts": [env("REDIS_URL")]},
+        # /4 — the channel layer's slot in the Redis DB map (references/conventions.md).
+        "CONFIG": {"hosts": [f"{REDIS_URL}/4"]},
     },
 }
 ```
@@ -128,14 +132,14 @@ services:
     command: gunicorn -k uvicorn_worker.UvicornWorker config.asgi:application --bind 0.0.0.0:8000
 
   ws:
-    image: ${WEB_IMAGE}
+    image: ghcr.io/{owner}/{project_slug}:latest
+    restart: unless-stopped
     command: gunicorn -k uvicorn_worker.UvicornWorker config.asgi:application --bind 0.0.0.0:8001 --workers ${WS_CONCURRENCY:-2}
-    env_file: .env
+    env_file: .env.prod
     logging: *logging
     depends_on:
       redis:
-        condition: service_started
-    restart: unless-stopped
+        condition: service_healthy
 ```
 
 `web` keeps low concurrency tuned for HTTP; `ws` runs higher concurrency since each WebSocket holds a socket open. The Caddyfile proxies the two upstreams by path:
