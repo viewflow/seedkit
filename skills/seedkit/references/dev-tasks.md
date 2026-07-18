@@ -36,9 +36,9 @@ Generate one task per command the README would otherwise spell out. Include only
 | `worker` | `uv run celery -A config worker -l info` *(celery)* or `uv run manage.py db_worker` *(django-tasks)* |
 | `tailwind` | `uv run manage.py tailwind runserver` *(tailwind)* |
 | `deploy-migrate` | one-shot `docker compose … run --rm web python manage.py migrate` *(deploy=vps / github-ssh)* |
-| `deploy` | `deploy-migrate` then `docker compose -f deploy/docker-compose.prod.yml up -d` *(deploy=vps / github-ssh)* or `fly deploy` *(deploy=managed/fly)* |
+| `deploy` | `deploy-migrate` then `docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d` *(deploy=vps / github-ssh)* or `fly deploy` *(deploy=managed/fly)* |
 
-Deploy tasks: only generate when §6.6 deploy target was picked.
+Deploy tasks: only generate when §6.6 deploy target was picked. `--env-file deploy/.env.prod` is required on every compose call — compose auto-loads only `./.env`, and the image line's `${GITHUB_REPOSITORY}` interpolates from that file (`references/deploy-github-ssh.md`).
 - `vps` / `github-ssh`: `deploy` depends on `deploy-migrate` so the one-shot migrate always precedes `up -d` — that's the gap a bare `docker compose up -d --build` hits on first boot against an empty DB.
   - Exception: the SQLite + Litestream pattern (`references/database.md`) runs `migrate --noinput` inside `entrypoint.sh` on every boot, so skip `deploy-migrate` — `deploy` is a bare `up -d`.
 - `managed` (Fly.io): single `deploy = fly deploy` task — Fly's release command runs migrations, no separate `deploy-migrate` needed.
@@ -63,11 +63,11 @@ run = "uv run manage.py migrate"
 run = "uv run pytest"
 
 [tasks.deploy-migrate]
-run = "docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate"
+run = "docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate"
 
 [tasks.deploy]
 depends = ["deploy-migrate"]
-run = "docker compose -f deploy/docker-compose.prod.yml up -d"
+run = "docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d"
 ```
 
 Run with `mise run dev`. First-time setup: `mise trust && mise install`.
@@ -88,10 +88,10 @@ test:
     uv run pytest
 
 deploy-migrate:
-    docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate
+    docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate
 
 deploy: deploy-migrate
-    docker compose -f deploy/docker-compose.prod.yml up -d
+    docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d
 ```
 
 Run with `just dev`. `just --list` enumerates tasks.
@@ -101,7 +101,7 @@ Run with `just dev`. `just --list` enumerates tasks.
 Indent with **tabs**, not spaces. Every target is `.PHONY` because none produce a file matching the target name.
 
 ```make
-.PHONY: install dev migrate test
+.PHONY: install dev migrate test deploy-migrate deploy
 
 install:
 	uv sync
@@ -116,10 +116,10 @@ test:
 	uv run pytest
 
 deploy-migrate:
-	docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate
+	docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate
 
 deploy: deploy-migrate
-	docker compose -f deploy/docker-compose.prod.yml up -d
+	docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d
 ```
 
 ## poethepoet
@@ -134,8 +134,8 @@ install = "uv sync"
 dev     = "python manage.py runserver"
 migrate = "python manage.py migrate"
 test    = "pytest"
-deploy-migrate = { shell = "docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate" }
-deploy = { sequence = ["deploy-migrate", { shell = "docker compose -f deploy/docker-compose.prod.yml up -d" }] }
+deploy-migrate = { shell = "docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate" }
+deploy = { sequence = ["deploy-migrate", { shell = "docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d" }] }
 ```
 
 Poe strips `uv run` because it executes inside the venv. Run with `uv run poe dev`.

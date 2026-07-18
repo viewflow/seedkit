@@ -62,6 +62,7 @@ uv add --dev pytest-cov
 [tool.coverage.run]
 source = ["."]
 omit = [
+    ".venv/**",
     "**/migrations/**",
     "**/tests/**",
     "**/test_*.py",
@@ -73,8 +74,9 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-fail_under = 80      # adjust to project tolerance; lower while ramping up
 ```
+
+Add `fail_under = <threshold>` to `[tool.coverage.report]` once the app has real code — on a fresh scaffold, the seeded smoke tests land at an arbitrary percentage and any gate just turns first-push CI red.
 
 Run:
 

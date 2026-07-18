@@ -9,11 +9,15 @@ container healthcheck.
 
 One change to the inherited `docker-compose.prod.yml`: the `web` image line is
 built and pushed by CI, and the owner isn't known at scaffold time. Point it at
-the exported env var, not a hardcoded `{owner}/{project_slug}`:
+the exported env vars, not a hardcoded `{owner}/{project_slug}`:
 
 ```yaml
-    image: ghcr.io/${GITHUB_REPOSITORY}:latest
+    image: ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG:-latest}
 ```
+
+The deploy workflow exports `IMAGE_TAG` as the commit SHA, so every deploy is
+addressable and `## Rollback` below can pin any previous one; manual compose
+calls without the var fall back to `:latest`.
 
 ## Secrets
 
@@ -75,7 +79,14 @@ permissions:
   packages: write
 
 jobs:
+  # The gate: red tests never reach the server. Requires the `workflow_call`
+  # trigger on test.yml (references/ci.md). If CI wasn't applied, drop this
+  # job and the `needs: test` line.
+  test:
+    uses: ./.github/workflows/test.yml
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -89,7 +100,10 @@ jobs:
       - uses: docker/build-push-action@v7
         with:
           push: true
-          tags: ghcr.io/${{ github.repository }}:latest
+          # :latest for humans, :<sha> so every deploy stays pullable for rollback.
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
           target: prod                              # matches the `prod` stage in references/docker.md
 
       # Pin third-party deploy actions to a commit SHA, not a tag — this step
@@ -109,6 +123,7 @@ jobs:
             # on every compose call — auto-`.env` discovery only loads
             # `.env`, not `deploy/.env.prod`.
             export GITHUB_REPOSITORY="${{ github.repository }}"
+            export IMAGE_TAG="${{ github.sha }}"
             # Server-side docker login for the private ghcr image.
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml pull
@@ -130,6 +145,29 @@ jobs:
             # accumulate until the disk fills.
             docker image prune -f
 ```
+
+When this reference is applied together with `references/ci.md`, remove the
+`push:` trigger from `test.yml` — the deploy workflow already runs it on every
+main push via `workflow_call`, and both triggers firing doubles every CI run.
+
+## Rollback
+
+Every deploy is tagged with its commit SHA, and the deploy script prunes images
+only after a healthy deploy — so the previous image is still pullable when a
+deploy goes bad:
+
+```sh
+ssh user@vps
+cd /srv/{project_slug}
+export GITHUB_REPOSITORY=owner/repo IMAGE_TAG=<known-good commit sha>
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml pull web
+docker compose --env-file deploy/.env.prod -f deploy/docker-compose.prod.yml up -d web
+```
+
+Migrations are not auto-reversed: rolling back assumes the old code runs against
+the current schema, which holds for additive migrations. If the bad deploy
+shipped a destructive migration, reverse it explicitly (`manage.py migrate <app>
+<previous_migration>`) before `up -d`.
 
 ## Test workflow — also pin `DJANGO_SETTINGS_MODULE`
 

@@ -11,7 +11,9 @@ name: test
 
 on:
   push:
+    branches: [main]   # bare `push:` + `pull_request:` double-runs every PR commit
   pull_request:
+  workflow_call:       # lets deploy.yml run this workflow as its test gate
 
 jobs:
   test:
@@ -66,8 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # setup-uv releases are immutable — no moving major tag. Pin the
-      # latest release from github.com/astral-sh/setup-uv/releases.
+      # Pin the latest release from github.com/astral-sh/setup-uv/releases.
       - uses: astral-sh/setup-uv@v8.2.0
         with:
           enable-cache: true
@@ -79,6 +80,9 @@ jobs:
       - run: uv run manage.py check --deploy --fail-level WARNING
         env:
           DJANGO_SETTINGS_MODULE: config.settings.production
+
+      # Fails when a model change landed without its migration.
+      - run: uv run manage.py makemigrations --check --dry-run
 
       - run: uv run pytest        # or `uv run manage.py test` if pytest wasn't chosen
 ```
