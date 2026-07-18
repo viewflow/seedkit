@@ -47,7 +47,7 @@ stripe_customer_id = models.CharField(max_length=255, blank=True, default="")
 is_subscribed = models.BooleanField(default=False)
 ```
 
-Run `makemigrations` after adding them. The webhook handlers below flip `is_subscribed` on `customer.subscription.created` / `.deleted`.
+Run `makemigrations` after adding them. The webhook handlers below flip `is_subscribed` on `customer.subscription.created` / `.updated` / `.deleted`.
 
 Create or retrieve the Stripe customer on first checkout:
 
@@ -135,8 +135,11 @@ def stripe_webhook(request):
         # in stripe-python ≥7. Use the top-level name.
         return HttpResponse(status=400)
 
-    if event["type"] == "customer.subscription.created":
-        _handle_subscription_created(event["data"]["object"])
+    if event["type"] in (
+        "customer.subscription.created",
+        "customer.subscription.updated",
+    ):
+        _handle_subscription_updated(event["data"]["object"])
     elif event["type"] == "customer.subscription.deleted":
         _handle_subscription_deleted(event["data"]["object"])
     # add more event types as needed
@@ -144,7 +147,7 @@ def stripe_webhook(request):
     return HttpResponse(status=200)
 
 
-def _handle_subscription_created(subscription):
+def _handle_subscription_updated(subscription):
     # Import the concrete model — `get_user_model()` returns a generic type
     # that hides custom fields from pyright (`stripe_customer_id`, `is_subscribed`).
     from users.models import User
@@ -152,7 +155,9 @@ def _handle_subscription_created(subscription):
         user = User.objects.get(stripe_customer_id=subscription["customer"])
     except User.DoesNotExist:
         return
-    user.is_subscribed = True
+    # Derive access from status rather than the event name — `.updated` fires
+    # on payment failure too, moving status to `past_due` / `unpaid`.
+    user.is_subscribed = subscription["status"] in ("active", "trialing")
     user.save(update_fields=["is_subscribed"])
 
 

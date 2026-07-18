@@ -9,7 +9,7 @@ Compatible providers: AWS S3, DigitalOcean Spaces, Cloudflare R2, Backblaze B2, 
 ## Install
 
 ```sh
-uv add django-storages[s3]
+uv add 'django-storages[s3]'
 ```
 
 ## Settings

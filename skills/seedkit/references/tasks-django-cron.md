@@ -1,6 +1,6 @@
 # Django Tasks — Periodic (django-crontask)
 
-Docs: <https://github.com/RealOrangeOne/django-cron-tasks>
+Docs: <https://github.com/codingjoe/django-crontask>
 
 Add this only if the user needs scheduled tasks. Works alongside either Database or Redis Queue backend.
 
@@ -22,7 +22,7 @@ INSTALLED_APPS = [
 ## Define
 
 ```python
-from django.tasks import task
+from django_tasks import task
 from crontask import cron
 
 @cron("0 8 * * *")  # daily at 08:00 (crontab syntax)
@@ -30,6 +30,8 @@ from crontask import cron
 def daily_report() -> None:
     ...
 ```
+
+`crontask`'s `@cron` calls `task.enqueue()` on whatever it wraps, so the decorated task must resolve through the same backend as the Database/Redis Queue worker — import `task` from the `django_tasks` backport, not Django 6's stdlib `django.tasks`.
 
 ## Run (host)
 

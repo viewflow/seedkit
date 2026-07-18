@@ -96,15 +96,7 @@ volumes:
 
 ## VPS — Caddyfile
 
-```
-example.com {
-    handle /media/* {
-        root * /srv/media
-        file_server
-    }
-    reverse_proxy web:8000
-}
-```
+Media block: see `references/deploy-vps.md` (`## deploy/Caddyfile`, the `handle /media/*` block with `uri strip_prefix /media`).
 
 ## Managed platforms
 

@@ -38,7 +38,7 @@ AUTHENTICATION_BACKENDS = [
 # Sane defaults — adjust per project tolerance.
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1          # hours
-AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']
+AXES_LOCKOUT_PARAMETERS = [['ip_address', 'username']]
 AXES_RESET_ON_SUCCESS = True
 ```
 
@@ -62,7 +62,12 @@ AXES_HANDLER = 'axes.handlers.cache.AxesCacheHandler'
 
 ### Pitfalls
 
-- Behind a reverse proxy the `IP_address` lockout dimension only works if `IPWARE` (or the equivalent) is reading `X-Forwarded-For`. With WhiteNoise / Caddy / nginx wired correctly this is fine; check by hitting the login form from a known IP and reading `axes_accessattempt`.
+- Behind Caddy in Docker, `REMOTE_ADDR` is the proxy's IP for every request — install the extra (`uv add 'django-axes[ipware]'`) and point axes at the forwarded header:
+  ```python
+  AXES_IPWARE_PROXY_COUNT = 1
+  AXES_IPWARE_META_PRECEDENCE_ORDER = ['HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR']
+  ```
+  Check by hitting the login form from a known IP and reading `axes_accessattempt`.
 
 ## 2FA
 
@@ -76,9 +81,8 @@ For both: run migrations, then ship a UI flow for the user to enrol a TOTP secre
 ### Settings — `production.py` only when allauth.mfa is used
 
 ```python
-# Only force 2FA in prod; leave it optional in dev so seeded superusers can log in.
-# `allauth.mfa` setting; replaces the old `ACCOUNT_LOGIN_BY_2FA_REQUIRED` from
-# the deprecated allauth-2fa package.
+# Configures the enrolled factors and issuer name; enrollment stays opt-in from
+# the account page — allauth.mfa has no setting that forces MFA at login.
 MFA_TOTP_ISSUER = env("DJANGO_SITE_DOMAIN", default="example.com")
 ACCOUNT_LOGIN_METHODS = {"email"}      # already set by Auth — re-stating intent
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]

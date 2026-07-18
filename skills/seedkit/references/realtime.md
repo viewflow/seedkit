@@ -114,7 +114,7 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
 
 ## Local — host
 
-`uv run uvicorn config.asgi:application --reload` on the host serves HTTP and WS through the same loop. `manage.py runserver` won't upgrade WebSockets — use uvicorn directly when testing channels. Make sure `redis` from `references/redis.md` is running.
+`DJANGO_SETTINGS_MODULE=config.settings.local uv run uvicorn config.asgi:application --reload` on the host serves HTTP and WS through the same loop — `config/asgi.py` defaults to `production` settings, so the dev run overrides it explicitly. `manage.py runserver` won't upgrade WebSockets — use uvicorn directly when testing channels. Make sure `redis` from `references/redis.md` is running.
 
 ## Production — separate ASGI worker
 
@@ -169,15 +169,16 @@ The ping path is more robust — proxies in front of Caddy (Cloudflare, AWS ALB)
 
 ```python
 import pytest
+from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
-from config.asgi import application
+from config.routing import websocket_urlpatterns
 
 @pytest.mark.asyncio
 async def test_chat_round_trip(authenticated_user):
-    # AllowedHostsOriginValidator in config/asgi.py denies handshakes without
-    # an Origin header; the test environment allows "testserver".
+    # Wrap URLRouter directly, not the AuthMiddlewareStack-wrapped `application` —
+    # AuthMiddlewareStack would overwrite scope["user"] from the session at connect.
     communicator = WebsocketCommunicator(
-        application,
+        URLRouter(websocket_urlpatterns),
         "/ws/chat/lobby/",
         headers=[(b"origin", b"http://testserver")],
     )

@@ -166,8 +166,12 @@ Standard `migrate` + `createsuperuser` first. Then verify the Bolt server boots:
 
 ```sh
 python manage.py runbolt --dev &
-sleep 1
-curl -sf http://127.0.0.1:8000/users/1
+BOLT_PID=$!
+for i in $(seq 1 30); do
+  curl -sf http://127.0.0.1:8000/users/1 && break
+  sleep 1
+done
+kill "$BOLT_PID"
 ```
 
 (Adjust the port to whatever `runbolt --dev` reports.)

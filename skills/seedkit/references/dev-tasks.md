@@ -35,7 +35,7 @@ Generate one task per command the README would otherwise spell out. Include only
 | `collectstatic` | `uv run manage.py collectstatic --noinput` |
 | `worker` | `uv run celery -A config worker -l info` *(celery)* or `uv run manage.py db_worker` *(django-tasks)* |
 | `tailwind` | `uv run manage.py tailwind runserver` *(tailwind)* |
-| `deploy-migrate` | one-shot `docker compose … run --rm web uv run manage.py migrate` *(deploy=vps / github-ssh)* |
+| `deploy-migrate` | one-shot `docker compose … run --rm web python manage.py migrate` *(deploy=vps / github-ssh)* |
 | `deploy` | `deploy-migrate` then `docker compose -f deploy/docker-compose.prod.yml up -d` *(deploy=vps / github-ssh)* or `fly deploy` *(deploy=managed/fly)* |
 
 Deploy tasks: only generate when §6.6 deploy target was picked.
@@ -131,8 +131,8 @@ uv add --dev poethepoet
 ```toml
 [tool.poe.tasks]
 install = "uv sync"
-dev     = "manage.py runserver"
-migrate = "manage.py migrate"
+dev     = "python manage.py runserver"
+migrate = "python manage.py migrate"
 test    = "pytest"
 deploy-migrate = { shell = "docker compose -f deploy/docker-compose.prod.yml run --rm web python manage.py migrate" }
 deploy = { sequence = ["deploy-migrate", { shell = "docker compose -f deploy/docker-compose.prod.yml up -d" }] }

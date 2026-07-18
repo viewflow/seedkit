@@ -1,205 +1,62 @@
-# Seedkit skill review
+# Seedkit skill review — core Django + system design pass
 
-**Date:** 2026-07-04 · **Scope:** `skills/seedkit/SKILL.md` + all 45 reference files · **Method:** 8 parallel review passes (core, auth/email, security, tasks, REST/realtime, deploy/infra, frontend/storage/billing, dev tooling), each verified against current upstream docs and releases (July 2026).
+Date: 2026-07-18. Scope: `skills/seedkit/SKILL.md` + all 47 references. Method: manual pass over the production-critical path plus three parallel deep-read reviews (auth/billing/compliance, APIs/tasks/storage, CI/deploy/frontend).
 
-**Goal reviewed against:** generate a full-featured but minimal Django project, free of bad practices and performance issues, immediately ready to work with — as if created by a very experienced senior Django system-design engineer.
+**Verdict up front:** a well-above-average scaffold. The bones are right — fail-fast env handling (`env.NOTSET`), migrate-before-`up`, non-root multi-stage image, gated `SECURE_PROXY_SSL_HEADER`, honest SQLite/Litestream trade-off documentation, axes-on-by-default. But it is **not "ship blind" prod-ready yet**: 6 references contain bugs that break every project generated from them, the default WSGI path wastes the box it's supposed to vertically scale on, and the deploy pipeline has no test gate and no rollback path.
 
-**Status update 2026-07-04:** §1 blockers fixed in the references (CHANGELOG 26.27.6), §1.5 revised after empirical testing against generated projects, and the version-rot sweep from §2.1 applied (verified-current pins + a SKILL.md generation-time freshness rule). §2.2–§2.5, §3, §4 remain open.
+## 1. Boot-blockers and broken-on-paste (fix first)
 
----
+- **`storage-whitenoise.md` — every media file 404s on VPS.** Its Caddy block uses `handle /media/*` with `root * /srv/media` but no prefix strip, so `/media/x.png` resolves to `/srv/media/media/x.png`. Notably `deploy-vps.md:80-86` has the *correct* version (`uri strip_prefix /media`) — the two files show different Caddyfiles for the same feature and one is broken. Also `deploy-vps.md:88` says "mount the same media **named volume**" but shows a bind mount `./media:/srv/media:ro`.
+- **`auth-hardening.md:41` — `AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']`** as a flat list means lockout on *either* dimension alone (combination requires a nested list `[["ip_address", "username"]]`). Username-only: an attacker DoSes any known account with 5 bad passwords. IP-only: behind the skill's own Caddy compose, `REMOTE_ADDR` is the proxy container's IP for everyone — one lockout locks out **all users**. Nothing in the reference wires X-Forwarded-For handling, and the "IPWARE" pitfall note is stale (axes ≥ 6 dropped ipware). The same file's comment claiming a settings block "forces 2FA in prod" is false — no listed setting does that, and `ACCOUNT_LOGIN_BY_2FA_REQUIRED` doesn't exist.
+- **`billing.md` (raw-SDK path)** — `is_subscribed` only reacts to `subscription.created`/`.deleted`; `customer.subscription.updated` is unhandled, so users whose payments fail (`past_due`, `unpaid`) keep paid access until Stripe deletes the subscription weeks later. No livemode check, no event-ID dedup. (An initial finding that the dj-stripe path misses `DJSTRIPE_FOREIGN_KEY_TO_FIELD` was refuted: the setting was removed in dj-stripe 2.9+; current source has no trace of it.)
+- **`csp.md:84` — the report-only rollout doesn't work as written.** `CONTENT_SECURITY_POLICY_REPORT_ONLY = CONTENT_SECURITY_POLICY` assigns the same dict reference (the comment on that very line says not to), and leaving both set sends both headers — the enforcing policy still breaks pages during the "report-only" phase.
+- **`tasks-django-cron.md:25` — `from django.tasks import task`** contradicts the other two task backends' explicit rule that 0.12.0 backends need the backport import `from django_tasks import task`. The pasted snippet won't register tasks. The reference also cites three different package/repo names (`django-cron-tasks` / `django-crontask` / `crontask`) — at least one is wrong.
+- **`realtime.md` — dev boots on production settings.** Its `asgi.py` defaults `DJANGO_SETTINGS_MODULE` to `config.settings.production`, and the documented dev command is `uv run uvicorn config.asgi:application --reload` — which inherits that default and either crashes on missing prod env vars or runs dev with prod hardening. The WebSocket test snippet also fails as written (`AuthMiddlewareStack` overwrites the injected `scope["user"]` at connect).
+- **Smaller paste-breakers:** `storage-s3.md` has unquoted `uv add django-storages[s3]` (zsh globs the brackets); `dev-tasks.md` poe tasks invoke `manage.py` as a program (not on PATH); `rest-bolt.md`'s boot check curls port 8000 for a server that isn't on 8000.
 
-## Executive summary
+## 2. System design — does it actually vertically scale?
 
-The skill's architecture is genuinely strong: the questionnaire flow, the DEBUG-gated `env.NOTSET` fail-fast idiom, the multi-stage uv Docker build, liveness/readiness probe semantics, migrate-before-`up` ordering, and the Django 6 `django.tasks` backend split are all current, correct, and reflect real senior judgment. Most files boot as written.
+The skill's own positioning (SQLite path: "scale CPU/workers, not containers") is single-big-box vertical scaling — and the defaults don't use the box:
 
-The review found **7 blockers** (paths where a generated project crashes, silently loses money-handling webhooks, or never produces a backup), a systemic **staleness problem** (every version pin is 1–2 years old; several snippets target APIs that have since been removed or deprecated), a **defaults posture** that contradicts the stated goal (security settings, lint, and CI all default *no*), and a handful of **confidently-wrong claims** that agents copy verbatim into generated projects (nonexistent ORM methods, hallucinated setting names, false rationale comments).
+- **Gunicorn ships with 1 sync worker.** The WSGI `CMD` in `docker.md` has no `--workers`, and gunicorn's default is 1. On the default path (wsgi + Postgres), a 16-core VPS serves exactly one request at a time. `async.md` covers worker counts for the ASGI path only. There's also no `--timeout`, no `--max-requests`/`--max-requests-jitter` (the standard memory-leak backstop for long-lived boxes), and no access-log config feeding the structlog story.
+- **Redis in prod has no persistence and no memory policy.** `redis.md`'s prod service has no volume and no `--appendonly` — the same instance is the Celery broker (`/1`), so a container restart silently drops every queued task. And with no `maxmemory-policy`, the cache and broker share one eviction fate: `noeviction` (default) can OOM the instance; `allkeys-lru` would evict broker keys.
+- **No Docker log rotation.** Neither compose file sets `logging:` options; the default `json-file` driver grows unbounded. On a VPS measured in months, this is a classic disk-full outage. Same disk story: the SSH deploy never runs `docker image prune`, so `:latest` pulls accumulate layers forever.
+- **Celery has no runtime limits or health.** No `CELERY_TASK_TIME_LIMIT` (one hung task pins a worker forever), no worker healthcheck in compose, no retry/acks_late guidance. The Beat example schedules `{project_slug}.tasks.example_task` — a module the skill's own pitfall rule ("don't create an app named after the project", "tasks.py lives in a registered app") says will never exist.
+- **Postgres is stock.** `postgres:17` with default `shared_buffers=128MB` on a "strong box" leaves most of the RAM unused; a one-line pointer to tuning is missing. `conn_max_age` via URL is covered — good.
+- **The web healthcheck may fail out of the box.** `deploy-vps.md` probes `http://localhost:8000/healthz`; with `DEBUG=False` and `DJANGO_ALLOWED_HOSTS=example.com`, that Host header is rejected → 400 → container permanently unhealthy. `healthcheck.md` documents the gotcha but the deploy reference doesn't resolve it.
+- **Caddy serves uncompressed dynamic responses and unlimited request bodies.** Caddy does not compress by default (`encode gzip zstd` is absent — WhiteNoise only covers static), and has no default body limit.
+- **Zero-downtime is honestly absent** — `up -d` recreate means a blip per deploy. Acknowledged only in the SQLite section; the Postgres path should say it too.
 
-Fix priority: §1 blockers → §2 cross-cutting themes (staleness habit + defaults) → §3 majors → §4 minors.
+## 3. Deploy pipeline gaps
 
----
+CI itself is strong for a scaffold (uv caching, service healthchecks, `check --deploy --fail-level WARNING` against prod settings, health-wait instead of sleep-and-curl). The gaps:
 
-## 1. Blockers — generated project fails or silently breaks
+- **Deploys aren't gated on tests.** `deploy-github-ssh.md`'s workflow triggers on push to main independently of test.yml — red tests still deploy.
+- **No rollback path.** Images are tagged `:latest` only (mutable, overwritten). When the health-wait fails, the old container is already gone and there's no previous image to fall back to. SHA tags + a documented rollback command are the minimum.
+- **`dev-tasks.md` deploy tasks are broken against the deploy contract**: all four runner variants omit `--env-file deploy/.env.prod` and the `GITHUB_REPOSITORY` export that `deploy-github-ssh.md` itself calls mandatory; its own table says `uv run manage.py migrate` inside a container that has no uv.
+- **`ci.md`'s missing check:** no `makemigrations --check --dry-run`, so model/migration drift lands silently. `pytest.md`'s `fail_under = 80` will likely fail a fresh scaffold's first push, and `source = ["."]` doesn't omit the venv.
+- No staging tier anywhere (robots.md implies one exists).
 
-### 1.1 `email.md` — anymail path crashes on prod boot
-`EMAIL_URL` is gated `default="consolemail://" if DEBUG else env.NOTSET` (~line 18), but the anymail section says "`EMAIL_URL` is no longer needed in prod" and its `.env.prod` sample omits it — the project raises `ImproperlyConfigured` at startup. Either drop the NOTSET gate on the anymail path or keep `EMAIL_URL` in `.env.prod`.
+## 4. Missing pieces a core Django dev would expect
 
-### 1.2 `billing.md` — dj-stripe option targets the API removed in dj-stripe 2.9
-`DJSTRIPE_WEBHOOK_SECRET` + "register `/stripe/webhook/`" (~lines 212–252) is the pre-2.9 flow; current dj-stripe (2.10.x) uses DB-backed `WebhookEndpoint` rows with UUID-suffixed URLs created via admin. As written: webhook URL 404s, billing state never syncs, `stripe listen --forward-to` fails. Additionally the Option B checkout view calls `stripe.checkout.Session.create()` without ever setting `stripe.api_key` (dj-stripe doesn't set the global) → `AuthenticationError` on first checkout. Rewrite Option B against the 2.9+ webhook model and set the key explicitly.
+- **Background-task errors are invisible.** `error-reporting.md` inits Sentry with `DjangoIntegration` only — exceptions inside django-tasks workers never reach it.
+- REST refs have no rate limiting, pagination, or versioning story (auth is fully deferred upstream).
+- `gdpr.md`'s export command hands the data subject a JSON containing their `password` hash and `is_superuser`, and doesn't mention deleting the Stripe customer when billing is in scope.
+- `custom-user.md`'s email manager doesn't guard case-duplicate emails (`Foo@x` vs `foo@x` are distinct unique values).
+- Result-table pruning for `tasks-django-db` (grows unbounded), RQ failed-job registry, media backup on the WhiteNoise+volume path, S3 lifecycle/`Cache-Control`.
 
-### 1.3 `deploy-vps.md` — manual deploy fails on first boot
-The Deploy section's three `docker compose` commands (~lines 92–99) omit `--env-file deploy/.env.prod`; compose never auto-loads that path, so `POSTGRES_PASSWORD` interpolates empty and Postgres refuses to initialize. `deploy-github-ssh.md` states the rule this file violates. Add `--env-file` to all three commands.
+## 5. Cross-file drift (the systemic smell)
 
-### 1.4 `dbbackup.md` + `docker.md` — backups never happen, silently
-Two independent failures: (a) the cron line (~lines 55–58) has no `cd`, no `-f`, no `--env-file`, and runs as a `django` host user that no reference creates — cron logs "bad username" and skips it; (b) bookworm's `postgresql-client` is v15 while the prod DB is `postgres:17` — `pg_dump` aborts on server-version mismatch even when invoked correctly. Since the only invocation is cron, failure is invisible. Fix the cron line (cwd + flags + real user + log redirect) and install `postgresql-client-17` from PGDG or move to trixie images (see 2.1).
+Individual references are tight, but pairs contradict each other because there's no shared-contract layer:
 
-### 1.5 `typecheck.md` — warning downgrades neutralized CI *(revised after empirical testing)*
-Original finding recommended swapping django-stubs for `django-types` (django-stubs' ORM typing is materialized by its mypy plugin, which pyright can't run). **Tested 2026-07-04 against four generated projects** (02-shop, 04-media-vault, 07-vps-sqlite-saas, 08-fly-app): pyright + django-stubs at error level reports **0 errors**, while django-types produces real false positives — its `UserCreationForm`/`UserChangeForm` stubs lack `Meta` (breaks the skill's own custom-user admin snippet) and it has no `django.tasks` stubs (Django 6). **django-stubs stays.** The valid half of the finding is fixed: `reportGeneralTypeIssues`/`reportOptionalMemberAccess` were downgraded to warnings, which never fail pyright's exit code — the downgrades are removed so the rules report at error level.
+- `gdpr.md` sets `SESSION_COOKIE_SAMESITE = "Lax"`, `cors.md` sets `"None"` — both applied, last one wins silently.
+- The `REDIS_URL` contract ("bare, no `/db`") is stated in `redis.md` but `realtime.md` passes it raw to channels-redis (→ db 0, colliding with the cache) and GlitchTip hardcodes `/1` (Celery's broker db).
+- `env_file: .env.prod` vs `.env`, `ghcr.io/{owner}/...` vs `${WEB_IMAGE}`, `service_healthy` vs `service_started` — same concepts, different spellings across compose fragments.
+- Version floors disagree (`auth-hardening.md` pins allauth ≥ 0.58, 2023-era; `auth.md` uses 65.x-only settings), Python pins disagree (3.12 in typecheck vs 3.13 elsewhere), and `pytest.md`'s `config.settings.test` vs `deploy-github-ssh.md`'s claim of `local`.
+- Two Caddyfile variants for media, one broken (§1). Two doc domains for django-bolt.
 
-### 1.6 `i18n.md` — selecting i18n breaks the Docker image build
-The reference adds `RUN python manage.py compilemessages` to the production Dockerfile, but the runtime stage installs no `gettext` — `msgfmt` not found, build dies. Add `gettext` to the runtime apt line when i18n is selected.
+Given the skill's "snippet integrity — paste verbatim" rule, drift between files is the highest-leverage class of bug: the agent can't reconcile contradictions it pastes one at a time. A `conventions.md` (env var names, Redis db map, compose service key template, image ref format) that other references defer to would kill most of this category.
 
-### 1.7 `realtime.md` — the shipped WebSocket test cannot pass locally
-`WebsocketCommunicator(application, ...)` sends no `Origin` header, so the skill's own `AllowedHostsOriginValidator` denies the handshake — `assert connected` fails everywhere except CI (where `DJANGO_ALLOWED_HOSTS: "*"` masks it). Pass an origin header or test against `AuthMiddlewareStack(URLRouter(...))` directly.
+## Bottom line
 
----
-
-## 2. Cross-cutting themes
-
-### 2.1 Version rot is systemic — the skill needs a "current at generation time" habit
-Found stale in one sweep: `uvicorn.workers.UvicornWorker` (deprecated since 0.30, removal pending — `async.md`, `realtime.md`); Litestream pinned to abandoned v0.3.13 (0.5.x is the maintained line with a changed replica format — `database.md`); `actions/checkout@v4`, `setup-uv@v3`, `build-push-action@v5`, `codecov-action@v4` (all a major behind; Node 20 runner deprecation is live); pre-commit revs ~2 years old with the legacy `ruff` hook id (current: `ruff-check`/`ruff-format`) — and the pinned hook-ruff will *format-fight* the current uv dev-dep ruff; `redis:7-alpine` (Redis 8 GA May 2025); bookworm/py3.12 image generation (uv's own images moved to trixie; the builder/runtime pairing rule doesn't mention the Debian-suite match, so an innocent builder bump → glibc import errors); `storages.backends.s3boto3.*` legacy path; "pin allauth >= 0.58" (current: 65.x); `python = "3.12"` pins in dev-tasks/typecheck.
-
-Beyond the individual bumps, add a generation-time rule to SKILL.md: for pinned artifacts (actions, pre-commit revs, base images, standalone binaries) instruct the agent to check the latest release at generation time (`pre-commit autoupdate`, GitHub releases lookup) instead of trusting the reference's literal pin.
-
-### 2.2 Defaults contradict the "senior engineer, production-ready" promise
-A user who accepts every default gets: no security settings (`Default no` — prod fails `check --deploy`, cookies over HTTP, no HSTS), no lint, no CI, no tests beyond Django's stub, no static-file story. Recommended posture changes in `SKILL.md`:
-
-- **Security settings: apply unconditionally** whenever `production.py` / a deploy target is generated. They're env-gated and cost nothing in dev. Keep CSP as the opt-in sub-question.
-- **Ruff: default yes** (one dev dep, zero runtime footprint).
-- **CI: default yes** when the repo has a GitHub remote.
-- **Static storage: force a real answer when a deploy target is chosen** — deploy + `storage=none` ships a prod site with unserved static files.
-- Defensible as-is: test-runner default (stock), typecheck no, debug toolbar none, i18n no.
-
-### 2.3 Confidently-wrong claims — worst failure class for an agent-executed skill
-Agents follow "Snippet integrity" and copy these verbatim: `Model.objects.afilter(...)` doesn't exist (`async.md`); daphne "needed for management commands and signal hooks" is false, and with daphne in `INSTALLED_APPS` `runserver` *does* serve WebSockets, contradicting line 117 (`realtime.md`); `ZEAL_RAISE_ON_VIOLATION` and `ZEAL_SILENCED_WARNINGS` are hallucinated names (real: `ZEAL_RAISE`, `ZEAL_ALLOWLIST`), and "zeal works automatically in pytest" is false — as wired, zeal never runs in tests at all (`dev-tools.md`); the `UserChangeForm` `field_classes` comment misstates Django source and ships dead config (`custom-user.md`); pytest-django "builds once, then reuses" is backwards — default is create+destroy every run; the snippet lacks `--reuse-db` (`pytest.md`); "Caddy default read_timeout 60s" — no such default (`realtime.md`); `WHITENOISE_USE_FINDERS` "doesn't exist" — it does (`storage-whitenoise.md`); "pyjwt is an unpinned transitive dep" — wrong reason, right instruction: pyjwt sits under the optional `[jwt]` extra, but `import dmr` unconditionally reaches `dmr.security.jwt` via `dmr.throttling` and crashes without it (verified against 0.11.0 in a clean venv — upstream packaging bug), so the install must keep pyjwt and only the rationale needs fixing (`rest-modern-rest.md`); axes pitfall implies proxy wiring makes IP detection work — plain `django-axes` has no ipware (`auth-hardening.md`).
-
-Consider adding a review gate to the maintenance workflow: every factual claim in a reference ("X requires Y", "default is Z") must be verifiable against upstream docs, same standard the wiki research rules already apply.
-
-### 2.4 Cross-file contradictions
-- `cors.md` sets `*_COOKIE_SECURE = not DEBUG`; `security.md` sets them unconditionally `True` in `production.py` — no stated target file, whichever pastes last wins.
-- `new-project.md` says point all three entry points at production settings; `async.md`'s table says only the deployed one — and the untouched file then points at `config.settings`, an empty package (import-error trap).
-- `deploy-vps.md` hardcodes `image: ghcr.io/{owner}/{project_slug}:latest`; `deploy-github-ssh.md` assumes `image: ghcr.io/${GITHUB_REPOSITORY}:latest` — one of the two is wrong for any given project.
-- `healthcheck.md` mandates a Fly `[checks]` block and a GH-Actions `/readyz` gate; `deploy-managed.md`'s `fly.toml` has no checks section and the GH workflow polls `/healthz` instead.
-- `lint.md`'s `core.hooksPath .githooks` makes `pre-commit install` refuse to run ("Cowardly refusing…"); no arbitration between the two hook mechanisms, and both applied → ruff runs twice in CI at two versions.
-- `gdpr.md` ships a second, drifting `sentry_sdk.init` next to `error-reporting.md`'s canonical one; its SameSite advice contradicts `cors.md`.
-- `tasks-celery.md`'s Beat snippet enqueues `{project_slug}.tasks.example_task` — a task the skill (per its own app-layout rule) never creates, and the wrong module-path form; the worker logs unregistered-task errors from day one.
-
-### 2.5 Strategic: the REST offering is two pre-1.0 frameworks
-`rest.md` offers only `django-modern-rest` (0.11, ~39k total downloads) and `django-bolt` (0.8, "under active development") — no DRF (3.17.x, Django 6 support), no django-ninja (stable 1.x, exactly the typed/async niche this skill wants). A skill claiming senior judgment shouldn't put churn risk on the most load-bearing dependency without at least saying so. Add django-ninja as the stable default (or an honest table row explaining the exclusion so users can veto it).
-
----
-
-## 3. Major findings by area
-
-### Core foundation
-- **`new-project.md`** — `ALLOWED_HOSTS = env.list(..., default=[])` boots fine in prod then 400s every request; gate it with `env.NOTSET` like `SECRET_KEY` (the file's own prose says "defaults are gated by DEBUG").
-- **`database.md`** — no mention of Django ≥5.1 native psycopg pooling (`OPTIONS: {"pool": True}`), the current recommendation and the safer option for the ASGI mode this skill offers; document it and the mutual exclusion with `conn_max_age`.
-- **`database.md`** — Litestream 0.3.13 pin (see 2.1); re-verify restore flags against the 0.5 migration guide when bumping.
-
-### Auth
-- **`auth-hardening.md`** — axes + allauth is not plug-and-play: allauth posts the identifier as `login` but reports `username` in failure signals, so the `username` lockout dimension silently never fires. Add the documented integration steps or scope lockout to `ip_address` and say why.
-- **`auth-hardening.md`** — plain `uv add django-axes` ships no ipware; behind Caddy/nginx every failure resolves to the proxy IP → one attacker locks out the whole site. Install `'django-axes[ipware]'` and fix the pitfall text.
-- **`auth-hardening.md`** — `AXES_LOCKOUT_PARAMETERS = ['ip_address', 'username']` (OR semantics) enables trivial username-lockout DoS; the AND form is `[['ip_address', 'username']]`.
-- **`auth-hardening.md`** — the "Only force 2FA in prod" comment forces nothing; allauth.mfa has no require-2FA setting. Delete the comment or add real enforcement (adapter/middleware).
-
-### Security
-- **`csp.md`** — the whole reference installs `django-csp` for a feature Django 6.0 ships in core (`SECURE_CSP`, `django.middleware.csp.ContentSecurityPolicyMiddleware`, `{{ csp_nonce }}`). Rewrite around core CSP; drop the dependency. Also the report-only recipe assigns the same dict to both settings (comment says don't), keeps enforcement active anyway, and has no `report-uri` — so "check the logs" observes nothing.
-- **`cors.md`** — `CORS_ALLOW_CREDENTIALS = True` always-on with a wrong rationale (`Authorization` header doesn't need it), plus blanket `SameSite=None` advice triggered by header-auth too. Default credentials off; gate the SameSite block on cookie auth only.
-
-### Tasks & Redis
-- **`tasks-celery.md`** — no `CELERY_TASK_TIME_LIMIT`/soft limit, no acks_late/prefetch note: one hung task occupies a worker slot forever and deploy restarts drop in-flight tasks. Also consider `CELERY_TASK_IGNORE_RESULT = True` until results are consumed, and `stop_grace_period` on worker services (applies to all three worker compose blocks).
-- **`tasks-django-db.md`** — no result pruning: the upstream `prune_db_task_results` command is never wired; task table grows unbounded in prod.
-- **`redis.md`** — installs django-redis where Django's built-in `RedisCache` (4.0+) suffices; premise sentence omits it. Also one shared instance hosts cache + broker with no `maxmemory` guidance (default `noeviction` → OOM takes the broker down; `allkeys-lru` would evict queue keys) and no persistence for queued tasks. Add a short memory/eviction/persistence block; default to the built-in backend.
-- **`tasks-django.md`** — the comparison omits django.tasks' biggest gap vs Celery: no retries.
-
-### Deploy & Docker
-- **`docker.md`** — default CMD is 1 sync gunicorn worker, no `--max-requests`/jitter, no access logs. Add worker recycling + `--access-logfile -` + `WEB_CONCURRENCY` in `.env.prod.example`.
-- **`deploy-github-ssh.md`** — `:latest`-only tagging → no rollback path; add the `:${{ github.sha }}` tag and a one-line rollback note. Also `@v1` mutable tag on `appleboy/ssh-action` directly contradicts the pin-to-SHA comment above it; no `cache-from/to: gha`, so every deploy cold-rebuilds.
-- **`deploy-vps.md`** — no container log rotation (json-file driver never rotates → disk fills on exactly the small-VPS profile targeted); add `logging: {max-size, max-file}` per service. Caddy lacks `443:443/udp` (advertised HTTP/3 unreachable); active health check on a single upstream converts container swaps into 502 windows.
-- **`deploy-managed.md`** — Fly config uses legacy `[[services]]` and never wires the health check `healthcheck.md` promises.
-
-### Storage & billing
-- **`storage-s3.md`** — static-from-bucket 403s on default AWS Block-Public-Access with zero bucket-policy/CloudFront guidance; and no cache-busting or `Cache-Control` (WhiteNoise path gets manifest hashing, S3 path gets neither). Use `S3ManifestStaticStorage` + object parameters, add the policy/OAC section, and keep `MEDIA_ROOT` for the FileSystemStorage fallback.
-- **`billing.md`** — webhook handler never processes `customer.subscription.updated`, so `past_due`/`unpaid` subscribers keep access; `payment_method_types=["card"]` disables dashboard-managed payment methods; global `stripe.api_key` is the legacy SDK pattern (StripeClient is current).
-
-### Dev tooling & CI
-- **`ci.md`** — redis service sits uncommented inside the paste-ready YAML (violates the skill's own snippet-integrity rule — every project gets it); no `concurrency` group (double runs on PRs); no `permissions: contents: read`.
-- **`pytest.md`** — missing `--reuse-db` (see 2.3); no parallelization mention anywhere (`pytest-xdist` / `--parallel`).
-- **SKILL.md §5.1/§6.5 defaults** — see 2.2.
-
----
-
-## 4. Minor findings (quick edits)
-
-- **Dead/wrong URLs:** `dev-tools.md` line 3 both repo links 404 (real: `astro-stack/django-orbit`, `taobojlen/django-zeal`); `rest.md`/`rest-bolt.md` header link 404 (real: `bolt.farhana.li`); `tasks-django-db.md` (real: `RealOrangeOne/django-tasks-db`); `tasks-django-cron.md` (real: `codingjoe/django-crontask`); `analytics.md` Shynet link NXDOMAIN (use the GitHub repo); `tasks-django.md` link `/en/dev/` → `/en/6.0/`.
-- **`new-project.md`** — insert-snippet duplicates `BASE_DIR`/`DEFAULT_AUTO_FIELD`/`STATIC_URL` that startproject already wrote; the "never restate values" rule contradicts the `test.py` snippet two paragraphs later (scope the rule).
-- **`database.md`** — `DATABASES["cache"]["OPTIONS"] = DATABASES["default"]["OPTIONS"]` aliases a mutable dict; wrap in `dict(...)`. Add the one-line `psycopg[c]` production trade-off note.
-- **`uv.md`** — `uv python pin 3.12` writes the `.python-version` the `--bare` comments advertise avoiding, and pins the oldest supported interpreter.
-- **`existing-project.md`** — inventory never detects the package manager but the boot check hardcodes `uv run`; add lockfile detection and phrase commands as "the project's runner".
-- **`auth.md`** — `django.contrib.sites` presented as required with a wrong failure-mode claim (allauth builds URLs from the request host); drop it or fix the rationale. Also "pin allauth >= 0.58" is dead weight; "`django-otp-totp`" names a nonexistent package (the plugin ships inside django-otp); prefer `AxesStandaloneBackend`.
-- **`auth-hardening.md`** — note allauth's built-in login rate limits (two overlapping lockout systems otherwise); axes adds near-zero value on the passwordless mail-auth path — consider default no there.
-- **`email.md`** — `ANYMAIL_WEBHOOK_SECRET` must be a `user:password` pair; without the colon every webhook silently fails validation. Show the format.
-- **`security.md`** — `SECURE_REFERRER_POLICY = "same-origin"` restates the Django default unannotated; `CSRF_TRUSTED_ORIGINS` needs the `https://` scheme example.
-- **`gdpr.md`** — the user-data export serializes the password hash and internal flags; use `fields=`. Reduce the sentry snippet to a delta on `error-reporting.md`'s init.
-- **`error-reporting.md`** — GlitchTip compose depends on an undefined `redis` service, mixes inline env with `env_file`, lacks `GLITCHTIP_DOMAIN` and a migration step; `bugsink:latest` unpinned for a stateful service.
-- **`rest-modern-rest.md`** — default endpoint is an unauthenticated CSRF-exempt POST with no auth section (bolt's file has one), no throttling/pagination word; version claim wrong (upstream is `django>=5.0,<6.1`); the `INSTALLED_APPS` pitfall misdiagnoses (dmr has no app discovery). `rest-bolt.md` — the 60-line "fast-path settings" section optimizes middleware that never runs on bolt's path (opt-in only); shrink to two sentences. State bolt's Python 3.12+ floor.
-- **`tasks-django-db.md`** — duplicated "run worker" section; note `db_worker` DB polling (contention on SQLite). `tasks-django-cron.md` — compose `depends_on` assumes the DB backend; mirror the chosen backend.
-- **`dev-tasks.md`** — poe tasks invoke `manage.py` without an interpreter (breaks on Windows / lost exec bit); `[tools] python = "3.12"` stale.
-- **`custom-user.md`** — reduce the admin form override to `Meta(UserChangeForm.Meta)` and delete the false comment.
-- **`i18n.md`** — LocaleMiddleware detection order is reversed and cites session lookup removed in Django 4.0.
-- **`tailwind.md`** — DaisyUI fetched from `releases/latest/` while the file mandates pinning; use a versioned URL. Revisit the `4.1.3` CLI pin example.
-- **`analytics.md`** — self-hosted GoatCounter snippet still loads `count.js` from the SaaS host; serve it from the instance.
-- **`devcontainer.md`** — `host.docker.internal` needs `runArgs: ["--add-host=…:host-gateway"]` on Linux and is unfollowable in Codespaces; scope the advice.
-- **`deploy-managed.md`** — stale `/app/.venv/bin` comment (actual: `/opt/venv`). `deploy-github-ssh.md` — `.env.prod.example` ships `REDIS_URL` with no redis service in prod compose. `docker.md` — `uv sync --frozen` → `--locked` per current uv docs.
-- **`pytest.md`** — `codecov-action@v4` → v5.
-
----
-
-## 5. What's already right (keep)
-
-Verified sound against current upstream: allauth 65.x settings names (`ACCOUNT_LOGIN_METHODS`/`ACCOUNT_SIGNUP_FIELDS`); the allauth-2fa-is-dead / `[mfa]` extra guidance; django-mail-auth choice and the email-uniqueness hijack warning; the whole `django.tasks` backend architecture (all four worker paths boot on current versions; package names/app labels/commands verified); the `env.NOTSET` fail-fast idiom; SQLite WAL/`transaction_mode` production block and `CacheRouter`; `security.md`'s proxy-spoofing guidance and deliberate HSTS opt-outs; liveness-without-DB / readiness-with-DB split; non-root Docker user, two-step `uv sync`, venv-copy runtime stage; migrate-as-one-shot before `up -d`; the health-status wait loop; whitenoise STORAGES config and the media-volume chown trap; structlog/django-structlog wiring (fully current); the silk no-op decorator and LOGGING-never-inside-DEBUG rules; robots.md's "not a security control" framing.
-
----
-
-## 6. Suggested fix order
-
-1. **Blockers (§1)** — seven items, each a one-file fix.
-2. **SKILL.md posture (2.2)** — security always-on with production settings; ruff/CI defaults; storage question forced by deploy.
-3. **Confidently-wrong claims (2.3)** and **cross-file contradictions (2.4)** — cheap edits, high trust payoff.
-4. **Version-rot sweep (2.1)** — one pass over every pin + the "check latest at generation time" rule in SKILL.md, so it doesn't rot again.
-5. **REST strategy (2.5)** — decide the django-ninja/DRF question deliberately; it's a positioning choice, not a bug fix.
-6. Majors (§3), then minors (§4) opportunistically per file touched.
-
----
-
-# Part II — seedkit-slim (reviewed 2026-07-04)
-
-**Status update 2026-07-04:** II.1–II.4 applied same-day (CHANGELOG 26.27.6) — wrong correctives fixed, `csp.md`/`dj-stripe.md`/`deploy-pitfalls.md` added, cuts and pin bumps done. II.3's optional healthcheck compression skipped.
-
-**Design premise reviewed against:** the skill deliberately stays short and assumes the LLM's own Django knowledge; references exist only to correct what LLMs reliably get wrong (renamed packages, post-cutoff API changes, empirically-hit traps). Verification: every disputed claim checked against installed packages in a clean venv or upstream source, not docs alone.
-
-## Verdict
-
-The selection principle is right and mostly well executed: 15 references, 620 lines total, and almost every file targets a genuine anti-prior (django-tasks split packages, zeal 2.x middleware rename, axes v8 removal, allauth 0.65 settings keys, csp 4.0 format, mail-auth's missing templates, `uv init --bare` + `package = false`). Established tools correctly get no reference at all. But this skill type has an unforgiving failure mode: a **wrong corrective is worse than no reference**, because it overrides the model's (possibly correct) prior with confident nonsense — and there are three of those, one of them a boot-blocker. Second theme: several questionnaire options have no reference precisely where Part I *proved* the LLM prior is wrong (dj-stripe webhooks, deploy env-file/pg_dump, core CSP) — those are the highest-value additions, each worth ~10 lines.
-
-## II.1 Wrong correctives (fix first — worst class for this skill type)
-
-1. **`django-modern-rest.md` — hallucinated API, boot-blocker.** Verified against 0.11.0 in a clean venv: the import name is `dmr`, not `modern_rest` (`INSTALLED_APPS = ["modern_rest"]` → `ModuleNotFoundError`); it is not a Django app at all (no INSTALLED_APPS entry needed — `rest-bolt.md` in the fat skill even states this contrast); and the package exposes no `Router` — `from modern_rest import Router`, `router.register(...)`, `router.urls` are all invented. Real surface: `dmr.Controller` subclasses wired as views in `urlpatterns` (see fat `rest-modern-rest.md`). The only correct line is the pyjwt one — confirmed: plain `import dmr` reaches `dmr.security.jwt` through `dmr.throttling` and crashes without pyjwt (upstream packaging bug). Rewrite the file around `dmr`; keep the pyjwt line.
-2. **`django-zeal.md` — `ZEAL_RAISE_ON_VIOLATION = True` doesn't exist.** Real setting is `ZEAL_RAISE`, and raising is already the default — delete the line (the file shrinks to pure delta: app, lowercase middleware function, DEBUG gate). Already shipped into `06-silk-lab`.
-3. **`django-allauth.md` — `path("accounts/", include("allauth.mfa.urls"))` double-registers.** Verified in upstream `allauth/urls.py`: when `allauth.mfa` is installed, `include("allauth.urls")` already mounts MFA at `accounts/2fa/`. Drop the extra line.
-4. **`new-project.md` — "`pin away from any 3.14 prerelease`"** — stale (3.14 is stable); and `uv python pin 3.12` diverges from the fat skill's 26.27.6 sweep (3.13). Same file: `ALLOWED_HOSTS = env.list(..., default=[])` boots fine in prod then 400s every request — gate with `default=[] if DEBUG else env.NOTSET` like its neighbours (Part I major).
-
-## II.2 Missing anti-prior references — each earned by a Part-I-verified wrong prior
-
-Additions only where the LLM prior is *proven* wrong; everything else stays LLM-knowledge:
-
-- **dj-stripe** (§2.6 option, no ref): the LLM prior *is* the removed pre-2.9 API — `DJSTRIPE_WEBHOOK_SECRET` + `/stripe/webhook/` (the fat skill itself shipped it until 26.27.6). Add ~10 lines (admin-created `WebhookEndpoint` rows, UUID URL, `djstripe_receiver`, `stripe.api_key = djstripe_settings.STRIPE_SECRET_KEY`) or drop the dj-stripe option from slim.
-- **`django-csp.md` reinforces the wrong prior instead of correcting it**: slim pins `django>=6.0`, which ships CSP in core (`SECURE_CSP`, `django.middleware.csp.ContentSecurityPolicyMiddleware`, `{{ csp_nonce }}`) — post-cutoff knowledge most models lack. The genuinely slim reference is "Django 6 has core CSP; don't install django-csp", the opposite of the current file.
-- **asgi mode** (§1.4): LLM prior is `uvicorn.workers.UvicornWorker` — deprecated, removal pending. One line: `uv add uvicorn-worker`, `-k uvicorn_worker.UvicornWorker`.
-- **`django-axes.md`**: two verified traps worth two lines — `['ip_address', 'username']` is OR-semantics (anyone can lock out a known username; the AND form is `[['ip_address', 'username']]`), and with allauth the username dimension silently never fires (allauth posts the identifier as `login`).
-- **deploy** (§3.6, no refs): Part I verified three traps invisible to LLM priors and present in generated examples — compose never auto-loads `deploy/.env.prod` (first boot fails without `--env-file`), pg_dump client major must be ≥ the `postgres:` image major, json-file docker logs never rotate. One compact `deploy-pitfalls.md` (~10 lines) is evidence-justified.
-
-## II.3 Cut candidates — lines duplicating LLM knowledge (the skill's own standard)
-
-- `django-axes.md`: `AXES_FAILURE_LIMIT = 5` / `AXES_COOLOFF_TIME = 1` / "ships models — run migrate" are LLM-known; the deltas are the ordering rules, the v8 `AXES_LOCKOUT_CALLABLE` removal, and the cache-handler line.
-- `django-allauth.md`: `django.contrib.sites` + `SITE_ID` — current allauth quickstart doesn't require sites (Part I, verified); drop or keep with the accurate one-line reason. (`django-mail-auth.md` genuinely needs sites — keep there.)
-- `new-project.md` Root URL section: the snippet is LLM-writable; the delta is one sentence ("`startproject` routes only `/admin/`, add a `/` redirect so the smoke curl doesn't 404").
-- `healthcheck.md`: view bodies are LLM-writable; the value is the three rules (skip `django-health-check`, no trailing slash, `SECURE_REDIRECT_EXEMPT`). Optional compression.
-- `pyright.md`: add the single-file variant note (`django_settings_module = "config.settings"`) — currently hardcodes the split layout.
-
-## II.4 Version pins (align with the 26.27.6 sweep)
-
-`django-bolt.md` still shows `ghcr.io/astral-sh/uv:python3.12-bookworm` / `python:3.12-slim-bookworm` → trixie/3.13; `new-project.md` python pin → 3.13. The SKILL.md "Version pins" generation-time rule added to the fat skill applies here too (slim's SKILL.md has no pitfalls section — one line suffices).
-
-## Correction fed back into Part I
-
-Part I §2.3 originally called `rest-modern-rest.md`'s pyjwt install a dead dependency with a false rationale. Empirical check reversed the fix: the rationale is wrong but the install is required (unconditional import chain). Part I text updated 2026-07-04. Second instance of the review pattern this repo already learned from the typecheck finding: verify against the installed package before "fixing" an empirically-derived reference.
+As a Django scaffold: **credible and better-grounded than most**, with unusually honest trade-off documentation. As a prod-ready generator for a vertically scaling product: **not yet** — the generated project ships with a 1-worker gunicorn, a non-persistent task broker, no log rotation, an auth lockout that can lock out the whole userbase, and a deploy that isn't test-gated and can't roll back. Priority order: (1) the §1 paste-breakers, (2) gunicorn workers + Redis persistence + log rotation, (3) test-gated deploys with SHA tags, (4) a conventions reference to stop cross-file drift.

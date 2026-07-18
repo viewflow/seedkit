@@ -80,11 +80,25 @@ Third-party snippets that need an inline init block (GA4 `gtag('config', ...)`, 
 
 For the first deploy after adding CSP, prefer report-only mode so existing pages don't break:
 
+Use `CONTENT_SECURITY_POLICY_REPORT_ONLY` in place of `CONTENT_SECURITY_POLICY` above — django-csp sends both headers if both settings are present, so only one of the two names should exist in `production.py` at a time:
+
 ```python
-CONTENT_SECURITY_POLICY_REPORT_ONLY = CONTENT_SECURITY_POLICY  # mirror, don't reuse the dict reference
+CONTENT_SECURITY_POLICY_REPORT_ONLY = {
+    'DIRECTIVES': {
+        'default-src': ("'self'",),
+        'script-src': ("'self'",),
+        'style-src': ("'self'", "'unsafe-inline'"),  # tighten by removing unsafe-inline once styles are externalized
+        'img-src': ("'self'", 'data:'),
+        'font-src': ("'self'",),
+        'connect-src': ("'self'",),
+        'frame-ancestors': ("'none'",),
+        'base-uri': ("'self'",),
+        'form-action': ("'self'",),
+    },
+}
 ```
 
-Drop the `_REPORT_ONLY` once the logs are clean.
+Once the logs are clean, rename `CONTENT_SECURITY_POLICY_REPORT_ONLY` to `CONTENT_SECURITY_POLICY` to start enforcing.
 
 ## Pitfalls
 

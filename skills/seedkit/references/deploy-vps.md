@@ -85,7 +85,7 @@ example.com {     # replace with the real domain
 }
 ```
 
-Mount the same `media` named volume into the `caddy` service in `docker-compose.prod.yml` (`./media:/srv/media:ro`).
+Mount the same `media` named volume into the `caddy` service in `docker-compose.prod.yml` (`media:/srv/media:ro`) — the same volume `web` mounts at `/app/media`, so both read the same files.
 
 ## Deploy
 
