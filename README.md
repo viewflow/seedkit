@@ -54,16 +54,6 @@ Then, in whatever empty directory you'd like to populate:
 /seedkit
 ```
 
-## Two variants
-
-Two skills ship in this repo.
-
-**`/seedkit`** started from the actual package docs — the reference files have exact package versions, config snippets, and known pitfalls.
-
-**`/seedkit-slim`** relies only on what the model already knows — no reference files.
-
-Both go through the same test cycle: generate code, boot it, check it. Failures get fixed in the skill text.
-
 ## Project Status
 
 This is a fresh project under active development. While the skill is verified against the nine core scenarios in [seedkit-examples](https://github.com/viewflow/seedkit-examples), we are still mapping out how the agent behaves outside that set.

@@ -2,6 +2,11 @@
 
 Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One section per day; all of a day's commits collapse into one block. Trim to ≤ 200 lines; git keeps the rest.
 
+## 26.30.2 — 2026-07-21
+
+### Removed
+- `skills/seedkit-slim/` — the questionnaire-only slim variant is no longer part of the published skill; the repo now ships a single `/seedkit`. Its last state is preserved on the `slim` branch. Dropped the "Two variants" section from `README.md`.
+
 ## 26.29.6 — 2026-07-18
 
 ### Added
