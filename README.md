@@ -18,7 +18,7 @@ An agent skill to start new Django projects or extend existing ones. One sentenc
 
 One prompt like the first produces [07-vps-sqlite-saas](https://github.com/viewflow/seedkit-examples/tree/main/07-vps-sqlite-saas): Docker + Caddy deploy, Sentry, Litestream backups, CI.
 
-LLMs write Django from memory. That memory is a year or two old. Think deprecated auth settings and last version's Stripe webhooks. Or database ports open to the local network. seedkit keeps that knowledge in reference files instead. We build the files from package docs. We test them end-to-end and fix every failure. The model types.
+LLMs write Django from memory. That memory is a year or two old. Think deprecated auth settings and last version's Stripe webhooks. Or database ports open to the local network. seedkit keeps that knowledge in [maintained reference files](https://github.com/viewflow/seedkit/tree/main/skills/seedkit/references) instead. We build the files from package docs. We test them end-to-end and fix every failure. The model types.
 
 What you get:
 
