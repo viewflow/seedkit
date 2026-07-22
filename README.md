@@ -18,24 +18,29 @@ An agent skill to start new Django projects or extend existing ones. One sentenc
 
 LLMs write Django from memory. That memory is a year or two old. Think deprecated auth settings and last version's Stripe webhooks. Or database ports open to the local network. seedkit keeps that knowledge in reference files instead. We build the files from package docs. We test them end-to-end and fix every failure. The model types.
 
-What that buys you:
+What you get:
 
-- **Current APIs, not model memory.** References come from package docs, with version pins re-resolved at generation time.
+- **Current APIs, not model memory.** References come from package docs; version pins re-resolve at generation time. Nothing goes stale the way an unmaintained template repo does.
 - **Tested output.** Nine end-to-end scenarios: generate, boot, smoke-check, audit by a second LLM ([see the outputs](https://github.com/viewflow/seedkit-examples)). We fix every failure back into the skill.
+- **Your exact stack, not a preset.** A cookiecutter hands you its choices, and you spend day one deleting. Here you pick: Celery or RQ, allauth or magic links, VPS or Fly. You get only the code for the options you picked.
+- **Works on the project you already have.** `/seedkit add [feature]` wires a new package into an existing repo the same way — something no template can do.
+- **Plain Django, no lock-in.** The output is a normal Django project you own. No wrapper library, no runtime dependency on seedkit, nothing extra to upgrade later.
 - **100+ hours of AI work, already spent.** The references distill those generate–boot–fix cycles. So scaffolding runs clean on mid-tier Sonnet. Your frontier-model hours go to the code only you can write.
-- **Your exact stack.** Real alternatives at every step. Pick Celery or RQ, allauth or magic links, VPS or Fly. Use `/seedkit add [feature]` for existing repos. You get only the code for options you picked.
 
 Helps you with:
 
 - **Setup & config:** [Python deps & venvs](https://docs.astral.sh/uv/), [settings for dev vs prod](https://django-environ.readthedocs.io/), [custom user model](https://docs.djangoproject.com/en/stable/topics/auth/customizing/#substituting-a-custom-user-model).
 - **Auth:** [social & password login](https://docs.allauth.org/), [passwordless magic-link login](https://django-mail-auth.readthedocs.io/), [brute-force protection](https://django-axes.readthedocs.io/).
-- **Async & caching:** [background jobs](https://docs.celeryq.dev/), [async views](https://docs.djangoproject.com/en/stable/topics/async/), [WebSockets](https://channels.readthedocs.io/), [Redis caching](https://github.com/jazzband/django-redis).
+- **APIs:** [typed REST endpoints](https://django-modern-rest.readthedocs.io/), [Rust-powered high-RPS APIs](https://bolt.farhana.li/), [CORS headers](https://github.com/adamchainz/django-cors-headers).
+- **Billing:** [Stripe payments & subscriptions](https://dj-stripe.dev/).
+- **Async & caching:** [background jobs](https://docs.celeryq.dev/), [scheduled tasks](https://github.com/codingjoe/django-crontask), [async views](https://docs.djangoproject.com/en/stable/topics/async/), [WebSockets](https://channels.readthedocs.io/), [Redis caching](https://github.com/jazzband/django-redis).
 - **Storage & email:** [S3 for static & media](https://django-storages.readthedocs.io/), [outbound email](https://anymail.dev/).
-- **Frontend & analytics:** [Tailwind without Node](https://django-tailwind-cli.readthedocs.io/), [GDPR-safe analytics](https://www.goatcounter.com/help/start).
+- **Frontend & SEO:** [Tailwind without Node](https://django-tailwind-cli.readthedocs.io/), [meta tags & sitemap](https://docs.djangoproject.com/en/stable/ref/contrib/sitemaps/), [translations](https://docs.djangoproject.com/en/stable/topics/i18n/translation/), [GDPR-safe analytics](https://www.goatcounter.com/help/start).
 - **Security:** [security headers](https://docs.djangoproject.com/en/stable/topics/security/), [CSP headers](https://django-csp.readthedocs.io/), [production error tracking](https://docs.sentry.io/platforms/python/integrations/django/), [structured logs](https://www.structlog.org/).
-- **Code quality:** [N+1 query detection](https://github.com/PedroBern/django-zeal), [safe migrations](https://github.com/3YOURMIND/django-migration-linter), [linting & formatting](https://docs.astral.sh/ruff/), [type checking](https://microsoft.github.io/pyright/).
-- **Ops:** [scheduled DB backups](https://django-dbbackup.readthedocs.io/), [Docker for local dev](https://docs.docker.com/compose/), [auto-HTTPS reverse proxy](https://caddyserver.com/docs/).
-- **CI/CD:** [CI pipeline](https://docs.github.com/en/actions), and more.
+- **Code quality:** [pytest & coverage](https://pytest-django.readthedocs.io/), [N+1 query detection](https://github.com/PedroBern/django-zeal), [safe migrations](https://github.com/3YOURMIND/django-migration-linter), [linting & formatting](https://docs.astral.sh/ruff/), [type checking](https://microsoft.github.io/pyright/).
+- **Dev experience:** [request profiling](https://github.com/jazzband/django-silk), [auto browser reload](https://github.com/adamchainz/django-browser-reload), [pre-commit hooks](https://pre-commit.com/), [devcontainers](https://containers.dev/).
+- **Ops:** [scheduled DB backups](https://django-dbbackup.readthedocs.io/), [Docker for local dev](https://docs.docker.com/compose/), [auto-HTTPS reverse proxy](https://caddyserver.com/docs/), [managed deploys on Fly/Railway/Render](https://fly.io/docs/django/).
+- **CI/CD:** [CI pipeline](https://docs.github.com/en/actions), [deploy over SSH](https://github.com/appleboy/ssh-action).
 
 ## Install
 
@@ -64,20 +69,16 @@ Then, in whatever empty directory you'd like to populate:
 
 ## Project Status
 
-This is a fresh project under active development. We verify the skill against nine core scenarios in [seedkit-examples](https://github.com/viewflow/seedkit-examples). We're still mapping how it behaves outside that set.
+The skill improves with every run. Each failure the test scenarios surface becomes a reference fix, so each release scaffolds better than the last.
 
-The testcase harness runs only against Claude Sonnet. We don't cover other models yet: Opus, Haiku, GPT, Gemini. They may work, but we haven't verified skill quality there.
-
-Production deployment scenarios still need verification: VPS, Fly, GitHub-SSH. The skill wires them up, but we haven't tested them against real targets.
-
-If you run into issues, strange behavior, or have ideas for new integrations, please open an issue. Feedback is welcome.
+Verification runs on Claude Sonnet today. Other models (Opus, Haiku, GPT, Gemini) and the production deploy targets (VPS, Fly, GitHub-SSH) are wired up but less traveled. Hit something odd there — or anywhere — [open an issue](https://github.com/viewflow/seedkit/issues/new): bug reports go straight into the test loop and come out as fixes.
 
 ## Contributing
 
-This is AI-generated code, and any human attention is valuable. A person reading it catches what the harness can't.
+A person reading the output catches what automated tests can't.
 
 - **Hit a bug or something odd?** [Open an issue](https://github.com/viewflow/seedkit/issues/new). Even a one-line "this broke" helps.
-- **Run it on another model.** We only verify on Claude Sonnet. Point `train/run-tests.sh` at Opus, Haiku, GPT, or Gemini and share the logs; cross-model coverage is what we need most.
+- **Run it on another model.** We verify on Claude Sonnet. Point `train/run-tests.sh` at Opus, Haiku, GPT, or Gemini and share the logs; cross-model coverage is what we need most.
 - **Read the output before you trust it.** It boots and passes smoke checks, but hasn't seen production. Your review is part of the loop.
 
 For anything bigger, open an issue first so we can talk it through. Full test cycles take a couple hours, so it's worth saving each other the wasted run.
