@@ -2,8 +2,6 @@
 
 An agent skill to start new Django projects or extend existing ones. One sentence in, a running project out. It wires packages together, splits dev and prod settings, and adds CI.
 
-![One prompt in, a running Django project out](.github/demo.gif)
-
 ```
 /seedkit SaaS landing + waitlist, GDPR-friendly stack (mail, analytics, error reporting), VPS deploy
 ```
@@ -17,6 +15,8 @@ An agent skill to start new Django projects or extend existing ones. One sentenc
 ```
 
 [![View Outputs](https://img.shields.io/badge/View%20Outputs-00C853?style=for-the-badge)](https://github.com/viewflow/seedkit-examples)
+
+![One prompt in, a running Django project out](.github/demo.gif)
 
 One prompt like the first produces [07-vps-sqlite-saas](https://github.com/viewflow/seedkit-examples/tree/main/07-vps-sqlite-saas): Docker + Caddy deploy, Sentry, Litestream backups, CI.
 
