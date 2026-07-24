@@ -2,6 +2,11 @@
 
 Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One section per day; all of a day's commits collapse into one block. Trim to ≤ 200 lines; git keeps the rest.
 
+## 26.30.5 — 2026-07-24
+
+### Added
+- `email.md` — SPF/DKIM/DMARC deliverability note under the provider `.env.prod` block: a correct `EMAIL_URL` still gets password-reset and verification mail dropped without the domain's DNS auth records. Closes the one gap the EuroPython 2026 "Deploying Web Apps in 2026" 10-step model surfaced against the skill (auth secretly depends on email, email secretly depends on DNS).
+
 ## 26.30.2 — 2026-07-21
 
 ### Removed

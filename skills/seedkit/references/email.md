@@ -84,6 +84,8 @@ DJANGO_ADMINS=ops@example.com,alerts@example.com
 
 URL-encode special characters in the password (`%40` for `@`, `%23` for `#`).
 
+**Before mail delivers:** add SPF and DKIM DNS records for the sending domain (each provider prints the exact records in its dashboard); most also want a DMARC record. Without them a correct `EMAIL_URL` still gets password-reset and verification mail dropped or spam-filed.
+
 ---
 
 ## Provider HTTP APIs (django-anymail)
