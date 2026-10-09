@@ -2,6 +2,14 @@
 
 Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One section per day; all of a day's commits collapse into one block. Trim to ≤ 200 lines; git keeps the rest.
 
+## 26.41.5 — 2026-10-09
+
+### Fixed
+- `docker.md` — `.dockerignore` excludes env files at every depth (`**/.env`, `**/.env.*`, keeping `*.example`). Before, a local build with `deploy/.env.prod` present copied its credentials into the image.
+- `docker.md` — container workers get `DJANGO_SETTINGS_MODULE` from the service `environment:`, not `.env`. Celery's `setdefault` to production settings runs before `base.py` reads `.env`, so workers ignored the local override.
+- `ci.md` — `check --deploy` runs only when the security step was applied; without it the check fails with `security.W004/W008/W011/W016`.
+- `dev-tools.md` — `django_migration_linter` registers without a `DEBUG` gate, and the CI step selects the local settings module. Before, CI (`DJANGO_DEBUG=False`) failed with `Unknown command: 'lintmigrations'`.
+
 ## 26.34.4 — 2026-08-22
 
 ### Changed

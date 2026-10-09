@@ -27,7 +27,9 @@ Match the `python3.X` tag to `requires-python` in `pyproject.toml`. `uv sync --f
 __pycache__/
 *.pyc
 *.sqlite3
-.env
+**/.env
+**/.env.*
+!**/.env*.example
 .ruff_cache/
 .pytest_cache/
 .mypy_cache/
@@ -37,6 +39,8 @@ node_modules/
 ```
 
 `.venv/` is load-bearing — without it, `COPY . .` drags the host venv into the build context and bloats the image.
+
+The env patterns carry `**/` because a bare `.env` matches only the context root. Deploys read `deploy/.env.prod`, and `COPY . .` would bake its credentials into an image layer. The `!` line keeps the committed `*.example` files out of the exclusion.
 
 ---
 
@@ -155,7 +159,7 @@ An add-on that runs a second long-lived process gets a sibling service on the sa
         condition: service_healthy
 ```
 
-The same shape covers `celery -A config beat -l info` and the Tailwind watcher — one service per process, each with the `command:` its own reference gives. Drop `DJANGO_SETTINGS_MODULE=…` prefixes from those commands: put the value in `.env` instead, since a bind-mounted `.env` is what every service in this stack reads.
+The same shape covers `celery -A config beat -l info` and the Tailwind watcher — one service per process, each with the `command:` its own reference gives. Drop `DJANGO_SETTINGS_MODULE=…` prefixes from those commands: set it in the service's `environment:` instead (`DJANGO_SETTINGS_MODULE: config.settings.local`). Do not put it in `.env` — `.env` is read by django-environ inside `base.py`, but Celery's `os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.production")` runs first, so the worker would boot on production settings.
 
 Task-runner recipes change with the loop — `references/dev-tasks.md` has the container-loop bodies.
 

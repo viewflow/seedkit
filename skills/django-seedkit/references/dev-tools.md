@@ -345,12 +345,22 @@ Zeal works automatically in pytest-django tests that hit the DB — no extra set
 uv add --dev django-migration-linter
 ```
 
-#### Settings (local / DEBUG-gated)
+#### Settings
+
+Register the app without a `DEBUG` gate — CI runs with `DJANGO_DEBUG=False`, and a gated registration leaves `lintmigrations` unknown there.
 
 ```python
 # config/settings/local.py
-if DEBUG:
-    INSTALLED_APPS += ["django_migration_linter"]   # registers the `lintmigrations` command
+INSTALLED_APPS += ["django_migration_linter"]   # registers the `lintmigrations` command
+```
+
+Single-settings layout: the package is a dev dependency, so guard on importability, not on `DEBUG` (`uv sync --no-dev` omits it):
+
+```python
+import importlib.util
+
+if importlib.util.find_spec("django_migration_linter"):
+    INSTALLED_APPS += ["django_migration_linter"]
 ```
 
 #### Run
@@ -373,6 +383,8 @@ Add after `uv sync --frozen` and before the test step in `.github/workflows/test
 
 ```yaml
       - run: uv run manage.py lintmigrations --exclude-apps account socialaccount
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.local   # split layout — the default module is production, which does not register the app
 ```
 
 #### setup.cfg (optional — persist the exclusion list)

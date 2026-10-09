@@ -76,8 +76,11 @@ jobs:
 
       - run: uv sync --frozen
 
+      # Only when security settings were applied (`references/security.md`).
       # Catches security-setting regressions (SSL_REDIRECT without proxy,
-      # missing HSTS, etc.) at CI time instead of first-deploy.
+      # missing HSTS, etc.) at CI time instead of first-deploy. Without those
+      # settings the check fails with security.W004/W008/W011/W016 — swap this
+      # step for a plain `uv run manage.py check` then.
       - run: uv run manage.py check --deploy --fail-level WARNING
         env:
           DJANGO_SETTINGS_MODULE: config.settings.production
