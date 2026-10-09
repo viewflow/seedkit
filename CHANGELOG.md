@@ -10,6 +10,9 @@ Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One 
 - `ci.md` — `check --deploy` runs only when the security step was applied; without it the check fails with `security.W004/W008/W011/W016`.
 - `dev-tools.md` — `django_migration_linter` registers without a `DEBUG` gate, and the CI step selects the local settings module. Before, CI (`DJANGO_DEBUG=False`) failed with `Unknown command: 'lintmigrations'`.
 
+### Testcases and harness
+- Harness pins move to `claude-sonnet-5-5` (build, baseline), `claude-opus-5-5` (review, scorecard) and `gemini-3.8-flash` (`agy`). `model_slug()` handles two-part version suffixes.
+
 ## 26.34.4 — 2026-08-22
 
 ### Changed
