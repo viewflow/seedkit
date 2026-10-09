@@ -2,7 +2,7 @@
 
 **An agent skill to start new Django projects, or extend the one you already have.**
 
-Scaffold a Django project the way you need it. Current Django knowledge and best practices for coding agents: tell the agent what you must build — it asks a few questions, then writes the project. Packages wired together, dev and prod settings split, CI in place.
+A skill that gives your coding agent current Django knowledge. Tell it what you are building; it asks a few questions, then writes the project. Packages are wired together, dev and prod settings are split, and CI is in place.
 
 [![Site](https://img.shields.io/badge/site-django--seedkit.viewflow.io-0C4B33?style=for-the-badge)](https://django-seedkit.viewflow.io)
 [![View Outputs](https://img.shields.io/badge/View%20Outputs-00C853?style=for-the-badge)](https://github.com/viewflow/seedkit-examples)
@@ -91,20 +91,20 @@ And it works on the project you already have — generators only start from zero
 
 Nine project specs, each generated more than once: with seedkit, and from the identical prompt with no skill. A separate model then audits every result against the same eight checks — locked dependencies, secrets read from the environment, no usable production `SECRET_KEY` fallback, `DEBUG` off in production, database configurable from env, `.gitignore` covering the env file, README commands matching the shipped manifest, and project layout.
 
-| Case | Sonnet + seedkit | Fable, no skill |
+| Case | Sonnet 5 + seedkit | Fable 5, no skill |
 |---|---|---|
-| [01-blog](https://github.com/viewflow/seedkit-examples/tree/main/01-minimal-blog) | **8/8** | 5/8 |
+| [01-minimal-blog](https://github.com/viewflow/seedkit-examples/tree/main/01-minimal-blog) | **8/8** | 5/8 |
 | [02-shop](https://github.com/viewflow/seedkit-examples/tree/main/02-shop) | **8/8** | 7/8 |
 | [03-jobs-board](https://github.com/viewflow/seedkit-examples/tree/main/03-jobs-board) | **8/8** | 5/8 |
 | [04-media-vault](https://github.com/viewflow/seedkit-examples/tree/main/04-media-vault) | **8/8** | 7/8 |
-| [05-mailer](https://github.com/viewflow/seedkit-examples/tree/main/05-orbit-demo) | **8/8** | 3/8 |
-| [06-crm](https://github.com/viewflow/seedkit-examples/tree/main/06-silk-lab) | **8/8** | 6/8 |
-| [07-saas](https://github.com/viewflow/seedkit-examples/tree/main/07-vps-sqlite-saas) | **8/8** | 7/8 |
-| [08-startup](https://github.com/viewflow/seedkit-examples/tree/main/08-fly-app) | **8/8** | 7/8 |
-| [09-internal-ops](https://github.com/viewflow/seedkit-examples/tree/main/09-ssh-deploy) | **8/8** | 7/8 |
+| [05-orbit-demo](https://github.com/viewflow/seedkit-examples/tree/main/05-orbit-demo) | **8/8** | 3/8 |
+| [06-silk-lab](https://github.com/viewflow/seedkit-examples/tree/main/06-silk-lab) | **8/8** | 6/8 |
+| [07-vps-sqlite-saas](https://github.com/viewflow/seedkit-examples/tree/main/07-vps-sqlite-saas) | **8/8** | 7/8 |
+| [08-fly-app](https://github.com/viewflow/seedkit-examples/tree/main/08-fly-app) | **8/8** | 7/8 |
+| [09-ssh-deploy](https://github.com/viewflow/seedkit-examples/tree/main/09-ssh-deploy) | **8/8** | 7/8 |
 | **total** | **72/72** | **54/72** |
 
-The other two control arms cover part of the set: Sonnet with no skill scored 33/48 on six cases, Opus with no skill 29/32 on four.
+The other two control arms cover part of the set: Sonnet 5 with no skill scored 33/48 on six cases, Opus 5 with no skill 29/32 on four.
 
 **Sonnet with seedkit scores above Opus without it.** On the four cases Opus ran, it reached 29/32 where seedkit reached 32/32.
 
@@ -114,23 +114,15 @@ The other two control arms cover part of the set: Sonnet with no skill scored 33
 
 One run per cell, Claude models only — enough to show a gap this size, not enough to rank models. [Every generated project is published, both arms.](https://github.com/viewflow/seedkit-examples)
 
-## Project status
+## Project status and contributing
 
-Verification runs on Claude Sonnet today. Other models ([Opus](https://docs.claude.com/en/docs/about-claude/models), Haiku, GPT, Gemini) and the deploy targets (VPS, [Fly](https://fly.io/docs/django/), GitHub-SSH) are wired up but less traveled. Hit something odd there — or anywhere — [open an issue](https://github.com/viewflow/seedkit/issues/new): bug reports go straight into the test loop and come out as fixes.
+The results above come from Claude Sonnet 5, Opus 5 and Fable 5. The test harness now targets Sonnet 5.5, Opus 5.5 and Gemini 3.8 Flash, and the numbers will be re-measured on them. Other models (Haiku, GPT) and the deploy targets (VPS, [Fly](https://fly.io/docs/django/), GitHub-SSH) are wired up but less traveled.
+
+- **Hit a bug or something odd?** [Open an issue](https://github.com/viewflow/seedkit/issues/new). Even a one-line "this broke" helps. A report goes into a [reference file](https://github.com/viewflow/seedkit/tree/main/skills/django-seedkit/references), and every later run gets the fix.
+- **Run it on another model.** Cross-model coverage is what we need most. Point [`train/run-tests.sh`](https://github.com/viewflow/seedkit-examples/blob/main/train/run-tests.sh) at Haiku, GPT, or another Gemini and share the logs.
+- **Anything bigger:** open an issue first so we can talk it through. A full test cycle takes a couple of hours, so it is worth saving each other a wasted run.
 
 Recent changes are in the [CHANGELOG](./CHANGELOG.md).
-
-## Contributing
-
-A person reading the output catches what automated tests can't.
-
-Hit a bug or something odd? [Open an issue](https://github.com/viewflow/seedkit/issues/new). Even a one-line "this broke" helps.
-
-Cross-model coverage is what we need most. We verify on Claude Sonnet, so point [`train/run-tests.sh`](https://github.com/viewflow/seedkit-examples/blob/main/train/run-tests.sh) at Opus, Haiku, GPT, or Gemini and share the logs.
-
-Your review is part of the loop: what you report goes into a [reference file](https://github.com/viewflow/seedkit/tree/main/skills/django-seedkit/references) and every later run gets it.
-
-For anything bigger, open an issue first so we can talk it through. Full test cycles take a couple hours, so it's worth saving each other the wasted run.
 
 ## License
 
