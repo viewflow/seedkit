@@ -1,6 +1,6 @@
-# 07 — Production: VPS deploy, SQLite mini-prod, single-stage Dockerfile, Sentry
+# 07 — Production: VPS deploy, SQLite mini-prod, multi-stage Dockerfile, Sentry
 
-Covers the SQLite mini-prod path on a single VPS: WAL-tuned `production.py`, separate `cache.sqlite3` for the cache backend, Litestream replication to S3, Caddy + single-stage Dockerfile, security settings, Sentry SaaS error reporting, GitHub Actions test CI.
+Covers the SQLite mini-prod path on a single VPS: WAL-tuned `production.py`, separate `cache.sqlite3` for the cache backend, Litestream replication to S3, Caddy + multi-stage Dockerfile, security settings, Sentry SaaS error reporting, GitHub Actions test CI.
 
 ## Prompt
 
@@ -46,24 +46,31 @@ Production setup:
   - production Dockerfile: multi-stage with the Litestream `.deb` installed in the prod stage; ship `litestream.yml` + `entrypoint.sh` that restores the DB on boot, runs migrations, then execs `litestream replicate -exec "gunicorn ..."`
 Skip GDPR for this case.
 
-Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.prod.yml`, `Caddyfile`, `litestream.yml`, `entrypoint.sh`, `.github/workflows/test.yml`. Do not actually push to a remote VPS — just verify all artifacts are present and `docker build .` succeeds.
+Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.prod.yml`, `Caddyfile`, `litestream.yml`, `entrypoint.sh`, `.github/workflows/test.yml`. Run the production and recovery drill below locally with disposable Docker resources and a local S3-compatible bucket. Do not push images or contact a real VPS or production bucket.
 ```
 
 ## Boot check
 
+Run the checks in order. Before starting processes or services, wrap the shell blocks in a cleanup script that records child PIDs and resources created by this run and removes them on success or failure. Use a unique Compose project name. For host Postgres, reuse only a database created during this case's foundation step; fail if an unrelated database already has the requested name. Later acceptance subsections run from this project's root.
+
 ```sh
+set -eu
 cd 07-vps-sqlite-saas
 uv run manage.py migrate
 uv run manage.py createcachetable --database cache
 uv run manage.py runserver --noreload &
 RUNSERVER_PID=$!
+up=
 for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null && up=1 && break; sleep 1; done
-[ -n "$up" ] || { echo "BOOT CHECK FAILED: runserver never came up"; kill "$RUNSERVER_PID"; exit 1; }
+[ -n "${up:-}" ] || { echo "BOOT CHECK FAILED: runserver never came up"; kill "$RUNSERVER_PID"; exit 1; }
 curl -sf http://127.0.0.1:8000/accounts/login/ > /dev/null
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 kill "$RUNSERVER_PID"
-! rg -q 'django-csp' pyproject.toml
+if rg -q 'django-csp' pyproject.toml; then
+  echo "SMOKE CHECK FAILED: forbidden configuration or error output" >&2
+  exit 1
+fi
 rg -q 'django.middleware.csp.ContentSecurityPolicyMiddleware' config/settings/production.py
 rg -q 'SECURE_CSP' config/settings/production.py
 uv run pyright
@@ -78,6 +85,17 @@ docker run --rm 07-vps-sqlite-saas:test which litestream
 docker run --rm 07-vps-sqlite-saas:test id -un | grep -q '^django$'
 docker rmi 07-vps-sqlite-saas:test
 ```
+
+### Production acceptance
+
+Build the production image and run the generated production Compose stack under a unique project name. Use local image tags, a disposable MinIO bucket, and named volumes owned by this run. Override only infrastructure addresses, image tags, credentials, and Caddy's public listener (use loopback HTTP with `DJANGO_SECURE_SSL_REDIRECT=False` for this drill; TLS issuance is not tested). Preserve the generated entrypoint, migrations, storage backends, service commands, and healthchecks. Record the resolved Compose configuration without secret values.
+
+1. Start with an empty database volume. Require `/healthz` and `/readyz` to return 200 through Caddy after a bounded readiness wait. Fetch an admin static asset and require status 200 with a CSS content type. Confirm `DEBUG=False`, the default database is in WAL mode, and cache set/get works.
+2. Create a unique user record and a small media file through Django's storage API. Record the user's primary key and a digest of the file. Recreate `web` and verify both survive. Require the media URL through Caddy to return the original bytes.
+3. Keep Litestream running while the record is written. Stop `web` gracefully, then start the same image with a **new empty database volume** and the same disposable bucket. Do not copy the old database or run migrate before the generated restore entrypoint. Poll readiness, and verify the original user record is restored. A healthy empty database fails this check. Keep the media volume attached and verify its contents separately; Litestream does not back up media.
+4. Run the generated CI commands with their declared environment and safe placeholders, including `DEBUG=False`, against a separate test database. Require tests to collect and pass.
+
+Use bounded waits and register cleanup before creating resources. Remove only this run's containers, network, bucket, volumes, and images, including on failure. Record the backup/restore result separately from the ordinary restart result.
 
 ## Review
 
@@ -111,9 +129,9 @@ Verify these structural facts:
 - `sentry_sdk.init(...)` called from `production.py` only; DSN read from env via the gated default.
 
 **Deploy artefacts**
-- `Dockerfile` is multi-stage: `builder` on `ghcr.io/astral-sh/uv:python3.12-bookworm-slim` (with `UV_COMPILE_BYTECODE=1`, `UV_LINK_MODE=copy`, `UV_PROJECT_ENVIRONMENT=/opt/venv`, two-step `uv sync`) and `prod` on `python:3.12-slim-bookworm` (`/opt/venv/bin` on PATH, runs as `django` user, installs the Litestream `.deb` via `wget` + `dpkg -i litestream-v0.3.13-linux-${ARCH}.deb`).
-- `entrypoint.sh` runs `litestream restore -if-db-not-exists -if-replica-exists /data/site.sqlite3`, then `python manage.py migrate --noinput`, then `createcachetable --database cache`, then `exec litestream replicate -exec "gunicorn config.wsgi --bind 0.0.0.0:8000 --max-requests 1000 --max-requests-jitter 100 --access-logfile -"`. `Dockerfile` `CMD` invokes `entrypoint.sh`.
-- `litestream.yml` declares `dbs: [{path: /data/site.sqlite3, replicas: [{type: s3, ...}]}]` reading bucket/endpoint/keys from env.
+- `Dockerfile` is multi-stage: `builder` on `ghcr.io/astral-sh/uv:python3.13-trixie-slim` (with `UV_COMPILE_BYTECODE=1`, `UV_LINK_MODE=copy`, `UV_PROJECT_ENVIRONMENT=/opt/venv`, two-step `uv sync`) and `prod` on `python:3.13-slim-trixie` (`/opt/venv/bin` on PATH, runs as `django` user, installs the Litestream `.deb` via `wget` + `dpkg -i` using a release version resolved during generation).
+- `entrypoint.sh` runs `litestream restore -if-db-not-exists -if-replica-exists /data/site.sqlite3`, then `python manage.py migrate --noinput`, then `createcachetable --database cache`, then `exec litestream replicate -exec "gunicorn config.wsgi --bind 0.0.0.0:8000 --max-requests 1000 --max-requests-jitter 100 --access-logfile -"`. `Dockerfile` uses `ENTRYPOINT ["/entrypoint.sh"]` and clears `CMD`; explicit commands pass through without launching the server.
+- `litestream.yml` declares `dbs: [{path: /data/site.sqlite3, replica: {type: s3, ...}}]` reading bucket/endpoint/keys from env.
 - `Caddyfile` upstream block uses `health_uri /healthz` (liveness, not `/readyz`), and contains `encode zstd gzip` plus a `request_body` block with `max_size`.
 - `deploy/docker-compose.prod.yml` defines an `x-logging` anchor (`max-size`) applied as `logging:` on every service.
 - `deploy/docker-compose.prod.yml` defines a single `web` service with `restart: unless-stopped`, mounts a named `sqlite_data:/data` volume, and a container-level healthcheck (python urllib, no curl). **No** `db`, `redis`, or `celery` services. Top-level `volumes:` declares `sqlite_data`.

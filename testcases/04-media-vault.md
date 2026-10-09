@@ -44,22 +44,27 @@ Generate `docker-compose.yml` with services `db`, `redis`, `minio` (local servic
 
 ## Boot check
 
+Run the checks in order. Before starting processes or services, wrap the shell blocks in a cleanup script that records child PIDs and resources created by this run and removes them on success or failure. Use a unique Compose project name. For host Postgres, reuse only a database created during this case's foundation step; fail if an unrelated database already has the requested name. Later acceptance subsections run from this project's root.
+
 ```sh
+set -eu
 cd 04-media-vault
-docker compose up -d                    # db + redis + minio only
+docker compose up -d --wait             # db + redis + minio only
 uv run manage.py migrate
 uv run manage.py createsuperuser --noinput || true
 # Start uvicorn on the host in the background — runserver doesn't upgrade WS.
-uv run uvicorn config.asgi:application --host 0.0.0.0 --port 8000 &
+DJANGO_SETTINGS_MODULE=config.settings.local uv run uvicorn config.asgi:application --host 127.0.0.1 --port 8000 &
 UVICORN_PID=$!
+up=
 for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null && up=1 && break; sleep 1; done
-[ -n "$up" ] || { echo "BOOT CHECK FAILED: uvicorn never came up"; kill "$UVICORN_PID"; exit 1; }
+[ -n "${up:-}" ] || { echo "BOOT CHECK FAILED: uvicorn never came up"; kill "$UVICORN_PID"; exit 1; }
 curl -sf -X POST http://127.0.0.1:8000/api/media/ \
   -H 'content-type: application/json' \
   -d '{"filename":"a.png","size":42}' > /dev/null
-! curl -sf -X POST http://127.0.0.1:8000/api/media/ \
+STATUS=$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8000/api/media/ \
   -H 'content-type: application/json' \
-  -d '{"filename":"a.png"}' > /dev/null
+  -d '{"filename":"a.png"}')
+case "$STATUS" in 400|422) ;; *) echo "Expected validation error, got $STATUS"; exit 1 ;; esac
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 # WebSocket round-trip — uses the `websockets` lib (already a transitive
@@ -117,7 +122,7 @@ Verify these structural facts:
 
 **CORS + Devcontainer + Health**
 - `corsheaders` in `INSTALLED_APPS`; `corsheaders.middleware.CorsMiddleware` BEFORE `CommonMiddleware`.
-- `.devcontainer/devcontainer.json` parseable JSON: `"image"` points at a Python devcontainer image (e.g. `mcr.microsoft.com/devcontainers/python:3.12-bookworm`), `"features"` includes the uv feature, `"postCreateCommand"` runs `uv sync --frozen`, `forwardPorts` includes `8000`, `python.defaultInterpreterPath` points at `${containerWorkspaceFolder}/.venv/bin/python`. No secrets / DB passwords inline.
+- `.devcontainer/devcontainer.json` parseable JSON: `"image"` points at a Python devcontainer image (e.g. `mcr.microsoft.com/devcontainers/python:3.13-bookworm`), `"features"` includes the uv feature, `"postCreateCommand"` runs `uv sync --frozen`, `forwardPorts` includes `8000`, `python.defaultInterpreterPath` points at `${containerWorkspaceFolder}/.venv/bin/python`. No secrets / DB passwords inline.
 - `pages/views.py` (or equivalent — `config/views.py` is fine) defines `liveness` and `readiness`; `path('healthz', ...)` and `path('readyz', ...)` in `config/urls.py` (no trailing slash).
 
 Report only issues that (i) prevent the scaffold from booting, (ii) violate one of the structural assertions above, or (iii) are an outright security hole. Skip nitpicks. Do not propose refactors, abstractions, retries, defensive checks, or hardening the prompt did not ask for. If unsure, omit it. Do NOT create, generate, or modify any files. Do NOT invoke any skill. Be brief; top issues first; "No issues found." is a valid report.

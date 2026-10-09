@@ -10,7 +10,7 @@ Covers the container dev loop: `manage.py`, the Celery worker and Beat all run a
 Project name: 03-jobs-board
 Purpose: job board with background email notifications and a daily digest.
 
-Settings layout: single file.
+Settings layout: split (base/local/production/test).
 Database: PostgreSQL.
 Postgres location: Postgres in Docker (`docker-compose.yml`).
 Dev loop: `manage.py` in a `web` container via `docker compose`, not on the host.
@@ -26,13 +26,13 @@ Task runner: just.
 Add-ons:
   - redis (for Celery)
   - Cache backend: redis (`django-redis`, cache on `/0`).
-  - tasks: Celery, with periodic tasks (Celery Beat). Also add a `jobs` app (`manage.py startapp jobs`), register `jobs` in `INSTALLED_APPS`, and add a sample `@shared_task` to `jobs/tasks.py` referenced from `CELERY_BEAT_SCHEDULE`.
+  - tasks: Celery, with periodic tasks (Celery Beat). Also add a `jobs` app (`manage.py startapp jobs`), register `jobs` in `INSTALLED_APPS`, and add `@shared_task def settings_probe()` to `jobs/tasks.py`, returning `settings.SETTINGS_MODULE`. Reference it from `CELERY_BEAT_SCHEDULE`. Worker and Beat must use `config.settings.local` in the dev stack; keep the Celery default at `config.settings.production`.
   - email: console mailer in local (`MAILERS["default"]` uses Django's console backend).
   - HTML email base template: no.
   - CORS: no.
   - REST API: none.
   - Frontend: none.
-  - Auth hardening: N/A (auth = none).
+  - Auth hardening: django-axes yes; 2FA no.
   - Health check endpoints: yes.
   - robots.txt: no.
   - django-extensions: no.
@@ -45,19 +45,29 @@ Ship a `docker-compose.yml` with `web`, `worker`, `beat`, `db` and `redis` servi
 
 ## Boot check
 
+Run the checks in order. Before starting processes or services, wrap the shell blocks in a cleanup script that records child PIDs and resources created by this run and removes them on success or failure. Use a unique Compose project name. For host Postgres, reuse only a database created during this case's foundation step; fail if an unrelated database already has the requested name. Later acceptance subsections run from this project's root.
+
 ```sh
+set -eu
 cd 03-jobs-board
 docker compose up -d --build --wait     # web + worker + beat + db + redis
 docker compose ps
 docker compose exec -T web python manage.py migrate
+up=
 for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null && up=1 && break; sleep 1; done
-[ -n "$up" ] || { echo "BOOT CHECK FAILED: web never came up"; docker compose logs web; docker compose down -v --rmi local; exit 1; }
+[ -n "${up:-}" ] || { echo "BOOT CHECK FAILED: web never came up"; docker compose logs web; docker compose down -v --rmi local; exit 1; }
 curl -sf http://127.0.0.1:8000/accounts/login/ > /dev/null
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 # Neither backing service may publish a host port — web reaches them by service name.
-! docker compose config | grep -q 'published: "5432"'
-! docker compose config | grep -q 'published: "6379"'
+if docker compose config | grep -q 'published: "5432"'; then
+  echo "SMOKE CHECK FAILED: forbidden configuration or error output" >&2
+  exit 1
+fi
+if docker compose config | grep -q 'published: "6379"'; then
+  echo "SMOKE CHECK FAILED: forbidden configuration or error output" >&2
+  exit 1
+fi
 # The host venv must be masked inside the container. Unmasked, a tree-walking
 # management command descends into it — compilemessages finds >1000 stray .po files.
 docker compose exec -T web sh -c 'test -d /app/.venv && test -z "$(ls -A /app/.venv)"'
@@ -67,14 +77,25 @@ grep -q 'docker compose' justfile
 # i18n=yes: the dev stage must install GNU gettext. Django checks for msgfmt before it
 # looks for .po files, so this fails on a gettext-less image even with no translations yet.
 docker compose exec -T web python manage.py compilemessages
-# Confirm Celery autodiscovers. `import_default_modules` forces eager loading —
-# plain `celery_app.tasks` only lists built-in `celery.*` entries.
-docker compose exec -T web python -c "from config import celery_app; celery_app.loader.import_default_modules(); print(sorted(t for t in celery_app.tasks if not t.startswith('celery.')))"
+# Enqueue through Redis and require a result from a real worker.
+docker compose exec -T web python manage.py shell -c "
+from config import celery_app
+from jobs.tasks import settings_probe
+assert not celery_app.conf.task_always_eager, 'This check requires a real worker'
+assert settings_probe.delay().get(timeout=30) == 'config.settings.local'
+"
+# Check the effective module in each process environment, not just web's settings.
+for service in web worker beat; do
+  docker compose exec -T "$service" python -c "from config import celery_app; celery_app.conf.broker_url; from django.conf import settings; assert settings.SETTINGS_MODULE == 'config.settings.local'"
+done
 # worker and beat must still be up, not crash-looped behind a passing web service.
 docker compose ps --services --filter status=running | grep -qx worker
 docker compose ps --services --filter status=running | grep -qx beat
 # docker logs must not contain fatal errors:
-! docker compose logs db redis web worker beat 2>&1 | grep -iE 'fatal|panic|traceback'
+if docker compose logs db redis web worker beat 2>&1 | grep -iE 'fatal|panic|traceback'; then
+  echo "SMOKE CHECK FAILED: forbidden configuration or error output" >&2
+  exit 1
+fi
 docker compose down -v --rmi local
 ```
 
@@ -85,7 +106,7 @@ Read-only audit of the project in the current directory. Quote the file path and
 Verify these structural facts:
 
 **Foundation**
-- Files present: `pyproject.toml`, `manage.py`, `config/settings.py` (single-file), `config/celery.py`, `config/__init__.py`, `docker-compose.yml`, `Dockerfile`, `.dockerignore`, `.env`, `.env.example`, `.gitignore`.
+- Files present: `pyproject.toml`, `manage.py`, `config/settings/{base,local,production,test}.py`, `config/celery.py`, `config/__init__.py`, `docker-compose.yml`, `Dockerfile`, `.dockerignore`, `.env`, `.env.example`, `.gitignore`.
 - `pyproject.toml` runtime deps include `psycopg[binary]`, `celery[redis]` (or `celery` + `redis`), `django-mail-auth`, `django-redis`. No `ruff`, no `pyright`.
 - `.env` addresses both services by name: `DATABASE_URL=postgres://postgres:postgres@db:5432/postgres` and `REDIS_URL=redis://redis:6379` (no `/0` — settings append the db number per subsystem). No `localhost` in either.
 - `docker-compose.yml` defines `web`, `worker`, `beat`, `db` and `redis`. Only `web` has a `ports:` block, bound to `127.0.0.1` (e.g. `"127.0.0.1:8000:8000"`), not `0.0.0.0`. `worker` and `beat` build the same `target: dev` and carry `celery -A config worker` / `celery -A config beat` as their `command:`.
@@ -97,14 +118,14 @@ Verify these structural facts:
 - `.dockerignore` lists `.venv/`.
 
 **Settings**
-- `config/settings.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.
+- `config/settings/base.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.
 - `CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True` set.
 - `CELERY_BROKER_URL` and `CELERY_RESULT_BACKEND` derived from `REDIS_URL` (broker on `/1`, results on `/2`).
 - `CELERY_TASK_TIME_LIMIT` and `CELERY_TASK_SOFT_TIME_LIMIT` set (soft < hard).
 - `LANGUAGES`, `LOCALE_PATHS`, `LocaleMiddleware` configured (i18n=yes).
 
 **Celery**
-- `config/celery.py` defaults `DJANGO_SETTINGS_MODULE` to the production module (mirrors wsgi/asgi). For the single-file layout this is `config.settings`.
+- `config/celery.py` defaults `DJANGO_SETTINGS_MODULE` to the production module (mirrors wsgi/asgi). This is `config.settings.production`; Compose supplies `DJANGO_SETTINGS_MODULE=config.settings.local` to web, worker, and beat before Python starts.
 - `config/__init__.py` exposes `celery_app`.
 - A registered Django app (e.g. `jobs/`) ships `tasks.py` with at least one `@shared_task` (or `@task`) function. `CELERY_BEAT_SCHEDULE` references one of those tasks.
 

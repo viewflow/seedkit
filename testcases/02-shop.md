@@ -37,21 +37,25 @@ Add-ons:
   - `django-extensions`: no.
   - Browser auto-reload: yes (`django-browser-reload`).
 
-Production setup: VPS (Docker + Caddy). Use a multi-stage `Dockerfile` (uv builder → `python:3.12-slim-bookworm` runtime).
+Production setup: VPS (Docker + Caddy). Use a multi-stage `Dockerfile` (uv builder → `python:3.13-slim-trixie` runtime).
 
 Assume Postgres is already running locally on port 5432 with user `postgres` / password `postgres`. Create database `shop_db` if missing (Postgres identifiers can't start with a digit, so use a clean name). Run the foundation + boot check, then run `python manage.py tailwind build` once so the CSS asset exists, and verify the index page returns the Tailwind-styled HTML.
 ```
 
 ## Boot check
 
+Run the checks in order. Before starting processes or services, wrap the shell blocks in a cleanup script that records child PIDs and resources created by this run and removes them on success or failure. Use a unique Compose project name. For host Postgres, reuse only a database created during this case's foundation step; fail if an unrelated database already has the requested name. Later acceptance subsections run from this project's root.
+
 ```sh
+set -eu
 createdb shop_db || true
 cd 02-shop
 uv run manage.py tailwind build
 uv run manage.py runserver --noreload &
 RUNSERVER_PID=$!
+up=
 for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null && up=1 && break; sleep 1; done
-[ -n "$up" ] || { echo "BOOT CHECK FAILED: runserver never came up"; kill "$RUNSERVER_PID"; exit 1; }
+[ -n "${up:-}" ] || { echo "BOOT CHECK FAILED: runserver never came up"; kill "$RUNSERVER_PID"; exit 1; }
 curl -sf http://127.0.0.1:8000/ | grep -q 'text-blue-600'
 CSS_URL=$(curl -sf http://127.0.0.1:8000/ | grep -oE 'href="[^"]*tailwind[^"]*\.css[^"]*"' | head -1 | sed 's/href="//;s/"//')
 test -n "$CSS_URL"
@@ -87,6 +91,7 @@ dropdb shop_db
 Exercises the prod Dockerfile + `config/settings/production.py` + gunicorn end-to-end. Bypasses Caddy (port 80/443 may be busy on dev machines) by running `web` directly with a published port. Uses an isolated docker network + throwaway Postgres so it doesn't touch the host DB.
 
 ```sh
+set -eu
 cd 02-shop
 
 # 1. Build the prod image from the generated Dockerfile.
@@ -98,8 +103,13 @@ docker run -d --name shop-smoke-db --network shop-smoke \
     -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=shop_db \
     --health-cmd='pg_isready -U postgres' --health-interval=2s --health-retries=10 \
     postgres:17
-# Wait for db healthy — no hand-rolled polling.
-until [ "$(docker inspect -f '{{.State.Health.Status}}' shop-smoke-db)" = "healthy" ]; do sleep 1; done
+# Bound the wait so an unhealthy database fails the case.
+db_up=
+for i in $(seq 1 30); do
+  if [ "$(docker inspect -f '{{.State.Health.Status}}' shop-smoke-db)" = "healthy" ]; then db_up=1; break; fi
+  sleep 1
+done
+[ -n "$db_up" ] || { echo "DEPLOY CHECK FAILED: Postgres never became healthy"; exit 1; }
 
 # 3. migrate --check against the prod image must fail (no tables yet), then migrate.
 docker run --rm --network shop-smoke \
@@ -122,7 +132,7 @@ docker run --rm --network shop-smoke \
     shop-prod python manage.py check --deploy --fail-level WARNING
 
 # 5. Boot gunicorn from the image. Port 8000 published to host.
-docker run -d --name shop-smoke-web --network shop-smoke -p 8000:8000 \
+docker run -d --name shop-smoke-web --network shop-smoke -p 127.0.0.1:8000:8000 \
     -e DJANGO_SETTINGS_MODULE=config.settings.production \
     -e DJANGO_SECRET_KEY=smoke-secret-not-for-prod-padding-to-fifty-chars-min \
     -e DJANGO_ALLOWED_HOSTS=127.0.0.1,localhost \
@@ -132,8 +142,9 @@ docker run -d --name shop-smoke-web --network shop-smoke -p 8000:8000 \
     -e DJANGO_SECURE_SSL_REDIRECT=False \
     shop-prod
 # Wait for healthz to return 200.
+prod_up=
 for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/healthz >/dev/null && prod_up=1 && break; sleep 1; done
-[ -n "$prod_up" ] || { echo "DEPLOY CHECK FAILED: gunicorn never became healthy"; docker logs shop-smoke-web; docker rm -f shop-smoke-web shop-smoke-db; exit 1; }
+[ -n "${prod_up:-}" ] || { echo "DEPLOY CHECK FAILED: gunicorn never became healthy"; docker logs shop-smoke-web; docker rm -f shop-smoke-web shop-smoke-db; exit 1; }
 
 # 6. Prod smoke assertions — gunicorn, not runserver.
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
@@ -193,7 +204,7 @@ Verify these structural facts:
 
 **Production artifacts**
 - Files present at project root: `Dockerfile` (multi-stage `builder` + `prod` targets), `.dockerignore`. Under `deploy/`: `docker-compose.prod.yml`, `Caddyfile`. No root `docker-compose.yml` (Postgres is on the host; no local services to compose).
-- `Dockerfile` uses `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`, runs `uv sync --frozen --no-dev`, contains a `collectstatic --noinput` step under `DJANGO_SETTINGS_MODULE=config.settings.production`, switches to a non-root `django` user, and ends with a `CMD` invoking `gunicorn config.wsgi` with `--bind 0.0.0.0:8000`, `--max-requests`, `--max-requests-jitter`, and `--access-logfile -` (worker count comes from `WEB_CONCURRENCY`, not a `--workers` flag).
+- `Dockerfile` uses `ghcr.io/astral-sh/uv:python3.13-trixie-slim`, runs `uv sync --frozen --no-dev`, contains a `collectstatic --noinput` step under `DJANGO_SETTINGS_MODULE=config.settings.production`, switches to a non-root `django` user, and ends with a `CMD` invoking `gunicorn config.wsgi` with `--bind 0.0.0.0:8000`, `--max-requests`, `--max-requests-jitter`, and `--access-logfile -` (worker count comes from `WEB_CONCURRENCY`, not a `--workers` flag).
 - `pyproject.toml` runtime deps include `gunicorn`.
 - `.dockerignore` lists `.venv`.
 - `deploy/docker-compose.prod.yml` defines a `web` healthcheck using `python -c 'import urllib.request...'` (not curl), a `db` healthcheck using `pg_isready`, and an `x-logging` anchor with `max-size` applied as `logging:` on every service.

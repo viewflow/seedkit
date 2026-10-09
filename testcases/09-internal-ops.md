@@ -44,24 +44,31 @@ Production setup:
   - CI: GitHub Actions test workflow
   - deploy: GitHub Actions deploy via SSH (rsync + remote `docker compose pull && up -d`)
   - database backups via `django-dbbackup`: yes (self-managed host — no native backup service)
-  - production Dockerfile: multi-stage — uv builder → `python:3.12-slim-bookworm` runtime
+  - production Dockerfile: multi-stage — uv builder → `python:3.13-slim-trixie` runtime
 
-Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.prod.yml`, `.github/workflows/test.yml`, `.github/workflows/deploy.yml`. Do not actually deploy — verify all artifacts are present, `docker build .` succeeds, and the deploy workflow references `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`.
+Run the foundation + boot check locally. Generate `Dockerfile`, `docker-compose.prod.yml`, `.github/workflows/test.yml`, `.github/workflows/deploy.yml`. Verify the workflow secret references and run the local release, rollback, and recovery checks below. Do not push images, connect to a real SSH host, or use production credentials.
 ```
 
 ## Boot check
 
+Run the checks in order. Before starting processes or services, wrap the shell blocks in a cleanup script that records child PIDs and resources created by this run and removes them on success or failure. Use a unique Compose project name. For host Postgres, reuse only a database created during this case's foundation step; fail if an unrelated database already has the requested name. Later acceptance subsections run from this project's root.
+
 ```sh
+set -eu
 cd 09-ssh-deploy
-docker compose up -d                    # db + redis only
+docker compose up -d --wait             # db + redis only
 uv run manage.py migrate
 uv run manage.py runserver --noreload &
 RUNSERVER_PID=$!
+up=
 for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null && up=1 && break; sleep 1; done
-[ -n "$up" ] || { echo "BOOT CHECK FAILED: runserver never came up"; kill "$RUNSERVER_PID"; exit 1; }
+[ -n "${up:-}" ] || { echo "BOOT CHECK FAILED: runserver never came up"; kill "$RUNSERVER_PID"; exit 1; }
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
-! rg -q 'django-csp' pyproject.toml
+if rg -q 'django-csp' pyproject.toml; then
+  echo "SMOKE CHECK FAILED: forbidden configuration or error output" >&2
+  exit 1
+fi
 rg -q 'django.middleware.csp.ContentSecurityPolicyMiddleware' config/settings/production.py
 rg -q 'SECURE_CSP' config/settings/production.py
 docker build --target prod -t 09-ssh-deploy:test .
@@ -69,6 +76,17 @@ kill "$RUNSERVER_PID"
 docker compose down -v
 docker rmi 09-ssh-deploy:test
 ```
+
+### Production acceptance
+
+Use a unique Compose project, disposable Postgres and backup storage, and locally built images. Keep the generated production service definitions and healthchecks; override remote image locations and public ports for this local drill. Register cleanup before creating resources.
+
+1. **Secrets stay outside the image.** Create `deploy/.env.prod` containing only a unique fake secret marker before building. Fail rather than overwrite an existing file. Build the final image, then use `docker create` and `docker export` to inspect its filesystem without booting Django. Assert `app/deploy/.env.prod` and other real env files are absent (templates such as `.env.prod.example` may remain). Inspect `docker image save` layer tarballs too: deleting a copied secret in a later layer is insufficient. Remove the fake env file in cleanup. Never use real secrets for this test.
+2. **Release and rollback.** Build image A, then image B with a harmless release-marker file changed; tag each immutably. Apply the generated deployment command sequence locally with `IMAGE_TAG=A`, then `B`, then the documented rollback to `A`. Replace only registry pulls with the corresponding local-image availability check; do not contact GitHub or SSH. Require each release to become healthy, verify the running marker each time, and verify a seeded database record survives. Use compatible schemas for this rollback test. If an artifact transfer/update step exists, exercise it against a disposable local deployment directory too.
+3. **Backup and restore.** Insert a unique database record and run `dbbackup` with production settings. Restore that backup into a separate empty disposable database using `dbrestore`, then assert the original record and primary key exist. Verify this is a restore, not a connection to the source database. Test media backup/restore too if local media was selected. Backup storage must be local to this drill; no real bucket or production database is allowed.
+4. **CI.** Execute the generated test-workflow commands with job/step env, safe placeholders, and disposable service addresses. Require the production check, migration check, and collected tests to exit 0.
+
+Give readiness and restore operations bounded deadlines. On success or failure, remove only resources created by this run. Report local image/Compose/backup results separately; this does not verify GitHub Actions authentication or real SSH transport.
 
 ## Review
 

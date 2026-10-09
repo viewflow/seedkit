@@ -132,3 +132,24 @@ Regenerate the suite (delete current test files and rewrite from this README) wh
 - A new variation dimension is added to the skill.
 - A reference file is split or merged in a way that changes the question flow.
 - Multiple test cases end up reporting the same fix — that's a signal the suite is redundant.
+
+## Acceptance coverage inside the existing cases
+
+The suite stays at nine projects. Put new acceptance checks in `###` subsections inside `## Boot check` so both build arms receive the same checks; do not put runtime acceptance only in the read-only review.
+
+| Case | Additional acceptance |
+|------|-----------------------|
+| 03 | A real Celery worker returns its active settings module; all container dev processes use local settings. |
+| 05 | Add WhiteNoise to an existing single-file project, preserve data and source, repeat without duplicate configuration, and boot its production image. |
+| 06 | Execute generated CI with `DEBUG=False`, security declined, migration linting enabled, and tests collected. |
+| 07 | Boot the production Compose stack, preserve data across restart, and restore a known SQLite record from a disposable Litestream replica. |
+| 08 | Execute the generated release command, check S3 static/media operations, and exercise production web and Bolt processes. |
+| 09 | Inspect image layers for fake env secrets, deploy two local releases, roll back, and restore a database backup into an empty database. |
+
+For every case, run fenced shell checks with `set -eu` and initialize readiness flags before polling. Register cleanup before starting background processes or creating containers; cleanup must run on failure as well as success. Use unique resource names and remove only resources created by that run. Run each section from the directory it specifies; later sections without `cd` start at the generated project root.
+
+The baseline runner currently skips standalone `## Deploy check` sections. Keep the new production checks inside `## Boot check` until both runners support that section. The existing case 02 deploy section remains skill-arm-only.
+
+The numbered deployment checks are executable instructions for the build agent: resolve project-specific paths, write a temporary script, and execute every assertion. Include commands, exit statuses, and cleanup outcomes in the run log. Failed assertions must stay failures until the generated project is repaired; do not weaken tests, accept pytest exit 5, or substitute a different command for the generated workflow/release command. Use only the infrastructure and test-environment substitutions explicitly allowed by each case.
+
+Use local disposable infrastructure for deployment and recovery checks. A successful local check does not establish that Fly, GitHub Actions, SSH credentials, or a public TLS endpoint work. Report any check that could not run as unverified.

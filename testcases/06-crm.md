@@ -40,31 +40,40 @@ Add-ons:
       - django-migration-linter: yes
       - django-test-migrations: yes
 
-Production setup: skip.
+Production setup: security settings no, CSP no, error reporting none, deploy none. CI: GitHub Actions test workflow, including migration linting with `DJANGO_DEBUG=False`.
 
-Run the foundation, the boot check, enqueue one example task and confirm it runs in process. Hit a profiled view and confirm the request appears under `/silk/`. Run `uv run manage.py lintmigrations`. Run `uv run pytest` to confirm the test runner is wired (no project-specific tests required — `django-test-migrations` is installed for the user to write migration tests later).
+Run the foundation, the boot check, enqueue one example task and confirm it runs in process. Hit a profiled view and confirm the request appears under `/silk/`. Run `uv run manage.py lintmigrations`. Run `uv run pytest` to confirm the test runner is wired (include tests asserting `/healthz` and `/readyz` return 200, plus a test that the example task returns its expected result).
 ```
 
 ## Boot check
 
+Run the checks in order. Before starting processes or services, wrap the shell blocks in a cleanup script that records child PIDs and resources created by this run and removes them on success or failure. Use a unique Compose project name. For host Postgres, reuse only a database created during this case's foundation step; fail if an unrelated database already has the requested name. Later acceptance subsections run from this project's root.
+
 ```sh
+set -eu
 createdb silk_db || true
 cd 06-silk-lab
 uv run manage.py migrate
 uv run manage.py runserver --noreload &
 RUNSERVER_PID=$!
+up=
 for i in 1 2 3 4 5; do curl -sf http://127.0.0.1:8000/admin/login/ > /dev/null && up=1 && break; sleep 1; done
-[ -n "$up" ] || { echo "BOOT CHECK FAILED: runserver never came up"; kill "$RUNSERVER_PID"; exit 1; }
+[ -n "${up:-}" ] || { echo "BOOT CHECK FAILED: runserver never came up"; kill "$RUNSERVER_PID"; exit 1; }
 curl -sf http://127.0.0.1:8000/silk/ > /dev/null
 test "$(curl -sf http://127.0.0.1:8000/healthz)" = "ok"
 test "$(curl -sf http://127.0.0.1:8000/readyz)" = "ready"
 uv run manage.py show_urls > /dev/null
 uv run manage.py lintmigrations
 uv run ruff check .
-uv run pytest; rc=$?; [ "$rc" -eq 0 ] || [ "$rc" -eq 5 ]   # exit 5 = no tests collected (empty scaffold)
+uv run pytest
 kill "$RUNSERVER_PID"
-dropdb silk_db
 ```
+
+### CI acceptance
+
+Before dropping the disposable database, run each generated test-workflow `run:` step locally, in order, with its job and step environment applied. Use a shell with `set -eu`; a nonzero step fails the case. Keep `DJANGO_DEBUG=False`. Supply the workflow's database URL for this case's local Postgres, and only test credentials. Include `lintmigrations`, `makemigrations --check --dry-run`, and pytest; pytest must collect tests and exit 0. Do not replace the workflow commands with easier smoke commands.
+
+Security settings were declined: ordinary Django checks must pass without adding production hardening merely to satisfy `check --deploy`. Migration linting must remain registered with `DEBUG=False`, and dev-only apps must remain absent from production settings. Record each executed command and its exit status in the run log. Drop only the `silk_db` database created for this run after these checks, including on failure.
 
 ## Review
 
@@ -78,7 +87,7 @@ Verify these structural facts:
 
 **Settings**
 - `config/settings/base.py` uses `env.NOTSET` for the prod branch of `SECRET_KEY` and `DATABASES`.
-- `INSTALLED_APPS` in `base.py` does NOT contain `silk`, `django_extensions`, `zeal`, or `django_migration_linter`. Each appears only in `local.py` (or DEBUG-gated single-file).
+- `INSTALLED_APPS` in `base.py` does NOT contain `silk`, `django_extensions`, `zeal`, or `django_migration_linter`. Development tools stay in local/test settings; the CI settings register `django_migration_linter` even with `DEBUG=False`.
 - `config/settings/local.py` adds `silk`, `django_extensions`, `zeal`, `django_migration_linter` to `INSTALLED_APPS`. Adds `silk.middleware.SilkyMiddleware` and `zeal.middleware.zeal_middleware` to `MIDDLEWARE`. Sets `ZEAL_RAISE_ON_VIOLATION = True`.
 - `setup.cfg` has a `[django_migration_linter]` section with `exclude_apps` covering third-party migrations.
 
