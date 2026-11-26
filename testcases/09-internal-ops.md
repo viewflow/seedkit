@@ -42,7 +42,7 @@ Production setup:
   - error reporting: Bugsink (self-hosted, sentry-sdk DSN)
   - GDPR: PII scrubbing in error reports, retention defaults, user data export/delete
   - CI: GitHub Actions test workflow
-  - deploy: GitHub Actions deploy via SSH (rsync + remote `docker compose pull && up -d`)
+  - deploy: GitHub Actions deploy via SSH (a server-side checkout of the deployed commit and its Compose configuration)
   - database backups via `django-dbbackup`: yes (self-managed host — no native backup service)
   - production Dockerfile: multi-stage — uv builder → `python:3.13-slim-trixie` runtime
 
@@ -82,9 +82,13 @@ docker rmi 09-ssh-deploy:test
 Use a unique Compose project, disposable Postgres and backup storage, and locally built images. Keep the generated production service definitions and healthchecks; override remote image locations and public ports for this local drill. Register cleanup before creating resources.
 
 1. **Secrets stay outside the image.** Create `deploy/.env.prod` containing only a unique fake secret marker before building. Fail rather than overwrite an existing file. Build the final image, then use `docker create` and `docker export` to inspect its filesystem without booting Django. Assert `app/deploy/.env.prod` and other real env files are absent (templates such as `.env.prod.example` may remain). Inspect `docker image save` layer tarballs too: deleting a copied secret in a later layer is insufficient. Remove the fake env file in cleanup. Never use real secrets for this test.
-2. **Release and rollback.** Build image A, then image B with a harmless release-marker file changed; tag each immutably. Apply the generated deployment command sequence locally with `IMAGE_TAG=A`, then `B`, then the documented rollback to `A`. Replace only registry pulls with the corresponding local-image availability check; do not contact GitHub or SSH. Require each release to become healthy, verify the running marker each time, and verify a seeded database record survives. Use compatible schemas for this rollback test. If an artifact transfer/update step exists, exercise it against a disposable local deployment directory too.
+2. **Release and rollback.** Use a disposable local Git origin and deploy checkout for the standalone release drill. When the generation harness disables Git, stage the two configuration snapshots in a disposable directory, supply the corresponding local image tags, exercise the Compose operations, and report Git transport as unverified. Commit revisions A and B with different image markers, Caddy configuration and a Compose service environment marker. Build/tag both images by commit SHA. Run the shipped release sequence A → B → rollback A, substituting local image checks for registry pulls. Verify each running web and worker image and environment marker, active Caddy configuration, the original seeded row, and the server-owned env file at every step. After migration, make the readiness probe return 503 while liveness stays 200. Require the release script to exit nonzero within its deadline.
 3. **Backup and restore.** Insert a unique database record and run `dbbackup` with production settings. Restore that backup into a separate empty disposable database using `dbrestore`, then assert the original record and primary key exist. Verify this is a restore, not a connection to the source database. Test media backup/restore too if local media was selected. Backup storage must be local to this drill; no real bucket or production database is allowed.
-4. **CI.** Execute the generated test-workflow commands with job/step env, safe placeholders, and disposable service addresses. Require the production check, migration check, and collected tests to exit 0.
+4. **Privacy.** Capture a synthetic exception through the production Sentry configuration using an in-memory transport. Include a unique local-variable marker and assert the event arrives without it.
+5. **Upgrade an existing integration.** In a disposable copy of the generated project, replace the backup alias with the legacy DBBACKUP_STORAGE and DBBACKUP_STORAGE_OPTIONS settings. Add a user-authored management command and record its hash. Ask the build agent to upgrade backup configuration, retaining the command, storage aliases, and data. Repeat the backup/restore drill and verify the command hash.
+6. **CI.** Execute the generated test-workflow commands with job/step env, safe placeholders, and disposable service addresses. Require the production check, migration check, and collected tests to exit 0.
+
+Report distinct PASS, FAIL or UNVERIFIED results for restored primary key, web/worker/config SHA rollback, and release rejection on 503, with observed evidence for each.
 
 Give readiness and restore operations bounded deadlines. On success or failure, remove only resources created by this run. Report local image/Compose/backup results separately; this does not verify GitHub Actions authentication or real SSH transport.
 
@@ -105,11 +109,11 @@ Verify these structural facts:
 - Security settings (`SECURE_SSL_REDIRECT`, HSTS, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `CSRF_TRUSTED_ORIGINS`, `SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$"]`) live in `production.py` only.
 - `django.middleware.csp.ContentSecurityPolicyMiddleware` and `SECURE_CSP` in `production.py` only. `script-src` includes the Umami host (resolved from env at runtime). No `CSP.UNSAFE_INLINE` in `script-src`.
 - `INSTALLED_APPS` in `base.py` does NOT contain `axes`, `allauth`. `dbbackup` is added only inside the `if not DEBUG:` block in `production.py`.
-- `production.py` `if not DEBUG:` block adds `dbbackup` to `INSTALLED_APPS`, sets `DBBACKUP_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"` and `DBBACKUP_STORAGE_OPTIONS` reading bucket/key/secret from env. `DBBACKUP_BUCKET` listed in `.env.example`.
+- `production.py` `if not DEBUG:` block adds `dbbackup` to `INSTALLED_APPS`, extends `STORAGES` with a `dbbackup` alias and S3 backend options reading bucket/key/secret from env. `DBBACKUP_BUCKET` listed in `.env.example`.
 
 **Logging + Sentry/Bugsink**
 - `structlog` configured in `base.py`. `LOGGING` at module scope. `django_structlog.middlewares.RequestMiddleware` in `MIDDLEWARE` directly after `AuthenticationMiddleware`. `django_structlog` in `INSTALLED_APPS`.
-- `sentry_sdk.init(...)` called from `production.py` only with `before_send` PII scrubber, `send_default_pii=False`. DSN read from env.
+- `sentry_sdk.init(...)` called from `production.py` only with `before_send` PII scrubber, SDK-version-appropriate settings disabling user information and frame locals. DSN read from env.
 
 **Analytics + GDPR**
 - Umami snippet in `templates/_analytics.html` (or equivalent), gated on `ANALYTICS_ID` and `ANALYTICS_HOST` from a context processor. Included from `templates/base.html`.
@@ -117,7 +121,7 @@ Verify these structural facts:
 
 **Deploy artefacts**
 - `deploy/.env.prod.example` ships every var the prod compose references, including `DJANGO_SETTINGS_MODULE=config.settings.production`, `DJANGO_ALLOWED_HOSTS=example.com,localhost,127.0.0.1` (localhost+127.0.0.1 for the in-container healthcheck), `DJANGO_BEHIND_PROXY=True`, `POSTGRES_PASSWORD`, `GITHUB_REPOSITORY`.
-- `.github/workflows/deploy.yml` uses `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`, `secrets.GHCR_TOKEN`. A `test` job runs `./.github/workflows/test.yml` (`uses:`) and the `deploy` job has `needs: test`. `docker/build-push-action` tags both `:latest` and `:${{ github.sha }}`. The SSH script exports `GITHUB_REPOSITORY="${{ github.repository }}"` and `IMAGE_TAG="${{ github.sha }}"` before `compose pull`, and runs `docker image prune -f` only after the health-wait passes. Every `docker compose` invocation passes `--env-file deploy/.env.prod`. `concurrency: group: deploy` set.
+- `.github/workflows/deploy.yml` uses `secrets.SSH_HOST`, `secrets.SSH_USER`, `secrets.SSH_KEY`, `secrets.GHCR_TOKEN`. A `test` job runs `./.github/workflows/test.yml` (`uses:`) and the `deploy` job has `needs: test`. `docker/build-push-action` tags both `:latest` and `:${{ github.sha }}`. The server checks out the image commit and runs the versioned release script. Deploy and rollback apply all app services and gate on HTTP 200 from /readyz. Compose reads deploy/.env.prod. `concurrency: group: deploy` set.
 - Inherited `deploy/docker-compose.prod.yml` `web` image is `ghcr.io/${GITHUB_REPOSITORY}:${IMAGE_TAG:-latest}`.
 - `docker/build-push-action` step has `target: prod` (matching the `prod` stage in `references/docker.md`).
 - The container healthcheck in `deploy/docker-compose.prod.yml` uses python urllib (no curl dependency).

@@ -137,7 +137,7 @@ Verify these structural facts:
 - `INSTALLED_APPS` lists `mailauth.contrib.admin` BEFORE `django.contrib.admin`. `MailAuthBackend` in `AUTHENTICATION_BACKENDS`. `accounts/` URL include with `mailauth` namespace.
 - `MIDDLEWARE` ends with `axes.middleware.AxesMiddleware`. `AUTHENTICATION_BACKENDS` starts with `axes.backends.AxesBackend`. `AXES_HANDLER = 'axes.handlers.cache.AxesCacheHandler'` set in `production.py`.
 - GA4 snippet in `templates/_analytics.html` (or equivalent) uses `{{ ANALYTICS_ID }}` and `nonce="{{ csp_nonce }}"`; it is included from `templates/base.html`.
-- `sentry_sdk.init(...)` called from `production.py` only with `before_send` PII scrubber, `send_default_pii=False`.
+- `sentry_sdk.init(...)` called from `production.py` only with `before_send` PII scrubber, SDK-version-appropriate settings disabling user information and frame locals.
 - GDPR scaffolding present: `data_export` / `data_delete` views or management commands.
 
 **Deploy artefacts**

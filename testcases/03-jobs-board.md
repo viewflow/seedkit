@@ -99,6 +99,8 @@ fi
 docker compose down -v --rmi local
 ```
 
+Before review, add a previously absent runtime dependency to a temporary copy of the generated project, refresh its lockfile, rebuild the dev image and recreate web and worker with their existing volumes. Require both running containers to import the new package. Use an isolated Compose project and clean up its containers and volumes.
+
 ## Review
 
 Read-only audit of the project in the current directory. Quote the file path and the literal substring you read for every claim — do not infer state from training-data priors.

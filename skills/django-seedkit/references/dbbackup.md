@@ -18,7 +18,7 @@ We use `django-dbbackup` over a hand-rolled `pg_dump` cron because it gives:
 uv add django-dbbackup 'django-storages[s3]'
 ```
 
-`django-storages[s3]` ships the `S3Boto3Storage` backend `DBBACKUP_STORAGE` points at. Skip if `references/storage-s3.md` is already in scope — it adds the same dep.
+Extend the project’s effective `STORAGES` mapping. If the project relies on Django’s defaults, import `STORAGES` from `django.conf.global_settings` before this block.
 
 ## `production.py` only
 
@@ -29,12 +29,16 @@ if not DEBUG:
     INSTALLED_APPS += ["dbbackup"]
 
     # S3-compatible target. Reuse the s3 storage credentials from references/storage-s3.md.
-    DBBACKUP_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
-    DBBACKUP_STORAGE_OPTIONS = {
-        "access_key": env("AWS_ACCESS_KEY_ID"),
-        "secret_key": env("AWS_SECRET_ACCESS_KEY"),
-        "bucket_name": env("DBBACKUP_BUCKET"),  # SEPARATE bucket from media — different lifecycle policy
-        "default_acl": "private",
+    STORAGES = {
+        **STORAGES,
+        "dbbackup": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                "access_key": env("AWS_ACCESS_KEY_ID"),
+                "secret_key": env("AWS_SECRET_ACCESS_KEY"),
+                "bucket_name": env("DBBACKUP_BUCKET"),
+            },
+        },
     }
 
     DBBACKUP_CLEANUP_KEEP = 14            # daily backups retained

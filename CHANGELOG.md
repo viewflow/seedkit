@@ -2,6 +2,19 @@
 
 Versioned `YY.WW.D` — `date +%y.%V.%u` — year / ISO week / ISO weekday. One section per day; all of a day's commits collapse into one block. Trim to ≤ 200 lines; git keeps the rest.
 
+## 26.48.4 — 2026-11-26
+
+### Fixed
+- Configure django-dbbackup through the Django storage registry while preserving media and static backends.
+- Deploy and roll back the Compose configuration, Caddyfile and application processes from one Git revision. Gate release success on database readiness.
+- Omit stack-frame locals from Sentry events in the privacy profile.
+
+### Changed
+- Point generated agent instructions to an implemented feature and its tests when available. Preserve user changes when upgrading an existing integration.
+
+### Testcases and harness
+- Exercise dev dependency rebuilds, backup configuration upgrades, release rollback, readiness rejection and exception-event privacy.
+
 ## 26.41.5 — 2026-10-09
 
 ### Fixed
@@ -178,48 +191,3 @@ Full line-by-line audit of the remaining 43 references (previously checked only 
 
 ### Fixed
 - Review §1 boot-blocker sweep (REVIEW.md 2026-07-18): `storage-whitenoise.md` replaces its broken Caddy media block (no prefix strip → every `/media/*` 404s) with a cross-reference to the canonical block in `deploy-vps.md`, whose prose now matches the named-volume mount (`media:/srv/media:ro`); `auth-hardening.md` restores the AND-form `AXES_LOCKOUT_PARAMETERS = [['ip_address', 'username']]` (flat list = username-lockout DoS / proxy-IP mass lockout — regression of the 26.27.6 fix), replaces the stale IPWARE pitfall with `django-axes[ipware]` + `AXES_IPWARE_*` settings for the Caddy-in-Docker path, and drops the false "forces 2FA in prod" comment (no such allauth setting); `billing.md` handles `customer.subscription.updated` with status-derived access (`active`/`trialing`) so payment failures revoke access; `csp.md`'s report-only rollout is now a real standalone `CONTENT_SECURITY_POLICY_REPORT_ONLY` dict replacing (not coexisting with) the enforcing setting; `tasks-django-cron.md` imports `from django_tasks import task` (backport, matching the db/rq siblings) and points Docs at the real repo `codingjoe/django-crontask`; `realtime.md` prefixes the dev uvicorn command with `DJANGO_SETTINGS_MODULE=config.settings.local` (asgi.py defaults to production) and wraps the WS test around `URLRouter` directly so the injected `scope["user"]` survives connect; `storage-s3.md` quotes `'django-storages[s3]'` (zsh globs brackets); `dev-tasks.md` poe tasks call `python manage.py …` and the `deploy-migrate` table row drops the in-container `uv run`; `rest-bolt.md`'s boot check polls with the PID-recorded `break`/`kill` idiom instead of `sleep 1` + bare curl.
-
-## 26.28.2 — 2026-07-07
-
-### Changed
-- `rest-bolt.md` / `docker.md`: django-bolt Docker builds now pin `--platform=linux/amd64` on both stages so uv installs the published `manylinux2014_x86_64` wheel — no `build-essential`, no from-source Rust compile, and the image matches Fly's default amd64 machines. Replaces the old arm64-native compile-from-source guidance.
-
-### Fixed
-- `deploy-managed.md`: `fly.toml` example gained a `[[services.http_checks]]` block hitting `/readyz` (so Fly gates rollouts on readiness) and a note to bind the HTTP service to the `web` process (`processes = ["web"]`) when `[processes]` is set — the previous example was single-process with no health check.
-
-## 26.28.1 — 2026-07-06
-
-### Fixed
-- `tasks-django-rq.md` / `tasks-django-db.md`: both 0.12.0 adapters are built against the standalone `django-tasks` backport (import `django_tasks`), not Django 6's stdlib `django.tasks` — register `django_tasks`, import `from django_tasks import task`, and use `django_tasks.backends.immediate.ImmediateBackend` as the test eager backend.
-- `dev-tools.md`: `lintmigrations` `exclude_apps` used the wrong label `django_tasks_database`; the app label is `django_tasks_db`, so its migrations weren't skipped.
-- `SKILL.md`: `startapp` ordering pitfall now also covers packages a settings block references (e.g. `orbit.handlers.OrbitLogHandler`) — `uv add` them before the next `startapp` imports settings.
-- `ci.md`: CI `DJANGO_SECRET_KEY` placeholder dropped the `django-insecure-` prefix — that prefix trips `security.W009` at the `check --deploy` step regardless of length.
-
-## 26.27.7 — 2026-07-05
-
-### Added
-- `seo.md` — meta/OG tags block for `base.html` + `django.contrib.sitemaps` wiring; defines the `SITEMAP_URL` that `robots.md`'s view already consumed. New §5.5 question (default no, skipped when Frontend = none).
-- `favicon.md` — agent-drawn SVG favicon matching the project (initial/motif + theme colors), PNG fallbacks via `rsvg-convert`/`sips` when available (ImageMagick excluded — stock builds can't rasterize SVG `<text>`). Follow-up under Frontend, default yes with Tailwind.
-- `email.md` gains an HTML email base template (table layout, inline styles) + `send_test_email` management command; follow-up under the email-backend question, default no. Testcase 05 exercises it end-to-end via Mailpit.
-- SKILL.md §8: new-project runs now emit `AGENTS.md` (stack decisions, layout, key commands) plus a one-line `CLAUDE.md` (`@AGENTS.md`) so coding agents pick up project context.
-
-### Fixed
-- `ci.md`'s placeholder `DJANGO_SECRET_KEY` is now 50+ chars — the old `test-key` tripped `security.W009` at the workflow's own `check --deploy --fail-level WARNING` step.
-- `pytest.md` seeds a smoke test per touched app — a project shipping only empty `startapp` stubs makes `pytest` exit 5 ("no tests collected"), turning CI red on first push. `dev-tasks.md` skips `deploy-migrate` for the SQLite + Litestream deploy (migrate runs in `entrypoint.sh`), so `deploy` is a bare `up -d`.
-- Testcase 01 boot check no longer races: `runserver --noreload` + a `curl` poll loop, matching SKILL.md §4 (bare `runserver &` + one immediate `curl` fired before the WSGI listener was up).
-- `dev-tools.md` drops the `silk_profile`-inside-a-`@task`-body example — Silk only records within a request-scoped `DataCollector`, so it silently no-ops in a worker; profile from a request-scoped view instead.
-- `deploy-github-ssh.md` points the inherited compose `web` image at `ghcr.io/${GITHUB_REPOSITORY}:latest` — the CI-built tag — instead of the scaffold-time `{owner}/{project_slug}` placeholder that shipped a literal `{owner}` and broke `compose pull`.
-
-## 26.27.6 — 2026-07-04
-
-### Fixed
-- seedkit-slim wrong correctives (REVIEW.md Part II, verified against installed packages): `django-modern-rest.md` rewritten around the real API — import name `dmr`, no `INSTALLED_APPS` entry, `dmr.routing.Router` + `Controller.as_view()` (the previous `modern_rest` module / `router.register` didn't exist); `django-zeal.md` drops the nonexistent `ZEAL_RAISE_ON_VIOLATION` (raising is `ZEAL_RAISE`'s default); `django-allauth.md` drops the `allauth.mfa.urls` include (auto-mounted at `accounts/2fa/`) and the optional `django.contrib.sites`/`SITE_ID`; `new-project.md` gates `ALLOWED_HOSTS` with `env.NOTSET` and compresses the root-URL section; `django-axes.md` uses the AND-form `[['ip_address', 'username']]` (flat list = username-lockout DoS), notes the allauth `login`-field gap and `[ipware]` behind proxies, drops LLM-known lines.
-
-- REVIEW.md blockers: `email.md` anymail path relaxes the `EMAIL_URL` gate to an unconditional default (prod no longer sets the var — the `env.NOTSET` branch crashed boot); `billing.md` dj-stripe rewritten for 2.9+ (webhook endpoints are admin-created DB rows with UUID URLs — `DJSTRIPE_WEBHOOK_SECRET` and `DJSTRIPE_FOREIGN_KEY_TO_FIELD` dropped, `djstripe_receiver` replaces `WEBHOOK_SIGNALS`, checkout view sets `stripe.api_key` from `djstripe_settings`); `deploy-vps.md` deploy commands carry `--env-file deploy/.env.prod`; `dbbackup.md` cron lines get cwd + compose flags + a real host user + log redirect, restore commands get the same flags, pitfall notes pg_dump client ≥ server major; `i18n.md` installs `gettext` in the builder stage (`msgfmt` missing broke the image build) and on the dev host; `realtime.md` WS test sends an `Origin` header so `AllowedHostsOriginValidator` accepts the handshake; `async.md` pitfall drops the nonexistent `Model.objects.afilter(...)`.
-- `typecheck.md` — `reportGeneralTypeIssues` / `reportOptionalMemberAccess` no longer downgraded to warnings (warnings never fail pyright's exit code, so CI passed on type errors). Verified 0 errors at error level across four generated example projects; django-stubs kept over django-types (whose stubs lack `UserChangeForm.Meta` and `django.tasks`).
-
-### Added
-- seedkit-slim anti-prior references where LLM priors are verifiably wrong: `dj-stripe.md` (2.9+ DB-row webhook endpoints, `djstripe_receiver`, SDK global not set), `deploy-pitfalls.md` (compose `--env-file`, pg_dump client ≥ server major, json-file log rotation, cron cwd/user/log traps); `csp.md` replaces `django-csp.md` — Django ≥ 6.0 ships CSP in core (`SECURE_CSP`, core middleware, `{{ csp_nonce }}`), don't install django-csp. SKILL.md: asgi modes use `uvicorn_worker.UvicornWorker`; deploy step reads deploy-pitfalls first.
-
-### Changed
-- Version refresh (all pins verified current 2026-07-04): base images `bookworm`/3.12 → `trixie`/3.13 across docker / rest-bolt / devcontainer / prose (trixie's `postgresql-client` 17 also fixes the pg_dump mismatch against `postgres:17`); `redis:7` → `redis:8`; Litestream 0.3.13 → 0.5.13 (new asset naming `linux-x86_64`, singular `replica:` config); `uvicorn.workers.UvicornWorker` (deprecated) → `uvicorn-worker` package; `checkout@v7`, `setup-uv@v8.2.0` (immutable — pin exact), `build-push-action@v7`, `codecov-action@v7`, `appleboy/ssh-action` SHA-pin placeholder; pre-commit revs bumped + `ruff` hook id → `ruff-check` + "run `pre-commit autoupdate` after writing the config"; DaisyUI downloads pinned to a versioned release URL; Tailwind CLI example 4.3.2; python pins 3.12 → 3.13 (mise, uv examples). New SKILL.md "Version pins" pitfall: resolve current releases at generation time instead of trusting reference pins.

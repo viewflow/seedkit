@@ -37,6 +37,8 @@ Don't ask Foundation questions. Read them off the repo:
 
 If a downstream reference needs a foundation answer, use the detected value. Don't surprise the user with a layout change (e.g. don't split a single `settings.py` into a package unless they asked).
 
+For an integration upgrade, identify the installed version and obsolete settings, preserve custom code and unrelated storage aliases, and exercise the upgraded integration against disposable data.
+
 ## 3. Report back to the user
 
 Send one message structured as a bulleted list per group:

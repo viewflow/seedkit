@@ -17,10 +17,24 @@ def _scrub(event, hint):
 sentry_sdk.init(
     dsn=SENTRY_DSN,
     integrations=[DjangoIntegration()],
-    send_default_pii=False,
+    data_collection={
+        "user_info": False,
+        "stack_frame_variables": False,
+        "http_bodies": [],
+        "cookies": {"mode": "off"},
+        "url_query_params": {"mode": "off"},
+        "http_headers": {"request": {"mode": "off"}},
+        "database_query_data": False,
+        "queues": False,
+        "graphql": {"document": False, "variables": False},
+        "gen_ai": {"inputs": False, "outputs": False},
+        "mcp": {"inputs": False, "outputs": False},
+    },
     before_send=_scrub,
 )
 ```
+
+Use the block above with sentry-sdk 3.x. For an existing 2.x lockfile, replace the `data_collection` argument with `send_default_pii=False, include_local_variables=False`.
 
 ## Data residency
 

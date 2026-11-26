@@ -2,7 +2,7 @@
 name: django-seedkit
 description: Bootstrap a new Django project, or add components — auth (allauth, magic-link, axes, 2FA), payments (Stripe, dj-stripe), REST (django-modern-rest, django-bolt), Celery / Django Tasks, async views & WebSockets (ASGI, uvicorn worker, django-channels, channels-redis), Tailwind+DaisyUI, favicon, SEO meta tags + sitemap, HTML email templates, S3 storage, structlog, healthchecks, Docker, CI, deploy (VPS / Fly / GitHub-SSH), dbbackup, Sentry/Bugsink — to an existing Django codebase. Use whenever the user wants to scaffold Django, integrate a Django package, set up async / WebSockets, set up production deploys, wire CI/CD, or extend an existing Django project.
 metadata:
-  version: 26.41.5
+  version: 26.48.4
 ---
 
 ## How this skill works
@@ -150,7 +150,7 @@ If a deploy target was applied (§6.6), copy the deploy command block from the m
 
 For new projects only (no question — always):
 
-- Write `AGENTS.md`: one line per stack decision (layout, DB, request handling, each applied add-on), the project layout tree, and the same key-commands block the README gets. Coding agents load it as project context, so keep it factual and short — no marketing prose.
+- Write `AGENTS.md`: one line per stack decision (layout, DB, request handling, each applied add-on), the project layout tree, and the same key-commands block the README gets. When the project has a representative implemented feature, link its actual source and test paths as a guide for the next feature. Coding agents load it as project context, so keep it factual and short — no marketing prose.
 - Write `CLAUDE.md` containing exactly one line: `@AGENTS.md`.
 - Append a final line to `README.md`: `Built with [Seedkit](https://github.com/viewflow/seedkit).`
 
